@@ -955,8 +955,8 @@ protected:
         szPosRoadName = "구문천 1길 17";
 #endif
 
-        if (active_carrot <= 0) return;
-        if (xDistToTurn <= 0 || nGoPosDist <= 0) return;
+        if (active_carrot <= 1) return;
+        //if (xDistToTurn <= 0 || nGoPosDist <= 0) return;
         char str[128] = "";
 
         int tbt_x = s->fb_w - 800;
@@ -971,8 +971,8 @@ protected:
             nvgTextAlign(s->vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
             int bx = tbt_x + 100;
             int by = tbt_y + 85;
-            if (atc_type.length() > 0 && !atc_type.contains("prepare")) {
-                ui_fill_rect(s->vg, { bx - 80, by - 65, 160, 210 }, COLOR_GREEN_ALPHA(100), 15);
+            if (atc_type.length() > 0) {
+                ui_fill_rect(s->vg, { bx - 80, by - 85, 160, 230 }, atc_type.contains("prepare")?COLOR_GREEN_ALPHA(100) : COLOR_GREEN, 15);
             }
             switch (xTurnInfo) {
             case 1: ui_draw_image(s, { bx - icon_size / 2, by - icon_size / 2, icon_size, icon_size }, "ic_turn_l", 1.0f); break;
@@ -1029,7 +1029,7 @@ public:
         xTurnInfo = carrot_man.getXTurnInfo();
         xDistToTurn = carrot_man.getXDistToTurn();
         nRoadLimitSpeed = carrot_man.getNRoadLimitSpeed();
-        active_carrot = carrot_man.getActive();
+        active_carrot = carrot_man.getActiveCarrot();
         atc_type = QString::fromStdString(carrot_man.getAtcType());
 
         nGoPosDist = carrot_man.getNGoPosDist();
@@ -1818,7 +1818,7 @@ public:
         v_cruise = car_state.getVCruiseCluster();
         v_ego = car_state.getVEgoCluster();
         if (carrot_man_alive) {
-            active_carrot = carrot_man.getActive();
+            active_carrot = carrot_man.getActiveCarrot();
             apply_speed = carrot_man.getDesiredSpeed();
             apply_source = QString::fromStdString(carrot_man.getDesiredSource());
             if (apply_speed >= v_cruise) apply_source = "";
@@ -1875,6 +1875,10 @@ public:
     int     gap_last = 0;
     char    gear_str_last[32] = "";
     int     blink_timer = 0;
+    float cpuTemp = 0.0f;
+    float cpuUsage = 0.0f;
+    int   memoryUsage = 0;
+    float freeSpace = 0.0f;
     void drawHud(UIState* s) {
         blink_timer = (blink_timer + 1) % 16;
         nvgTextAlign(s->vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
@@ -1885,7 +1889,7 @@ public:
         int bx = x;
         int by = y + 270;
 
-        ui_fill_rect(s->vg, { bx - 120, by - 145, 475, 350}, COLOR_BLACK_ALPHA(90), 30);
+        ui_fill_rect(s->vg, { bx - 120, by - 260, 475, 475}, COLOR_BLACK_ALPHA(90), 30);
 
 
         // draw traffic light
@@ -1926,7 +1930,7 @@ public:
 
         // draw apply speed
         NVGcolor textColor = COLOR_GREEN;
-        NVGcolor white_color = COLOR_WHITE_ALPHA(130);
+        NVGcolor white_color = COLOR_WHITE;
         char apply_speed_str[32];
         int apply_x = bx + 250;
         int apply_y = by - 50;
@@ -1946,12 +1950,12 @@ public:
         // draw gap info
         char driving_mode_str[32] = "연비";
         int driving_mode = params.getInt("MyDrivingMode");
-        NVGcolor mode_color = COLOR_GREEN_ALPHA(130);
+        NVGcolor mode_color = COLOR_GREEN_ALPHA(210);
         switch (driving_mode) {
-        case 1: strcpy(driving_mode_str, tr("ECO").toStdString().c_str()); mode_color = COLOR_GREEN_ALPHA(130);  break;
-        case 2: strcpy(driving_mode_str, tr("SAFE").toStdString().c_str()); mode_color = COLOR_ORANGE_ALPHA(130);  break;
-        case 3: strcpy(driving_mode_str, tr("NORM").toStdString().c_str()); mode_color = COLOR_WHITE_ALPHA(130);  break;
-        case 4: strcpy(driving_mode_str, tr("FAST").toStdString().c_str()); mode_color = COLOR_RED_ALPHA(130);  break;
+        case 1: strcpy(driving_mode_str, tr("ECO").toStdString().c_str()); mode_color = COLOR_GREEN_ALPHA(210);  break;
+        case 2: strcpy(driving_mode_str, tr("SAFE").toStdString().c_str()); mode_color = COLOR_ORANGE_ALPHA(210);  break;
+        case 3: strcpy(driving_mode_str, tr("NORM").toStdString().c_str()); mode_color = COLOR_WHITE_ALPHA(210);  break;
+        case 4: strcpy(driving_mode_str, tr("FAST").toStdString().c_str()); mode_color = COLOR_RED_ALPHA(210);  break;
         default: strcpy(driving_mode_str, tr("ERRM").toStdString().c_str()); break;
         }
         int dx = bx - 50;
@@ -1979,7 +1983,7 @@ public:
 #endif
         for (int i = 0; i < gap; i++) {
             //ui_fill_rect(s->vg, { (int)(dx + i * ddx), (int)dy, (int)ddx - 2, 48 }, COLOR_GREEN_ALPHA(180), 4, 3);
-            ui_fill_rect(s->vg, { (int)(dx), (int)(dy - ddy*(i+1) + 2), (int)70, (int)ddy-2}, COLOR_GREEN_ALPHA(120), 4, 3, &white_color);
+            ui_fill_rect(s->vg, { (int)(dx), (int)(dy - ddy*(i+1) + 2), (int)70, (int)ddy-2}, COLOR_GREEN_ALPHA(210), 4, 3, &white_color);
         }
 
         char gear_str[32] = "R";
@@ -2003,7 +2007,7 @@ public:
         else if (carState.getGearShifter() == cereal::CarState::GearShifter::ECO) strcpy(gear_str, "E");
 		else strcpy(gear_str, "M");
 
-        ui_fill_rect(s->vg, { dx - 35, dy - 70, 70, 80 }, COLOR_GREEN_ALPHA(120), 15, 3, &white_color);
+        ui_fill_rect(s->vg, { dx - 35, dy - 70, 70, 80 }, COLOR_GREEN_ALPHA(210), 15, 3, &white_color);
         ui_draw_text(s, dx, dy, gear_str, 70, COLOR_WHITE, BOLD);
 
         if (strcmp(gear_str, gear_str_last)) {
@@ -2021,7 +2025,7 @@ public:
             ui_draw_text(s, dx, dy, "APN", 40, COLOR_WHITE, BOLD);
         }
         else if (active_carrot >= 1) {
-            ui_fill_rect(s->vg, { dx - 55, dy - 38, 110, 48 }, COLOR_BLUE_ALPHA(140), 15, 2);
+            ui_fill_rect(s->vg, { dx - 55, dy - 38, 110, 48 }, COLOR_BLUE_ALPHA(210), 15, 2);
             ui_draw_text(s, dx, dy, "APM", 40, COLOR_WHITE, BOLD);
         }
 #ifdef __UI_TEST
@@ -2035,15 +2039,15 @@ public:
             dx = bx + 75;
             dy = by + 175;
             int disp_speed = 0;
-            NVGcolor limit_color = COLOR_GREEN_ALPHA(130);
+            NVGcolor limit_color = COLOR_GREEN_ALPHA(210);
             if (xSpdLimit > 0 && xSignType != 22) {
                 disp_speed = xSpdLimit;
-                limit_color = (blink_timer <= 8) ? COLOR_RED_ALPHA(180) : COLOR_YELLOW_ALPHA(130);
+                limit_color = (blink_timer <= 8) ? COLOR_RED_ALPHA(210) : COLOR_YELLOW_ALPHA(210);
                 ui_draw_text(s, dx, dy-45, "CAM", 30, COLOR_WHITE, BOLD);
             }
             else {
                 disp_speed = nRoadLimitSpeed;
-                limit_color = (v_ego * 3.6 > nRoadLimitSpeed + 2) ? COLOR_RED_ALPHA(130) : COLOR_WHITE_ALPHA(130);
+                limit_color = (v_ego * 3.6 > nRoadLimitSpeed + 2) ? COLOR_RED_ALPHA(210) : COLOR_WHITE_ALPHA(210);
                 ui_draw_text(s, dx, dy - 45, "LIMIT", 30, COLOR_WHITE, BOLD);
             }
 
@@ -2051,6 +2055,28 @@ public:
             ui_draw_text(s, dx, dy, QString::number(disp_speed).toStdString().c_str(), 40, COLOR_WHITE, BOLD);
         }
 
+        if (true) {
+            char str[128];
+            dx = bx - 35;
+            dy = by - 200;
+            mode_color = COLOR_GREEN_ALPHA(190);
+            ui_fill_rect(s->vg, { dx - 65, dy - 38, 130, 90 }, (cpuTemp>80 && blink_timer<=8)?COLOR_RED : mode_color, 15, 2);
+            ui_draw_text(s, dx, dy, "CPU", 40, COLOR_WHITE, BOLD);
+            sprintf(str, "%.0f\u00B0C", cpuTemp);
+            ui_draw_text(s, dx, dy + 40, str, 40, COLOR_WHITE, BOLD);
+
+            dx += 150;
+            ui_fill_rect(s->vg, { dx - 65, dy - 38, 130, 90 }, (memoryUsage > 85 && blink_timer <= 8) ? COLOR_RED : mode_color, 15, 2);
+            ui_draw_text(s, dx, dy, "MEM", 40, COLOR_WHITE, BOLD);
+            sprintf(str, "%d%%", memoryUsage);
+            ui_draw_text(s, dx, dy + 40, str, 40, COLOR_WHITE, BOLD);
+
+            dx += 150;
+            ui_fill_rect(s->vg, { dx - 65, dy - 38, 130, 90 }, mode_color, 15, 2);
+            ui_draw_text(s, dx, dy, "DISK", 40, COLOR_WHITE, BOLD);
+            sprintf(str, "%.0f%%", 100 - freeSpace);
+            ui_draw_text(s, dx, dy + 40, str, 40, COLOR_WHITE, BOLD);
+        }
     }
     void drawDateTime(const UIState* s) {
         char str[128];
@@ -2161,18 +2187,13 @@ public:
         ui_draw_text(s, bx - dw, by + 70, get_tpms_text(rl), 40, get_tpms_color(rl), BOLD);
         ui_draw_text(s, bx + dw, by + 70, get_tpms_text(rr), 40, get_tpms_color(rr), BOLD);
     }
-    void drawDeviceInfo(const UIState* s) {
-        if (params.getInt("ShowDebugUI") == 0) return;
-
-        nvgTextAlign(s->vg, NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
+    void makeDeviceInfo(const UIState* s) {
         SubMaster& sm = *(s->sm);
         auto deviceState = sm["deviceState"].getDeviceState();
-        const auto freeSpace = deviceState.getFreeSpacePercent();
-        const auto memoryUsage = deviceState.getMemoryUsagePercent();
+        freeSpace = deviceState.getFreeSpacePercent();
+        memoryUsage = deviceState.getMemoryUsagePercent();
         const auto cpuTempC = deviceState.getCpuTempC();
         const auto cpuUsagePercent = deviceState.getCpuUsagePercent();
-        float cpuTemp = 0.0f;
-        QString str = "";
         int   size = sizeof(cpuTempC) / sizeof(cpuTempC[0]);
         if (size > 0) {
             for (int i = 0; i < size; i++) {
@@ -2180,7 +2201,6 @@ public:
             }
             cpuTemp /= static_cast<float>(size);
         }
-        float cpuUsage = 0.0f;
         size = sizeof(cpuUsagePercent) / sizeof(cpuUsagePercent[0]);
         if (size > 0) {
             int cpu_size = 0;
@@ -2190,6 +2210,13 @@ public:
             }
             if (cpu_size > 0) cpuUsage /= cpu_size;
         }
+    }
+    void drawDeviceInfo(const UIState* s) {
+        makeDeviceInfo(s);
+        if (params.getInt("ShowDebugUI") == 0) return;
+
+        nvgTextAlign(s->vg, NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
+        QString str = "";
         str.sprintf("MEM:%d%% DISK:%.0f%% CPU:%.0f%%,%.0f\u00B0C", memoryUsage, freeSpace, cpuUsage, cpuTemp);
         NVGcolor top_right_color = (cpuTemp > 85.0 || memoryUsage > 85.0) ? COLOR_ORANGE : COLOR_WHITE;
 		ui_draw_text(s, s->fb_w - 10, 2, str.toStdString().c_str(), 30, top_right_color, BOLD, 3.0f, 1.0f);

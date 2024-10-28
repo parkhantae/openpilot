@@ -180,11 +180,14 @@ class VCruiseCarrot:
     self._activate_cruise = 0
     self._lat_enabled = self.params.get_int("AutoEngage") > 0
     self._v_cruise_kph_at_brake = 0
+    self.cruise_state_available_last = False
     
     #self.events = []
     self.xState = 0
     self.trafficState = 0
+    self.aTarget = 0
     self.nRoadLimitSpeed = 30
+    self.desiredSpeed = 250
     self.road_limit_kph = 30
 
     self._cancel_timer = 0
@@ -238,10 +241,12 @@ class VCruiseCarrot:
     if sm.alive['carrotMan']:
       carrot_man = sm['carrotMan']
       self.nRoadLimitSpeed = carrot_man.nRoadLimitSpeed
+      self.desiredSpeed = carrot_man.desiredSpeed
     if sm.alive['longitudinalPlan']:
       lp = sm['longitudinalPlan']
       self.xState = lp.xState
       self.trafficState = lp.trafficState
+      self.aTarget = lp.aTarget
     if sm.alive['radarState']:
       lead = sm['radarState'].leadOne
       self.d_rel = lead.dRel if lead.status else 0
@@ -271,6 +276,8 @@ class VCruiseCarrot:
       self._cruise_ready = True if self._activate_cruise == -2 else False
 
     if CS.cruiseState.available:
+      if not self.cruise_state_available_last:
+        self._lat_enabled = True
       if not self.CP.pcmCruise:
         # if stock cruise is completely disabled, then we can use our own set speed logic
         self.v_cruise_kph = clip(v_cruise_kph, self._cruise_speed_min, self._cruise_speed_max)
@@ -285,6 +292,10 @@ class VCruiseCarrot:
     else:
       self.v_cruise_kph = 20 #V_CRUISE_UNSET
       self.v_cruise_cluster_kph = 20 #V_CRUISE_UNSET
+      if self.cruise_state_available_last: # 최초 한번이라도 cruiseState.available이 True였다면
+        self._lat_enabled = False
+
+    self.cruise_state_available_last = CS.cruiseState.available
 
   def initialize_v_cruise(self, CS, experimental_mode: bool) -> None:
     # initializing is handled by the PCM
@@ -553,17 +564,17 @@ class VCruiseCarrot:
         self._cruise_control(-1, 3, "Cruise off (traffic sign)")
       elif self.v_ego_kph_set >= 30 and not CC.enabled:
         v_cruise_kph = self.v_ego_kph_set
-        self._cruise_control(1, 0, "Cruise on (gas pressed)")
+        self._cruise_control(1, -1 if self.aTarget > 0.0 else 0, "Cruise on (gas pressed)")
     elif self._brake_pressed_count == -1 and self._soft_hold_active == 0:
       if 40 < self.v_ego_kph_set:
         v_cruise_kph = self.v_ego_kph_set
-        self._cruise_control(1, 0, "Cruise on (speed)")
+        self._cruise_control(1, -1 if self.aTarget > 0.0 else 0, "Cruise on (speed)")     
       elif self.xState in [3, 5]:
         v_cruise_kph = self.v_ego_kph_set
         self._cruise_control(1, 0, "Cruise on (traffic sign)")
       elif 0 < self.d_rel < 20:
         v_cruise_kph = self.v_ego_kph_set
-        self._cruise_control(1, 0, "Cruise on (lead car)")
+        self._cruise_control(1, -1 if self.v_ego_kph_set < 1 else 0, "Cruise on (lead car)")
 
     elif not CC.enabled and self._brake_pressed_count < 0 and self._gas_pressed_count < 0:
       if self.v_rel < -0.2 and 0 < self.d_rel < CS.vEgo ** 2 / (2.0 * 2):
@@ -571,6 +582,8 @@ class VCruiseCarrot:
       elif CS.vEgo > 0.02 and 0 < self.d_rel < 4:
         self._cruise_control(1, -1, "Cruise on (fcw dist)")
         #self.events.append(EventName.stopStop)
+      elif self.desiredSpeed < self.v_ego_kph_set:
+        self._cruise_control(1, -1, "Cruise on (desired speed)")
 
     if self._gas_pressed_count > self._gas_tok_timer:
       if CS.aEgo < -0.5:
