@@ -221,7 +221,7 @@ def create_acc_control(packer, CAN, enabled, accel_last, accel, stopping, gas_ov
     "SET_ME_2": 0x4,
     #"SET_ME_3": 0x3,
     "SET_ME_TMP_64": 0x64,
-    "DISTANCE_SETTING": hud_control.leadDistanceBars# + 5,
+    "DISTANCE_SETTING": hud_control.leadDistanceBars, # + 5,
     "CRUISE_STANDSTILL": 1 if stopping and CS.out.cruiseState.standstill else 0,
   }
 
