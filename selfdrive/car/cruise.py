@@ -450,8 +450,8 @@ class VCruiseCarrot:
         self.params.put_int_nonblocking('LongitudinalPersonality', personality)
         #self.events.append(EventName.personalityChanged)
       elif button_type == ButtonType.lfaButton:
-        self._lat_enabled = not self._lat_enabled
-        self._add_log("Lateral " + "enabled" if self._lat_enabled else "disabled")
+        #self._lat_enabled = not self._lat_enabled
+        #self._add_log("Lateral " + "enabled" if self._lat_enabled else "disabled")
         print("lfaButton")
         pass
       elif button_type == ButtonType.cancel:

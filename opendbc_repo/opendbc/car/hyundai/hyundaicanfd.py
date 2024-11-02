@@ -37,20 +37,21 @@ class CanBus(CanBusBase):
   def CAM(self):
     return self._cam
 
-def create_steering_messages_scc2(packer, CP, CAN, enabled, lat_active, apply_steer, lfa_info):
+def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, apply_steer, CS):
 
-  values = lfa_info
-  values["LKA_MODE"] = 2
+  ret = []
+  values = CS.lfa_info
+  #values["LKA_MODE"] = 2
   values["LKA_ICON"] = 2 if enabled else 1
   values["TORQUE_REQUEST"] = apply_steer
-  values["LKA_ASSIST"] = 0
+  #values["LKA_ASSIST"] = 0
   values["STEER_REQ"] = 1 if lat_active else 0
-  values["STEER_MODE"] = 0
-  values["HAS_LANE_SAFETY"] = 0  # hide LKAS settings
-  values["NEW_SIGNAL_1"] = 0  
-  values["NEW_SIGNAL_2"] = 0  
-
-  return packer.make_can_msg("LFA", CAN.ECAN, values)
+  #values["STEER_MODE"] = 0
+  #values["HAS_LANE_SAFETY"] = 0  # hide LKAS settings
+  #values["NEW_SIGNAL_1"] = 0  
+  #values["NEW_SIGNAL_2"] = 0
+  ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
+  return ret
 
 def create_steering_messages(packer, CP, CAN, enabled, lat_active, apply_steer):
 
@@ -153,8 +154,8 @@ def create_lfahda_cluster(packer, CAN, enabled):
   return packer.make_can_msg("LFAHDA_CLUSTER", CAN.ECAN, values)
 
 
-def create_acc_control_scc2(packer, CAN, enabled, accel_last, accel, stopping, gas_override, set_speed, hud_control, jerk_u, jerk_l, cruise_info_copy):
-  enabled = enabled or hud_control.softHold > 0
+def create_acc_control_scc2(packer, CAN, enabled, accel_last, accel, stopping, gas_override, set_speed, hud_control, jerk_u, jerk_l, CS):
+  enabled = enabled or CS.softHoldActive > 0
   jerk = 5
   jn = jerk / 50
   if not enabled or gas_override:
@@ -163,10 +164,10 @@ def create_acc_control_scc2(packer, CAN, enabled, accel_last, accel, stopping, g
     a_raw = accel
     a_val = clip(accel, accel_last - jn, accel_last + jn)
 
-  values = cruise_info_copy
+  values = CS.cruise_info
   values["ACCMode"] = 0 if not enabled else (2 if gas_override else 1)
   values["MainMode_ACC"] = 1
-  values["StopReq"] = 1 if stopping or hud_control.softHold > 0 else 0
+  values["StopReq"] = 1 if stopping or CS.softHoldActive > 0 else 0
   values["aReqValue"] = a_val
   values["aReqRaw"] = a_raw
   values["VSetDis"] = set_speed
@@ -174,16 +175,21 @@ def create_acc_control_scc2(packer, CAN, enabled, accel_last, accel, stopping, g
   #values["JerkUpperLimit"] = 3.0
   values["JerkLowerLimit"] = jerk_l if enabled else 1
   values["JerkUpperLimit"] = jerk_u
-  values["DISTANCE_SETTING"] = hud_control.leadDistanceBars
+  values["DISTANCE_SETTING"] = hud_control.leadDistanceBars # + 5
 
-  values["ACC_ObjDist"] = 1
+  #values["ACC_ObjDist"] = 1
   #values["ObjValid"] = 0
-  values["OBJ_STATUS"] =  2
+  #values["OBJ_STATUS"] =  2
   values["SET_ME_2"] = 0x4
   #values["SET_ME_3"] = 0x3  # objRelsped와 충돌
   values["SET_ME_TMP_64"] = 0x64
 
   values["NEW_SIGNAL_3"] = 0  # 1이되면 차선이탈방지 알람이 뜬다고...
+  #values["NEW_SIGNAL_4"] = 2
+
+  values["NEW_SIGNAL_15_DESIRE_DIST"] = CS.out.vEgo * 1.0 + 4.0
+
+  values["CRUISE_STANDSTILL"] = 1 if stopping and CS.out.aEgo > -0.1 else 0
   return packer.make_can_msg("SCC_CONTROL", CAN.ECAN, values)
 
 def create_acc_control(packer, CAN, enabled, accel_last, accel, stopping, gas_override, set_speed, hud_control, jerk_u, jerk_l, CS):
@@ -211,11 +217,12 @@ def create_acc_control(packer, CAN, enabled, accel_last, accel, stopping, gas_ov
 
     "ACC_ObjDist": 1,
     #"ObjValid": 0,
-    "OBJ_STATUS": 2,
+    #"OBJ_STATUS": 2,
     "SET_ME_2": 0x4,
     #"SET_ME_3": 0x3,
     "SET_ME_TMP_64": 0x64,
-    "DISTANCE_SETTING": hud_control.leadDistanceBars,
+    "DISTANCE_SETTING": hud_control.leadDistanceBars# + 5,
+    "CRUISE_STANDSTILL": 1 if stopping and CS.out.cruiseState.standstill else 0,
   }
 
   return packer.make_can_msg("SCC_CONTROL", CAN.ECAN, values)
@@ -241,8 +248,11 @@ def create_spas_messages(packer, CAN, frame, left_blink, right_blink):
   return ret
 
 
-def create_fca_warning_light(packer, CAN, frame):
+def create_fca_warning_light(CP, packer, CAN, frame):
   ret = []
+  if CP.flags & HyundaiFlags.CAMERA_SCC.value:
+    return ret
+
   if frame % 2 == 0:
     values = {
       'AEB_SETTING': 0x1,  # show AEB disabled icon
@@ -256,7 +266,7 @@ def create_fca_warning_light(packer, CAN, frame):
   return ret
 
 
-def create_adrv_messages(CP, packer, CAN, frame):
+def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
   # messages needed to car happy after disabling
   # the ADAS Driving ECU to do longitudinal control
 
@@ -264,16 +274,54 @@ def create_adrv_messages(CP, packer, CAN, frame):
 
   values = {
   }
-  if not (CP.flags & HyundaiFlags.CAMERA_SCC.value) or CP.extFlags & HyundaiExtFlags.ACAN_PANDA.value:
-    ret.append(packer.make_can_msg("ADRV_0x51", CAN.ACAN, values))
+  if CP.flags & HyundaiFlags.CAMERA_SCC.value:
+    if frame % 5 == 0:
+      if CP.extFlags & HyundaiExtFlags.CANFD_161.value:
+        if CS.adrv_info_161 is not None:
+          main_enabled = CS.out.cruiseState.available
+          cruise_enabled = CC.enabled
+          values = CS.adrv_info_161
+          #print("adrv_info_161 = ", CS.adrv_info_161)
+          values["vSetDis"] = int(hud_control.setSpeed * 3.6 + 0.5)
+          values["GAP_DIST_SET"] = hud_control.leadDistanceBars
 
-  if not (CP.flags & HyundaiFlags.CAMERA_SCC.value):
-    ret.extend(create_fca_warning_light(packer, CAN, frame))
+          values["WHEEL_ICON"] = 2 if CC.latActive else 1
+
+          values["CRUISE_INFO6_SET3"] = 3 if cruise_enabled else 0
+          values["CRUISE_INFO1_SET2"] = 2 if cruise_enabled else 1 if main_enabled else 0
+          values["CRUISE_INFO2_SET2"] = 2 if cruise_enabled else 1 if main_enabled else 0
+          values["CRUISE_INFO4_SET3"] = 3 if cruise_enabled else 0
+          values["CRUISE_INFO8_SET1"] = 1 if main_enabled else 0
+          values["CRUISE_INFO5_SET1"] = 1 if cruise_enabled else 0
+          values["SET4_HWAY_ELSE_3"] = 3
+
+          #values["CRUISE_INFO10_SET1"] = 1
+          #values["CRUISE_INFO11_SET1"] = 1
+
+          values["CRUISE_INFO7_HWAY_SET2_ELSE_0"] = 0
+          values["CRUISE_INFO9_HWAY_SET2_ELSE_0"] = 0
+          #values["NEW_SIGNAL_HWAY_SET1_ELSE_0"] = 1
+
+          ret.append(packer.make_can_msg("ADRV_0x161", CAN.ECAN, values))
+        else:
+          print("no adrv_info_161")
+
+      if CS.adrv_info_200 is not None:
+        values = CS.adrv_info_161
+        values["TauGapSet"] = hud_control.leadDistanceBars
+        ret.append(packer.make_can_msg("ADRV_0x200", CAN.ECAN, values))
+    return ret
+  else:
+    values = {}
+    if CP.extFlags & HyundaiExtFlags.ACAN_PANDA.value:
+      ret.append(packer.make_can_msg("ADRV_0x51", CAN.ACAN, values))
+
+    ret.extend(create_fca_warning_light(CP, packer, CAN, frame))
     if frame % 5 == 0:
       values = {
         'SET_ME_1C': 0x1c,
         'SET_ME_FF': 0xff,
-        'SET_ME_TMP_F': 0xf,
+        #'SET_ME_TMP_F': 0xf,
         'SET_ME_TMP_F_2': 0xf,
         #'DATA26': 1,  #1
         #'DATA32': 5,  #5
@@ -282,7 +330,9 @@ def create_adrv_messages(CP, packer, CAN, frame):
 
       values = {
         'SET_ME_E1': 0xe1,
-        'SET_ME_3A': 0x3a,
+        #'SET_ME_3A': 0x3a,
+        'TauGapSet' : 1,
+        'NEW_SIGNAL_2': 3,
       }
       ret.append(packer.make_can_msg("ADRV_0x200", CAN.ECAN, values))
 
@@ -299,7 +349,7 @@ def create_adrv_messages(CP, packer, CAN, frame):
       }
       ret.append(packer.make_can_msg("ADRV_0x1da", CAN.ECAN, values))
 
-  return ret
+    return ret
 
 ## carrot
 def alt_cruise_buttons(packer, CP, CAN, buttons, cruise_btns_msg, cnt):
