@@ -306,8 +306,9 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
         else:
           print("no adrv_info_161")
 
-      if False: #CS.adrv_info_200 is not None:
-        values = CS.adrv_info_161
+      if CS.adrv_info_200 is not None:
+        values = CS.adrv_info_200
+        print("adrv_info_200 = ", CS.adrv_info_200)
         values["TauGapSet"] = hud_control.leadDistanceBars
         ret.append(packer.make_can_msg("ADRV_0x200", CAN.ECAN, values))
     return ret
