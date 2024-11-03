@@ -66,22 +66,31 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
 
   ret = []
   values = CS.lfa_info
-  #values["LKA_MODE"] = 2
-  values["LKA_ICON"] = 2 if enabled else 1
-  values["TORQUE_REQUEST"] = apply_steer
-  values["STEER_REQ"] = 1 if lat_active else 0
-  values["VALUE63"] = 0
-  values["VALUE64"] = 0
 
-  values["LKA_MODE"] = 2
-  values["VALUE27"] = 0
-  values["HAS_LANE_SAFETY"] = 0
-  values["VALUE104"] = 3 if enabled else 100
+  k8_mode = True
+  if k8_mode: # ioniq5
+    values["LKA_ICON"] = 2 if enabled else 1
+    values["TORQUE_REQUEST"] = apply_steer
+    values["STEER_REQ"] = 1 if lat_active else 0
+    values["VALUE63"] = 0
+    values["VALUE64"] = 0
 
-  #values["STEER_MODE"] = 0
-  #values["HAS_LANE_SAFETY"] = 0  # hide LKAS settings
-  #values["NEW_SIGNAL_1"] = 0  
-  #values["NEW_SIGNAL_2"] = 0
+    values["LKA_MODE"] = 6
+    values["VALUE27"] = 3
+    values["HAS_LANE_SAFETY"] = 1
+    values["VALUE104"] = 3 if lat_active else 100
+  else:
+    values["LKA_ICON"] = 2 if enabled else 1
+    values["TORQUE_REQUEST"] = apply_steer
+    values["STEER_REQ"] = 1 if lat_active else 0
+    values["VALUE63"] = 0
+    values["VALUE64"] = 0
+
+    values["LKA_MODE"] = 2
+    values["VALUE27"] = 0
+    values["HAS_LANE_SAFETY"] = 0
+    values["VALUE104"] = 3 if enabled else 100
+
   ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
   return ret
 
