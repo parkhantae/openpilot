@@ -348,6 +348,8 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
           values["CRUISE_INFO5_SET1"] = 1 if cruise_enabled else 0
           values["SET4_HWAY_ELSE_3"] = 3
 
+          values["START_READY_INFO_MAYBE"] = 0
+
           values["NEW_SIGNAL_7"] = 0
           values["NEW_SIGNAL_5"] = 0
           values["LANE_ASSIST_CONCERNED"] = 0
