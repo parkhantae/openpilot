@@ -350,7 +350,7 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
       if CS.adrv_info_1ea is not None:
         values = CS.adrv_info_1ea
         values["HDA_MODE1"] = 8
-        values["HDA_MODE2"] = 0
+        values["HDA_MODE2"] = 1
         ret.append(packer.make_can_msg("ADRV_0x1ea", CAN.ECAN, values))
 
       if CS.adrv_info_160 is not None:
