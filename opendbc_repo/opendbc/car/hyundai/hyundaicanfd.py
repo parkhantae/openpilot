@@ -382,6 +382,9 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
         values = CS.adrv_info_160
         values["NEW_SIGNAL_1"] = 0
         values["SET_ME_9"] = 17
+        values["SET_ME_2"] = 0
+        values["SET_ME_FC"] = 17
+        values["DATA102"] = 0
         ret.append(packer.make_can_msg("ADRV_0x160", CAN.ECAN, values))
     return ret
   else:
