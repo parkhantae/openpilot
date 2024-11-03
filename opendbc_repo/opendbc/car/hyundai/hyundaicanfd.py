@@ -240,6 +240,8 @@ def create_acc_control_scc2(packer, CAN, enabled, accel_last, accel, stopping, g
   values["NEW_SIGNAL_3"] = 0  # 1이되면 차선이탈방지 알람이 뜬다고...
   #values["NEW_SIGNAL_4"] = 2
 
+  values["ZEROS_5"] = 0
+
   values["NEW_SIGNAL_15_DESIRE_DIST"] = CS.out.vEgo * 1.0 + 4.0
 
   values["CRUISE_STANDSTILL"] = 1 if stopping and CS.out.aEgo > -0.1 else 0
