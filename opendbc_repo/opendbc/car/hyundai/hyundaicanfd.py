@@ -356,6 +356,7 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
           values["NEW_SIGNAL_7"] = 0
           values["NEW_SIGNAL_5"] = 0
           values["LANE_ASSIST_CONCERNED"] = 0
+          values["LANE_ASSIST_GREEN"] = 0
 
           #values["CRUISE_INFO10_SET1"] = 1
           #values["CRUISE_INFO11_SET1"] = 1
