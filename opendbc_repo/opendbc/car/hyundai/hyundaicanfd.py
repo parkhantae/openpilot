@@ -352,6 +352,12 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
         values["HDA_MODE1"] = 8
         values["HDA_MODE2"] = 0
         ret.append(packer.make_can_msg("ADRV_0x1ea", CAN.ECAN, values))
+
+      if CS.adrv_info_160 is not None:
+        values = CS.adrv_info_160
+        values["NEW_SIGNAL_1"] = 0
+        values["SET_ME_9"] = 17
+        ret.append(packer.make_can_msg("ADRV_0x160", CAN.ECAN, values))
     return ret
   else:
     values = {}
