@@ -103,6 +103,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["HAS_LANE_SAFETY"] = 0
     values["VALUE104"] = 3 if enabled else 100
 
+  values["NEW_SIGNAL_1"] = 0
   ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
   return ret
 
