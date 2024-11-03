@@ -41,6 +41,7 @@ class CanBus(CanBusBase):
 #  OFF:GEN:HIGHWAY
 # LFA
 #  LKA_MODE          2:2:2    6:6:6      K8     0:0:0
+#                             > 7이 되는경우?
 #  VALUE27           0:0:0    0:3:3      K8     0:0:0
 #  STEER_REQ         0:1:1    ==         ==     ==
 #  VALUE104          100:3:3  100:xx:xx  K8     100:3:3
@@ -68,8 +69,15 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
   #values["LKA_MODE"] = 2
   values["LKA_ICON"] = 2 if enabled else 1
   values["TORQUE_REQUEST"] = apply_steer
-  #values["VALUE63"] = 0
   values["STEER_REQ"] = 1 if lat_active else 0
+  values["VALUE63"] = 0
+  values["VALUE64"] = 0
+
+  values["LKA_MODE"] = 2
+  values["VALUE27"] = 0
+  values["HAS_LANE_SAFETY"] = 0
+  values["VALUE104"] = 3 if enabled else 100
+
   #values["STEER_MODE"] = 0
   #values["HAS_LANE_SAFETY"] = 0  # hide LKAS settings
   #values["NEW_SIGNAL_1"] = 0  
@@ -343,10 +351,12 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
     ret.extend(create_fca_warning_light(CP, packer, CAN, frame))
     if frame % 5 == 0:
       values = {
-        'SET_ME_1C': 0x1c,
+        'HDA_MODE1': 0x8,
+        'HDA_MODE2': 0x1,
+        #'SET_ME_1C': 0x1c,
         'SET_ME_FF': 0xff,
         #'SET_ME_TMP_F': 0xf,
-        'SET_ME_TMP_F_2': 0xf,
+        #'SET_ME_TMP_F_2': 0xf,
         #'DATA26': 1,  #1
         #'DATA32': 5,  #5
       }
