@@ -37,6 +37,30 @@ class CanBus(CanBusBase):
   def CAM(self):
     return self._cam
 
+#                     EV6      K8   IONIQ5      CANIVAL
+#  OFF:GEN:HIGHWAY
+# LFA
+#  LKA_MODE          2:2:2    6:6:6      K8     0:0:0
+#  VALUE27           0:0:0    0:3:3      K8     0:0:0
+#  STEER_REQ         0:1:1    ==         ==     ==
+#  VALUE104          100:3:3  100:xx:xx  K8     100:3:3
+#                              xx: cluspeed + 60 (정확하지는 않지만 속도를 따라감)
+#  VALUE63           0:0:0    0:0:0      K8     0:0:0
+#  VALUE64           0:0:0    0:0:0      K8     0:0:0
+#  HAS_LANE_SAFETY   0:0:0    1:1:1      K8     0:0:0
+
+# LKAS                                          LKAS_ALT
+#  LKA_MODE          2:2:2    6:6:6     K8      2:2:2
+#  VALUE27           0:0:3    0:3:3     0:0:0(?) 0:0:0
+#  LKA_ASSIST        0:0:0    0:0:0     K8      0:0:0
+#  VALUE64           0:0:0    100:xx:xx K8      0:0:0
+#  HAS_LANE_SAFETY   1:1:1    1:1:1     K8      0:0:0
+#  VALUE104          0:0:0    0:0:0     K8      0:0:0
+
+# 0x1ea
+#  HDA_MODE1         8:8:8    8:8:8     K8      8:8:8
+#  HDA_MODE2         0:0:1    0:0:1(??) 0:0:1   0:0:1
+
 def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, apply_steer, CS):
 
   ret = []
@@ -44,7 +68,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
   #values["LKA_MODE"] = 2
   values["LKA_ICON"] = 2 if enabled else 1
   values["TORQUE_REQUEST"] = apply_steer
-  #values["LKA_ASSIST"] = 0
+  #values["VALUE63"] = 0
   values["STEER_REQ"] = 1 if lat_active else 0
   #values["STEER_MODE"] = 0
   #values["HAS_LANE_SAFETY"] = 0  # hide LKAS settings
@@ -61,12 +85,12 @@ def create_steering_messages(packer, CP, CAN, enabled, lat_active, apply_steer):
     "LKA_MODE": 2,
     "LKA_ICON": 2 if enabled else 1,
     "TORQUE_REQUEST": apply_steer,
-    "LKA_ASSIST": 0,
+    "VALUE104": 3 if enabled else 100,
     "STEER_REQ": 1 if lat_active else 0,
     "STEER_MODE": 0,
     "HAS_LANE_SAFETY": 0,  # hide LKAS settings
-    "NEW_SIGNAL_1": 0,
-    "NEW_SIGNAL_2": 0,
+    "VALUE63": 0,
+    "VALUE64": 0,
   }
 
   if CP.flags & HyundaiFlags.CANFD_HDA2:
