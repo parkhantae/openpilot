@@ -342,6 +342,12 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
         values = CS.adrv_info_200
         values["TauGapSet"] = hud_control.leadDistanceBars
         ret.append(packer.make_can_msg("ADRV_0x200", CAN.ECAN, values))
+
+      if CS.adrv_info_1ea is not None:
+        values = CS.adrv_info_1ea
+        values["HDA_MODE1"] = 8
+        values["HDA_MODE2"] = 0
+        ret.append(packer.make_can_msg("ADRV_0x1ea", CAN.ECAN, values))
     return ret
   else:
     values = {}
