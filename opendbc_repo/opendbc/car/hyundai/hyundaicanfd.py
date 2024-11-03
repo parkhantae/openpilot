@@ -73,7 +73,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
   values["VALUE63"] = 0
   values["VALUE64"] = 0
 
-  values["LKA_MODE"] = 0 #2
+  values["LKA_MODE"] = 2
   values["VALUE27"] = 0
   values["HAS_LANE_SAFETY"] = 0
   values["VALUE104"] = 3 if enabled else 100
