@@ -1889,7 +1889,7 @@ public:
         int bx = x;
         int by = y + 270;
 
-        ui_fill_rect(s->vg, { bx - 120, by - 260, 475, 475}, COLOR_BLACK_ALPHA(90), 30);
+        ui_fill_rect(s->vg, { bx - 120, by - 270, 475, 495}, COLOR_BLACK_ALPHA(90), 30);
 
 
         // draw traffic light
