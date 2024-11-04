@@ -1096,7 +1096,7 @@ class CarrotServ:
       elif desired_speed > 200 or source in ["cam", "section"] or CS.brakePressed:
         self.gas_override_speed = 0
       elif CS.gasPressed:
-        self.gas_override_speed = v_ego_kph
+        self.gas_override_speed = 0 #v_ego_kph
       self.source_last = source
 
       if desired_speed < self.gas_override_speed:
