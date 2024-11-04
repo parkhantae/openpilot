@@ -69,7 +69,19 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
 
   canival_mode = False
   k8_mode = True
-  if canival_mode:
+  if True:
+    values["LKA_ICON"] = 2 if enabled else 1
+    values["TORQUE_REQUEST"] = apply_steer
+    values["STEER_REQ"] = 1 if lat_active else 0
+    #values["VALUE63"] = 0
+    #values["VALUE64"] = 0
+
+    #values["LKA_MODE"] = 0
+    #values["VALUE27"] = 0
+    #values["HAS_LANE_SAFETY"] = 0
+    #values["VALUE104"] = 3 if lat_active else 100
+    #values["VALUE82_SET256"] = 0
+  elif canival_mode:
     values["LKA_ICON"] = 2 if enabled else 1
     values["TORQUE_REQUEST"] = apply_steer
     values["STEER_REQ"] = 1 if lat_active else 0
@@ -81,6 +93,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["HAS_LANE_SAFETY"] = 0
     values["VALUE104"] = 3 if lat_active else 100
     values["VALUE82_SET256"] = 0
+    values["NEW_SIGNAL_1"] = 0
   elif k8_mode: # ioniq5
     values["LKA_ICON"] = 2 if enabled else 1
     values["TORQUE_REQUEST"] = apply_steer
@@ -93,6 +106,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["HAS_LANE_SAFETY"] = 1
     values["VALUE104"] = 3 if lat_active else 100
     values["VALUE82_SET256"] = 0
+    values["NEW_SIGNAL_1"] = 0
   else:
     values["LKA_ICON"] = 2 if enabled else 1
     values["TORQUE_REQUEST"] = apply_steer
@@ -105,8 +119,8 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["HAS_LANE_SAFETY"] = 0
     values["VALUE104"] = 3 if enabled else 100
     values["VALUE82_SET256"] = 256
+    values["NEW_SIGNAL_1"] = 0
 
-  values["NEW_SIGNAL_1"] = 0
   ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
   return ret
 
@@ -383,8 +397,8 @@ def create_adrv_messages(CP, packer, CAN, frame, CC, CS, hud_control):
 
       if CS.adrv_info_1ea is not None:
         values = CS.adrv_info_1ea
-        values["HDA_MODE1"] = 28 #8
-        values["HDA_MODE2"] = 5 #1
+        #values["HDA_MODE1"] = 8
+        #values["HDA_MODE2"] = 1
         ret.append(packer.make_can_msg("ADRV_0x1ea", CAN.ECAN, values))
 
       if CS.adrv_info_160 is not None:
