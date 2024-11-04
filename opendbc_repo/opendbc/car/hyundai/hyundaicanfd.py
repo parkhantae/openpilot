@@ -67,8 +67,8 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
   ret = []
   values = CS.lfa_info
 
-  canival_mode = True
-  k8_mode = False
+  canival_mode = False
+  k8_mode = True
   if canival_mode:
     values["LKA_ICON"] = 2 if enabled else 1
     values["TORQUE_REQUEST"] = apply_steer
