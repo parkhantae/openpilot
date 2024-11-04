@@ -80,6 +80,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["VALUE27"] = 0
     values["HAS_LANE_SAFETY"] = 0
     values["VALUE104"] = 3 if lat_active else 100
+    values["VALUE82_SET256"] = 0
   elif k8_mode: # ioniq5
     values["LKA_ICON"] = 2 if enabled else 1
     values["TORQUE_REQUEST"] = apply_steer
@@ -91,6 +92,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["VALUE27"] = 3
     values["HAS_LANE_SAFETY"] = 1
     values["VALUE104"] = 3 if lat_active else 100
+    values["VALUE82_SET256"] = 0
   else:
     values["LKA_ICON"] = 2 if enabled else 1
     values["TORQUE_REQUEST"] = apply_steer
@@ -102,6 +104,7 @@ def create_steering_messages_camera_scc(packer, CP, CAN, enabled, lat_active, ap
     values["VALUE27"] = 0
     values["HAS_LANE_SAFETY"] = 0
     values["VALUE104"] = 3 if enabled else 100
+    values["VALUE82_SET256"] = 256
 
   values["NEW_SIGNAL_1"] = 0
   ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
