@@ -215,6 +215,14 @@ class CarInterface(CarInterfaceBase):
 
     ret.radarTimeStep = 0.05 #if params.get_int("EnableRadarTracks") > 0 else 0.02
 
+    if candidate == CAR.HYUNDAI_PORTER_II_EV:
+      # Conventional cruise uses buttons only; never disable an SCC ECU or send acceleration.
+      ret.openpilotLongitudinalControl = False
+      ret.alphaLongitudinalAvailable = False
+      ret.radarUnavailable = True
+      ret.flags &= ~HyundaiFlags.CAMERA_SCC.value
+      ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.hyundai, HyundaiSafetyFlags.PORTER_CC.value)]
+
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot
     ret.vEgoStarting = 0.1
@@ -279,7 +287,7 @@ class CarInterface(CarInterfaceBase):
         addr, bus = 0x730, CanBus(CP).ECAN
       disable_ecu(can_recv, can_send, bus=bus, addr=addr, com_cont_req=b'\x28\x83\x01')
 
-    if params.get_int("EnableRadarTracks") > 0 and not CP.flags & HyundaiFlags.CANFD and not bosch_passive:
+    if CP.carFingerprint != CAR.HYUNDAI_PORTER_II_EV and params.get_int("EnableRadarTracks") > 0 and not CP.flags & HyundaiFlags.CANFD and not bosch_passive:
       result = enable_radar_tracks(CP, can_recv, can_send)
       params.put_bool("EnableRadarTracksResult", result)
 

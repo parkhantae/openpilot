@@ -6,6 +6,7 @@ from opendbc.car.interfaces import MAX_CTRL_SPEED
 from opendbc.car.volkswagen.values import CarControllerParams as VWCarControllerParams
 from opendbc.car.hyundai.interface import ENABLE_BUTTONS as HYUNDAI_ENABLE_BUTTONS
 from opendbc.car.hyundai.carstate import PREV_BUTTON_SAMPLES as HYUNDAI_PREV_BUTTON_SAMPLES
+from opendbc.car.hyundai.porter import supports_porter_button_cruise
 
 from openpilot.selfdrive.selfdrived.events import Events, ET
 from openpilot.selfdrive.carrot.bluetooth.model import BLUETOOTH_CANCEL
@@ -225,7 +226,7 @@ class CarSpecificEvents:
       events.add(EventName.stockAeb)
     if CS.vEgo > MAX_CTRL_SPEED:
       events.add(EventName.speedTooHigh)
-    if CS.cruiseState.nonAdaptive:
+    if CS.cruiseState.nonAdaptive and not supports_porter_button_cruise(self.CP):
       events.add(EventName.wrongCruiseMode)
     if CS.brakeHoldActive and self.CP.openpilotLongitudinalControl:
       events.add(EventName.brakeHold)

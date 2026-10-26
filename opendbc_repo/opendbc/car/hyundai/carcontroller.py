@@ -782,6 +782,20 @@ class CarController(CarControllerBase):
 
 
   def make_spam_button(self, CC, CS):
+    if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+      # Never auto-enable or resume conventional cruise. Driver engages OEM cruise.
+      blocked = (not CC.enabled or not CS.out.cruiseState.enabled or not CS.out.canValid or
+                 CS.out.accFaulted or CS.out.gasPressed or CS.out.standstill or
+                 CC.cruiseControl.cancel or CC.cruiseControl.resume or
+                 CS.cruise_buttons[-1] != Buttons.NONE or CS.main_buttons[-1] != 0 or
+                 CS.out.gearShifter != structs.CarState.GearShifter.drive or
+                 not np.isfinite(CC.hudControl.setSpeed))
+      if blocked:
+        self.activateCruise = 0
+        self.button_spamming_count = 0
+        self.last_button_frame = self.frame
+        return 0
+
     if CS.out.brakePressed or CS.out.brakeHoldActive or CS.out.parkingBrake:
       self.activateCruise = 0
       return 0

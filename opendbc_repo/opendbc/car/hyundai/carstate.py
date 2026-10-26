@@ -10,6 +10,7 @@ from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.carlog import carlog
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.navi_speedcam import SpeedcamPolicy
+from opendbc.car.hyundai.porter import update_porter_state
 from opendbc.car.hyundai.section_average import DISTANCE_SCALE as SECTION_DISTANCE_SCALE, SectionAverage
 from opendbc.car.hyundai.steering_touch import HyundaiSteeringTouch
 from opendbc.car.hyundai.vehicle_gps import VehicleGPS, register_vehicle_gps
@@ -690,6 +691,12 @@ class CarState(CarStateBase):
 
     if prev_main_buttons == 0 and self.main_buttons[-1] != 0:
       self.main_enabled = not self.main_enabled
+
+    if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+      update_porter_state(ret, cp, self.main_enabled, self.is_metric)
+      if ret.gearShifter != GearShifter.drive:
+        ret.cruiseState.enabled = False
+        ret.cruiseState.speed = 0.0
 
     ret.vehicleGps = self.vehicle_gps.update(cp, ret.vEgoRaw, ret.gearShifter == GearShifter.reverse)
     return ret
@@ -1647,9 +1654,13 @@ class CarState(CarStateBase):
     if CP.flags & HyundaiFlags.CANFD:
       return self.get_can_parsers_canfd(CP)
 
+    porter_messages = []
+    if CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+      porter_messages = [("E_EMS11", 100), ("TCS13", 50), ("ELECT_GEAR", 100), ("TCS15", 10), ("CLU11", 50)]
+
     return {
       # EMS21 carries SCR_UREA_LEVEL on diesel platforms. NaN frequency makes
       # it optional, so gasoline/EV platforms do not fail CAN validity.
-      Bus.pt: register_vehicle_gps(CANParser(DBC[CP.carFingerprint][Bus.pt], [("EMS21", math.nan)], 0)),
+      Bus.pt: register_vehicle_gps(CANParser(DBC[CP.carFingerprint][Bus.pt], [("EMS21", math.nan)] + porter_messages, 0)),
       Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 2),
     }
