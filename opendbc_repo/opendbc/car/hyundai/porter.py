@@ -40,3 +40,127 @@ def supports_porter_button_cruise(CP):
   return (CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
           CP.pcmCruise and not CP.openpilotLongitudinalControl and
           any(str(config.safetyModel) == "hyundai" and config.safetyParam == 1025 for config in CP.safetyConfigs))
+
+
+class PorterCruiseButtons:
+  """One bounded press/release, then wait for fresh OEM set-speed feedback.
+
+  None means no frame; 0 is an explicit release. A missing acknowledgement
+  latches output off until the driver disables cruise or uses a real button.
+  The timing follows observed short OEM presses, not a vehicle acceptance claim.
+  """
+  def __init__(self):
+    self.phase = "idle"
+    self.status = "inactive"
+    self.last_frame = None
+    self.last_time = None
+    self.next_request = 0.0
+    self.direction = 0
+    self.baseline = 0
+    self.started = 0.0
+    self.hold = 0.12
+    self.release_count = 0
+    self.acknowledged = False
+    self.fault = False
+    self.cancel_seen = False
+    self.requests = 0
+    self.acks = 0
+    self.timeouts = 0
+
+  def update(self, now, target, current, frame_key, *, enabled, blocked=False,
+             manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3):
+    had_press = self.phase == "press"
+    fresh = frame_key is not None and frame_key != self.last_frame
+    if fresh:
+      self.last_frame = frame_key
+    if not math.isfinite(now) or (self.last_time is not None and now < self.last_time):
+      self.fault = True
+      self.phase = "idle"
+      self.status = "clock_fault"
+      return 0 if had_press and fresh and not manual else None
+    self.last_time = now
+    if manual:
+      self.phase = "idle"
+      self.fault = False
+      self.cancel_seen = False
+      self.next_request = now + 0.3
+      self.status = "manual"
+      return None
+    if cancel:
+      self.phase = "idle"
+      self.status = "cancel"
+      if fresh and not self.cancel_seen:
+        self.cancel_seen = True
+        return 4
+      return None
+    self.cancel_seen = False
+    if not enabled:
+      self.phase = "idle"
+      self.fault = False
+      self.next_request = now + 0.3
+      self.status = "inactive"
+      return 0 if had_press and fresh else None
+    finite = all(math.isfinite(v) for v in (target, current, press_seconds, gap_seconds))
+    if finite:
+      target, current = int(target + 0.5), int(current + 0.5)
+    valid = (finite and
+             30 <= target <= 160 and 30 <= current <= 160 and press_seconds > 0 and gap_seconds >= 0)
+    if blocked or not valid or frame_key is None:
+      self.phase = "idle"
+      self.next_request = now + 0.3
+      self.status = "blocked" if valid else "invalid_input"
+      return 0 if had_press and fresh else None
+    if self.fault:
+      self.status = "no_ack"
+      return None
+    if self.phase != "idle":
+      change = current - self.baseline
+      if change and change * self.direction < 0:
+        self.fault = True
+        self.phase = "idle"
+        self.status = "wrong_direction"
+        return 0 if had_press and fresh else None
+      if change * self.direction > 0:
+        if not self.acknowledged:
+          self.acks += 1
+        self.acknowledged = True
+      if now - self.started >= 1.0 and not self.acknowledged:
+        self.fault = True
+        self.phase = "idle"
+        self.status = "no_ack"
+        self.timeouts += 1
+        return 0 if had_press and fresh else None
+      if self.phase == "press" and (self.acknowledged or now - self.started >= self.hold or
+                                     (target - current) * self.direction <= 0):
+        self.phase = "release"
+        self.release_count = 0
+      if self.phase == "release":
+        self.status = "release"
+        if fresh:
+          self.release_count += 1
+          if self.release_count >= 2:
+            self.phase = "wait"
+          return 0
+        return None
+      if self.phase == "wait":
+        self.status = "acknowledged" if self.acknowledged else "waiting_ack"
+        if not self.acknowledged or now < self.next_request:
+          return None
+        self.phase = "idle"
+    if self.phase == "idle":
+      if abs(target - current) < 0.5 or now < self.next_request:
+        self.status = "at_target" if abs(target - current) < 0.5 else "cooldown"
+        return None
+      if not fresh:
+        self.status = "waiting_frame"
+        return None
+      self.direction = 1 if target > current else -1
+      self.baseline = current
+      self.started = now
+      self.hold = min(0.15, max(0.12, press_seconds))
+      self.next_request = now + max(0.3, gap_seconds)
+      self.acknowledged = False
+      self.phase = "press"
+      self.requests += 1
+    self.status = "press"
+    return (1 if self.direction > 0 else 2) if fresh else None

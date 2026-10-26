@@ -69,5 +69,67 @@ class TestPorterButtonGate(unittest.TestCase):
     self.assertEqual(self.function(self.controller, self.cc, self.cs), 1)
 
 
+
+class TestPorterMessagePath(unittest.TestCase):
+  @classmethod
+  def setUpClass(cls):
+    directory = Path(__file__).resolve().parents[1]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("porter_message", directory / "porter.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    cls.buttons_class = module.PorterCruiseButtons
+    tree = ast.parse((directory / "carcontroller.py").read_text(encoding="utf-8"))
+    function = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == "CarController"
+                    for n in c.body if isinstance(n, ast.FunctionDef) and n.name == "create_button_messages")
+    for arg in function.args.args:
+      arg.annotation = None
+    function.returns = None
+    env = {"CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "Buttons": NS(NONE=0), "DT_CTRL": .01,
+           "CV": NS(MS_TO_KPH=3.6), "structs": NS(CarState=NS(GearShifter=NS(drive="drive"))),
+           "hyundaican": NS(create_clu11_button=lambda packer, frame, clu, button, cp: button)}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), "actual_create_button_messages", "exec"), env)
+    cls.function = staticmethod(env["create_button_messages"])
+
+  def setUp(self):
+    self.controller = NS(CP=NS(carFingerprint="porter"), frame=0, packer=None,
+                         porter_buttons=self.buttons_class(), speed_from_pcm=0,
+                         button_spam1=8, button_spam2=30)
+    self.cc = NS(enabled=True, cruiseControl=NS(cancel=False, resume=False),
+                 hudControl=NS(setSpeed=55/3.6))
+    self.cs = NS(is_metric=True, cruise_buttons=[0], main_buttons=[0],
+                 clu11={"CF_Clu_AliveCnt1": 0, "CF_Clu_CruiseSwMain": 0},
+                 cp=NS(ts_nanos={"CLU11": {"counter": 1_000_000_000}}, _last_update_nanos=1_000_000_000),
+                 out=NS(cruiseState=NS(enabled=True, speed=50/3.6), canValid=True,
+                        accFaulted=False, gasPressed=False, standstill=False,
+                        gearShifter="drive", brakePressed=False, brakeHoldActive=False, parkingBrake=False))
+
+  def tick(self, frame):
+    self.controller.frame = frame
+    self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
+    self.cs.cp.ts_nanos["CLU11"]["counter"] = self.cs.cp._last_update_nanos
+    return self.function(self.controller, self.cc, self.cs, True)
+
+  def test_explicit_zero_release_reaches_packer(self):
+    self.assertEqual(self.tick(0), [1])
+    self.assertEqual(self.tick(12), [0])
+    self.assertEqual(self.tick(14), [0])
+    self.assertEqual(self.tick(16), [])
+    self.assertEqual(self.controller.porter_button_status[0], "waiting_ack")
+
+  def test_brake_releases_pending_press(self):
+    self.tick(0)
+    self.cs.out.brakePressed = True
+    self.assertEqual(self.tick(2), [0])
+    self.assertEqual(self.tick(4), [])
+
+  def test_no_template_no_frame_and_pcm_policy(self):
+    self.cs.clu11 = None
+    self.assertEqual(self.tick(0), [])
+    self.setUp()
+    self.controller.speed_from_pcm = 1
+    self.assertEqual(self.tick(0), [])
+
+
 if __name__ == "__main__":
   unittest.main()

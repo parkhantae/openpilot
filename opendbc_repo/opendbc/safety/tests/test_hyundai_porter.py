@@ -14,6 +14,12 @@ class TestNativePorter(unittest.TestCase):
             self.assertFalse(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
         self.assertFalse(lib.get_controls_allowed())
 
+    def test_explicit_release_does_not_require_engagement(self):
+        init()
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=0))))
+        main = bytearray(data(0x4f1, button=0));main[0] |= 8
+        self.assertFalse(lib.safety_tx_hook(packet(0x4f1, main)))
+
     def test_positive_target_without_recent_button_cannot_enable(self):
         init()
         for i in range(12):

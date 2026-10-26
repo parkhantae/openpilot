@@ -7,6 +7,7 @@ from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits, common_f
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
+from opendbc.car.hyundai.porter import PorterCruiseButtons
 from opendbc.car.hyundai.stopping import CanfdStopping
 from opendbc.car.hyundai.steering_handover import SteeringHandover
 from opendbc.car.carlog import carlog
@@ -192,6 +193,7 @@ class CarController(CarControllerBase):
     self.apply_torque_last = 0
     self.car_fingerprint = CP.carFingerprint
     self.last_button_frame = 0
+    self.porter_buttons = PorterCruiseButtons()
 
     self.hyundai_jerk = HyundaiJerk()
     self.speedCameraHapticEndFrame = 0
@@ -680,6 +682,32 @@ class CarController(CarControllerBase):
 
   def create_button_messages(self, CC: structs.CarControl, CS: CarState, use_clu11: bool):
     can_sends = []
+    if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+      if not use_clu11 or CS.clu11 is None:
+        return can_sends
+      parser = getattr(CS, "cp", None)
+      timestamp = max(parser.ts_nanos.get("CLU11", {}).values(), default=0) if parser is not None else 0
+      fresh = parser is not None and timestamp > 0 and 0 <= parser._last_update_nanos - timestamp <= 100_000_000
+      manual = (CS.cruise_buttons[-1] != Buttons.NONE or CS.main_buttons[-1] != 0 or
+                CS.clu11["CF_Clu_CruiseSwMain"] != 0)
+      blocked = (not CS.is_metric or not CS.out.canValid or CS.out.accFaulted or CS.out.gasPressed or
+                 CS.out.brakePressed or CS.out.brakeHoldActive or CS.out.parkingBrake or CS.out.standstill or
+                 CS.out.gearShifter != structs.CarState.GearShifter.drive or CC.cruiseControl.resume or
+                 self.speed_from_pcm == 1)
+      button = self.porter_buttons.update(
+        self.frame * DT_CTRL, CC.hudControl.setSpeed * CV.MS_TO_KPH, CS.out.cruiseState.speed * CV.MS_TO_KPH,
+        (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
+        enabled=CC.enabled and CS.out.cruiseState.enabled, blocked=blocked, manual=manual,
+        cancel=CC.cruiseControl.cancel and CS.out.cruiseState.enabled,
+        press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL)
+      porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
+                       self.porter_buttons.acks, self.porter_buttons.timeouts)
+      if porter_status != getattr(self, "porter_button_status", None):
+        self.porter_button_status = porter_status
+        print("PorterButtons: status=%s req=%d ack=%d noack=%d" % porter_status)
+      if button is not None:
+        can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, button, self.CP))
+      return can_sends
     if CS.out.brakePressed or CS.out.brakeHoldActive or CS.out.parkingBrake:
       return can_sends
     if use_clu11:
