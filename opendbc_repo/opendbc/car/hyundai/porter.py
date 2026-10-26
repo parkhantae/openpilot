@@ -66,6 +66,8 @@ class PorterCruiseButtons:
     self.requests = 0
     self.acks = 0
     self.timeouts = 0
+    self.consecutive_timeouts = 0
+    self.max_consecutive_timeouts = 3
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
              manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3):
@@ -82,6 +84,7 @@ class PorterCruiseButtons:
     if manual:
       self.phase = "idle"
       self.fault = False
+      self.consecutive_timeouts = 0
       self.cancel_seen = False
       self.next_request = now + 0.3
       self.status = "manual"
@@ -97,6 +100,7 @@ class PorterCruiseButtons:
     if not enabled:
       self.phase = "idle"
       self.fault = False
+      self.consecutive_timeouts = 0
       self.next_request = now + 0.3
       self.status = "inactive"
       return 0 if had_press and fresh else None
@@ -124,12 +128,21 @@ class PorterCruiseButtons:
       if change * self.direction > 0:
         if not self.acknowledged:
           self.acks += 1
+          self.consecutive_timeouts = 0
         self.acknowledged = True
       if now - self.started >= 1.0 and not self.acknowledged:
-        self.fault = True
         self.phase = "idle"
-        self.status = "no_ack"
         self.timeouts += 1
+        self.consecutive_timeouts += 1
+        if self.consecutive_timeouts >= self.max_consecutive_timeouts:
+          self.fault = True
+          self.status = "no_ack"
+        else:
+          # The conventional-cruise ECU can occasionally miss a complete
+          # pulse. Retry after a bounded quiet period, then latch after three
+          # consecutive misses instead of transmitting indefinitely.
+          self.next_request = now + max(0.5, gap_seconds)
+          self.status = "retry_wait"
         return 0 if had_press and fresh else None
       if self.phase == "press" and (self.acknowledged or now - self.started >= self.hold or
                                      (target - current) * self.direction <= 0):

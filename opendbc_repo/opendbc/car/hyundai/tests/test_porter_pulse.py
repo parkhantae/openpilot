@@ -28,14 +28,29 @@ class TestPorterPulse(unittest.TestCase):
     self.assertIsNone(self.step(.01, key=10))
     self.assertEqual(self.step(.02, key=11), 1)
 
-  def test_no_feedback_stops_instead_of_retrying(self):
+  def test_single_missed_feedback_retries_after_bounded_gap(self):
     self.step(0)
     self.step(.12)
     self.step(.14)
     self.assertIsNone(self.step(1))
+    self.assertFalse(self.p.fault)
+    self.assertEqual(self.p.status, "retry_wait")
+    self.assertIsNone(self.step(1.49))
+    self.assertEqual(self.step(1.5), 1)
+    self.assertEqual((self.p.requests, self.p.timeouts), (2, 1))
+
+  def test_three_consecutive_misses_latch_until_driver_rearms(self):
+    for start in (0, 1.5, 3.0):
+      self.assertEqual(self.step(start), 1)
+      self.assertEqual(self.step(start + .12), 0)
+      self.assertEqual(self.step(start + .14), 0)
+      self.assertIsNone(self.step(start + 1.0))
     self.assertTrue(self.p.fault)
-    self.assertIsNone(self.step(2))
-    self.assertEqual((self.p.requests, self.p.timeouts), (1, 1))
+    self.assertEqual(self.p.status, "no_ack")
+    self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
+    self.assertIsNone(self.step(5.0))
+    self.assertIsNone(self.step(5.1, enabled=False))
+    self.assertEqual(self.step(5.5), 1)
 
   def test_ack_releases_early_and_obeys_gap(self):
     self.step(0)
@@ -44,6 +59,16 @@ class TestPorterPulse(unittest.TestCase):
     self.assertIsNone(self.step(.20, current=51))
     self.assertEqual(self.step(.32, current=51), 1)
     self.assertEqual((self.p.requests, self.p.acks), (2, 1))
+
+  def test_ack_resets_consecutive_timeout_budget(self):
+    self.step(0)
+    self.step(.12)
+    self.step(.14)
+    self.step(1)
+    self.assertEqual(self.p.consecutive_timeouts, 1)
+    self.assertEqual(self.step(1.5), 1)
+    self.assertEqual(self.step(1.54, current=51), 0)
+    self.assertEqual(self.p.consecutive_timeouts, 0)
 
   def test_deceleration(self):
     self.assertEqual(self.step(0, target=45), 2)
@@ -119,13 +144,14 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.06, target=51.6), 1)
     self.assertEqual(self.step(.12, target=51.4), 0)
 
-  def test_real_no_response_still_latches(self):
-    self.step(0, target=38, current=34)
-    self.step(.12, target=38, current=34)
-    self.step(.14, target=38, current=34)
-    self.assertIsNone(self.step(1, target=38, current=34))
-    self.assertIsNone(self.step(3, target=40, current=34))
-    self.assertEqual((self.p.requests, self.p.timeouts), (1, 1))
+  def test_real_no_response_still_latches_after_bounded_retries(self):
+    for start in (0, 1.5, 3.0):
+      self.step(start, target=38, current=34)
+      self.step(start + .12, target=38, current=34)
+      self.step(start + .14, target=38, current=34)
+      self.assertIsNone(self.step(start + 1.0, target=38, current=34))
+    self.assertIsNone(self.step(5, target=40, current=34))
+    self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
 
 
 if __name__ == "__main__":
