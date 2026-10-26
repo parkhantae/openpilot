@@ -98,6 +98,35 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.9), 0)
     self.assertTrue(self.p.fault)
 
+  def test_fractional_target_jitter_never_starts_or_latches(self):
+    # Recorded failure at stock 44: planner toggled across 44.5, causing one
+    # short RES frame followed by no acknowledgement and a latched stop.
+    for i, target in enumerate((44.4, 44.6, 44.49, 44.51, 43.49, 43.51) * 30):
+      self.assertIsNone(self.step(i * .02, target=target, current=44))
+    self.assertEqual((self.p.requests, self.p.timeouts), (0, 0))
+    self.assertFalse(self.p.fault)
+    self.assertEqual(self.step(4, target=45, current=44), 1)
+
+  def test_complete_step_starts_without_extra_debounce(self):
+    for target, button in ((51, 1), (49, 2), (52.2, 1), (47.4, 2)):
+      self.setUp()
+      self.assertEqual(self.step(0, target=target), button)
+
+  def test_boundary_noise_does_not_reset_ongoing_press(self):
+    self.step(0, target=52)
+    self.assertEqual(self.step(.02, target=51.6), 1)
+    self.assertEqual(self.step(.04, target=51.4), 1)
+    self.assertEqual(self.step(.06, target=51.6), 1)
+    self.assertEqual(self.step(.12, target=51.4), 0)
+
+  def test_real_no_response_still_latches(self):
+    self.step(0, target=38, current=34)
+    self.step(.12, target=38, current=34)
+    self.step(.14, target=38, current=34)
+    self.assertIsNone(self.step(1, target=38, current=34))
+    self.assertIsNone(self.step(3, target=40, current=34))
+    self.assertEqual((self.p.requests, self.p.timeouts), (1, 1))
+
 
 if __name__ == "__main__":
   unittest.main()

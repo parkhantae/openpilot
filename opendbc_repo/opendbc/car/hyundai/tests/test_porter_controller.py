@@ -87,7 +87,8 @@ class TestPorterMessagePath(unittest.TestCase):
     function.returns = None
     env = {"CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "Buttons": NS(NONE=0), "DT_CTRL": .01,
            "CV": NS(MS_TO_KPH=3.6), "structs": NS(CarState=NS(GearShifter=NS(drive="drive"))),
-           "hyundaican": NS(create_clu11_button=lambda packer, frame, clu, button, cp: button)}
+           "hyundaican": NS(create_clu11_button=lambda packer, frame, clu, button, cp: button),
+           "cloudlog": NS(info=lambda *args: None)}
     exec(compile(ast.Module(body=[function], type_ignores=[]), "actual_create_button_messages", "exec"), env)
     cls.function = staticmethod(env["create_button_messages"])
 
@@ -129,6 +130,14 @@ class TestPorterMessagePath(unittest.TestCase):
     self.setUp()
     self.controller.speed_from_pcm = 1
     self.assertEqual(self.tick(0), [])
+
+  def test_fractional_target_jitter_does_not_reach_packer(self):
+    for frame, target in enumerate((50.49, 50.51, 50.7, 49.49, 49.51, 49.2)):
+      self.cc.hudControl.setSpeed = target / 3.6
+      self.assertEqual(self.tick(frame * 2), [])
+    self.assertEqual(self.controller.porter_buttons.requests, 0)
+    self.cc.hudControl.setSpeed = 49 / 3.6
+    self.assertEqual(self.tick(20), [2])
 
 
 if __name__ == "__main__":

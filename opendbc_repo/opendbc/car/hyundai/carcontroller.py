@@ -22,6 +22,7 @@ LongCtrlState = structs.CarControl.Actuators.LongControlState
 
 
 from openpilot.common.params import Params
+from openpilot.common.swaglog import cloudlog
 
 # EPS faults if you apply torque while the steering angle is above 90 degrees for more than 1 second
 # All slightly below EPS thresholds to avoid fault
@@ -704,7 +705,9 @@ class CarController(CarControllerBase):
                        self.porter_buttons.acks, self.porter_buttons.timeouts)
       if porter_status != getattr(self, "porter_button_status", None):
         self.porter_button_status = porter_status
-        print("PorterButtons: status=%s req=%d ack=%d noack=%d" % porter_status)
+        cloudlog.info("PorterButtons: status=%s req=%d ack=%d noack=%d target=%.2f stock=%.2f blocked=%s fresh=%s",
+                      *porter_status, CC.hudControl.setSpeed * CV.MS_TO_KPH,
+                      CS.out.cruiseState.speed * CV.MS_TO_KPH, blocked, fresh)
       if button is not None:
         can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, button, self.CP))
       return can_sends

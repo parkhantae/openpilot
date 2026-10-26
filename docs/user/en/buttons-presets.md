@@ -155,6 +155,8 @@ Recommended order: verify normal mode and `CruiseSpeedUnitBasic=1`, tune only th
 
 The Porter II EV conventional-cruise path uses `CruiseButtonTest1 × 0.01 seconds` as the press duration, clamped to 0.12–0.15 seconds. `CruiseButtonTest2 × 0.01 seconds` is the minimum request interval, with a 0.3-second floor. `CruiseButtonTest3` does not apply to this path. It sends once per fresh stock CLU11 frame, sends two release messages, then waits for the stock set speed to change. No response within one second stops further requests until the driver disables cruise or operates a physical button. This does not provide automatic braking, stopping, or headway control; vehicle acceptance is still unverified.
 
+For Porter conventional cruise, a new button request requires an unrounded target error of at least 1 km/h. This avoids tiny requests around a rounding boundary that can end before the ECU registers them and cause a no-response latch. A full step has no additional debounce delay. The one-second no-response latch and existing pedal, gear, and signal-validity gates remain in force.
+
 At roughly 0.01 seconds per control frame, `Test2=30` is about 0.30 seconds. The code may instead use a separate seven-frame wait after detecting that the stock set speed changed.
 
 Scope and exclusions:

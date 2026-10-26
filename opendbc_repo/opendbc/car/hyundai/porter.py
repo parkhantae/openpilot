@@ -101,6 +101,7 @@ class PorterCruiseButtons:
       self.status = "inactive"
       return 0 if had_press and fresh else None
     finite = all(math.isfinite(v) for v in (target, current, press_seconds, gap_seconds))
+    requested_target = target
     if finite:
       target, current = int(target + 0.5), int(current + 0.5)
     valid = (finite and
@@ -148,8 +149,13 @@ class PorterCruiseButtons:
           return None
         self.phase = "idle"
     if self.phase == "idle":
-      if abs(target - current) < 0.5 or now < self.next_request:
-        self.status = "at_target" if abs(target - current) < 0.5 else "cooldown"
+      # OEM set speed is integral, while the planner target changes continuously.
+      # Rounding a 0.5 km/h error used to start a pulse that the next planner
+      # update could cancel before the ECU registered it, then latch no_ack.
+      # Only start a complete step once the unrounded error reaches 1 km/h.
+      at_target = abs(requested_target - current) < 1.0 - 1e-5
+      if at_target or now < self.next_request:
+        self.status = "at_target" if at_target else "cooldown"
         return None
       if not fresh:
         self.status = "waiting_frame"
