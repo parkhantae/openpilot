@@ -157,6 +157,8 @@ The Porter II EV conventional-cruise path uses `CruiseButtonTest1 × 0.01 second
 
 For Porter conventional cruise, a new button request requires an unrounded target error of at least 1 km/h. This avoids tiny requests around a rounding boundary that can end before the ECU registers them and cause a no-response latch. A full step has no additional debounce delay. The one-second acknowledgement window and existing pedal, gear, and signal-validity gates remain in force.
 
+Porter II EV uses a 5 km/h floor instead of the 30 km/h floor for other PCM vehicles. The stock set-speed state, Carrot target, button transmission, and panda permission checks use the same range. Available recordings only confirm set speeds from 30–50 km/h, so vehicle acceptance and actual speed holding from 5–29 km/h require on-vehicle validation.
+
 At roughly 0.01 seconds per control frame, `Test2=30` is about 0.30 seconds. The code may instead use a separate seven-frame wait after detecting that the stock set speed changed.
 
 Scope and exclusions:

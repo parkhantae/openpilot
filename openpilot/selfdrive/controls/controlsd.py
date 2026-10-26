@@ -14,6 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
+from opendbc.car.hyundai.porter import pcm_cruise_min_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -353,14 +354,15 @@ class Controls:
     lp = self.sm['longitudinalPlan']
     if self.CP.pcmCruise:
       speed_from_pcm = self.params.get_int("SpeedFromPCM")
+      pcm_min_kph = pcm_cruise_min_kph(self.CP)
       if speed_from_pcm == 1: #toyota
         hudControl.setSpeed = float(CS.vCruiseCluster * CV.KPH_TO_MS)
       elif speed_from_pcm == 2:
-        hudControl.setSpeed = float(max(30/3.6, desired_kph * CV.KPH_TO_MS))
+        hudControl.setSpeed = float(max(pcm_min_kph * CV.KPH_TO_MS, desired_kph * CV.KPH_TO_MS))
       elif speed_from_pcm == 3: # honda
         hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
       else:
-        hudControl.setSpeed = float(max(30/3.6, setSpeed))
+        hudControl.setSpeed = float(max(pcm_min_kph * CV.KPH_TO_MS, setSpeed))
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     hudControl.speedVisible = CC.enabled

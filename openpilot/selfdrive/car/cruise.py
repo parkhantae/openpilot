@@ -9,6 +9,7 @@ from openpilot.selfdrive.carrot.bluetooth.model import BLUETOOTH_CANCEL, Command
 from openpilot.selfdrive.car.toyota_pcm_speed import ToyotaPcmSetSpeedSync
 
 from opendbc.car import structs
+from opendbc.car.hyundai.porter import pcm_cruise_min_kph
 GearShifter = structs.CarState.GearShifter
 
 
@@ -400,9 +401,10 @@ class VCruiseCarrot:
         else:
           if pcm_speed is not None:
             v_cruise_kph = pcm_speed[0]
-          self.v_cruise_kph = np.clip(v_cruise_kph, 30, self._cruise_speed_max)
+          pcm_min_kph = pcm_cruise_min_kph(self.CP)
+          self.v_cruise_kph = np.clip(v_cruise_kph, pcm_min_kph, self._cruise_speed_max)
           self.v_cruise_cluster_kph = (
-            self.v_cruise_kph if pcm_speed is None else np.clip(pcm_speed[1], 30, self._cruise_speed_max)
+            self.v_cruise_kph if pcm_speed is None else np.clip(pcm_speed[1], pcm_min_kph, self._cruise_speed_max)
           )
     else:
       self.v_cruise_kph = np.clip(v_cruise_kph, self._cruise_speed_min, self._cruise_speed_max) #max(20, self.v_ego_kph_set) #V_CRUISE_UNSET
@@ -759,7 +761,11 @@ class VCruiseCarrot:
         v_cruise_kph = ((v_cruise_kph // self._cruise_speed_unit) + 1) * self._cruise_speed_unit
 
     elif v_cruise_kph < 30: #self.nRoadLimitSpeed:
-      v_cruise_kph = 30 #self.nRoadLimitSpeed
+      pcm_min_kph = pcm_cruise_min_kph(self.CP)
+      if pcm_min_kph < 30:
+        v_cruise_kph = max(pcm_min_kph, ((v_cruise_kph // self._cruise_speed_unit) + 1) * self._cruise_speed_unit)
+      else:
+        v_cruise_kph = 30 #self.nRoadLimitSpeed
     else:
       for speed in range (40, 160, self._cruise_speed_unit):
         if v_cruise_kph < speed:

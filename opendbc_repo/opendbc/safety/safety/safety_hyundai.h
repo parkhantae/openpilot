@@ -163,7 +163,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     }
     if (addr == 0x371) {
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
-      bool engaged = target >= 30 && target <= 160;
+      bool engaged = target >= 5 && target <= 160;
       if (engaged && !cruise_engaged_prev && hyundai_last_button_interaction < HYUNDAI_PREV_BUTTON_SAMPLES &&
           hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
           !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed) {

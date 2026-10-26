@@ -103,7 +103,7 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.p.acks, 0)
 
   def test_invalid_inputs(self):
-    for target in (0, 29, 161, float("nan"), float("inf")):
+    for target in (0, 4, 161, float("nan"), float("inf")):
       self.setUp()
       self.assertIsNone(self.step(0, target=target))
     self.setUp()
@@ -112,7 +112,12 @@ class TestPorterPulse(unittest.TestCase):
   def test_float32_speed_rounding_at_minimum(self):
     self.assertEqual(self.step(0, target=35, current=8.333333015441895 * 3.6), 1)
     self.setUp()
-    self.assertIsNone(self.step(0, target=8.333333015441895 * 3.6, current=30))
+    self.assertIsNone(self.step(0, target=4.9999999, current=5))
+
+  def test_low_speed_cruise_adjustment(self):
+    self.assertEqual(self.step(0, target=20, current=19), 1)
+    self.setUp()
+    self.assertEqual(self.step(0, target=18, current=19), 2)
 
   def test_no_automatic_engagement(self):
     self.assertIsNone(self.step(0, enabled=False))

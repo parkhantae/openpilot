@@ -8,6 +8,21 @@ from openpilot.selfdrive.carrot.cruise_gap import cruise_gap_levels
 from openpilot.selfdrive.carrot.bluetooth.model import BLUETOOTH_CANCEL
 
 
+@pytest.mark.parametrize(("fingerprint", "speed", "expected"), [
+  ("HYUNDAI_PORTER_II_EV", 5, 10),
+  ("HYUNDAI_PORTER_II_EV", 19, 20),
+  ("HYUNDAI_PORTER_II_EV", 29, 30),
+  ("OTHER", 19, 30),
+])
+def test_porter_custom_cruise_speed_can_step_below_30(fingerprint, speed, expected):
+  helper = VCruiseCarrot.__new__(VCruiseCarrot)
+  helper.CP = SimpleNamespace(brand="hyundai", carFingerprint=fingerprint)
+  helper._cruise_button_mode = 1
+  helper._cruise_speed_unit = 10
+  helper._cruise_speed_table = []
+  assert helper._v_cruise_desired(None, speed) == expected
+
+
 def make_cruise_helper(button_kph, cruise_button_mode, carrot_cruise_active, cruise_enabled,
                        cruise_speed_initialized=True, cruise_speed_at_brake=0):
   helper = VCruiseCarrot.__new__(VCruiseCarrot)

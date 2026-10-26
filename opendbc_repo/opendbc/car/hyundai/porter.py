@@ -4,6 +4,13 @@ No direct acceleration/brake actuation. Missing/faulted input disables cruise.
 """
 import math
 
+PORTER_CRUISE_MIN_KPH = 5
+PORTER_CRUISE_MAX_KPH = 160
+
+
+def pcm_cruise_min_kph(CP):
+  return PORTER_CRUISE_MIN_KPH if CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" else 30
+
 
 def update_porter_state(ret, cp, main_enabled, is_metric):
   ret.cruiseState.nonAdaptive = True
@@ -26,7 +33,7 @@ def update_porter_state(ret, cp, main_enabled, is_metric):
   ret.parkingBrake = bool(tcs["PBRAKE_ACT"])
   ret.brakeLights = bool(tcs["BrakeLight"] or ret.brakePressed)
   target = cp.vl["E_EMS11"]["Cruise_Limit_Target"]
-  valid_target = math.isfinite(target) and (target == 0 or 30 <= target <= 160)
+  valid_target = math.isfinite(target) and (target == 0 or PORTER_CRUISE_MIN_KPH <= target <= PORTER_CRUISE_MAX_KPH)
   ret.accFaulted = tcs["ACCEnable"] != 0 or not valid_target
   if ret.accFaulted:
     return
@@ -109,7 +116,9 @@ class PorterCruiseButtons:
     if finite:
       target, current = int(target + 0.5), int(current + 0.5)
     valid = (finite and
-             30 <= target <= 160 and 30 <= current <= 160 and press_seconds > 0 and gap_seconds >= 0)
+             PORTER_CRUISE_MIN_KPH <= target <= PORTER_CRUISE_MAX_KPH and
+             PORTER_CRUISE_MIN_KPH <= current <= PORTER_CRUISE_MAX_KPH and
+             press_seconds > 0 and gap_seconds >= 0)
     if blocked or not valid or frame_key is None:
       self.phase = "idle"
       self.next_request = now + 0.3

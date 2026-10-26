@@ -21,8 +21,8 @@ class TestPorterState(unittest.TestCase):
     porter.update_porter_state(self.ret, self.cp, main, metric)
     return self.ret.cruiseState
 
-  def test_recorded_speed_range(self):
-    for target in range(30, 51):
+  def test_supported_speed_range_includes_low_speed_cruise(self):
+    for target in range(porter.PORTER_CRUISE_MIN_KPH, 51):
       self.cp.vl["E_EMS11"]["Cruise_Limit_Target"] = target
       state = self.update()
       self.assertTrue(state.enabled)
@@ -55,7 +55,7 @@ class TestPorterState(unittest.TestCase):
         self.assertTrue(self.ret.accFaulted)
 
   def test_invalid_target(self):
-    for target in (-1, 1, 29, 161, 255, float("nan"), float("inf")):
+    for target in (-1, 1, 4, 161, 255, float("nan"), float("inf")):
       self.setUp()
       self.cp.vl["E_EMS11"]["Cruise_Limit_Target"] = target
       self.assertFalse(self.update().enabled)
@@ -82,6 +82,15 @@ class TestPorterState(unittest.TestCase):
       setattr(cp, field, old)
     cp.safetyConfigs[0].safetyParam = 1
     self.assertFalse(porter.supports_porter_button_cruise(cp))
+
+  def test_only_porter_gets_low_pcm_cruise_minimum(self):
+    cp = NS(brand="hyundai", carFingerprint="HYUNDAI_PORTER_II_EV")
+    self.assertEqual(porter.pcm_cruise_min_kph(cp), 5)
+    cp.carFingerprint = "OTHER"
+    self.assertEqual(porter.pcm_cruise_min_kph(cp), 30)
+    cp.carFingerprint = "HYUNDAI_PORTER_II_EV"
+    cp.brand = "kia"
+    self.assertEqual(porter.pcm_cruise_min_kph(cp), 30)
 
 
 if __name__ == "__main__":
