@@ -13,8 +13,34 @@ RES+/SET− 요청을 판단하는 독립적인 Python 프로토타입입니다.
 python -m unittest discover -s tools/porter_cruise_offline -v
 ```
 
-합성 입력 테스트 9개가 통과했습니다. 실제 차량, panda safety, CAN 리플레이,
-누름/해제 프로토콜 및 종방향 제어 성능은 검증하지 않았습니다.
+합성 입력 테스트 15개가 통과했습니다. 제공된 포터 로그를 읽는 오프라인 분석도
+실행했습니다. 실제 차량, panda safety 송신 허용, 누름/해제 프로토콜 및
+종방향 제어 성능은 검증하지 않았습니다.
+
+## 읽기 전용 로그 분석
+
+`inspect_porter_log.py`는 전체 cereal 스키마로 로그를 읽고 지정된 CAN 필드의
+분포와 소프트웨어 상태, 송신 메시지 종류만 출력합니다. 위치·카메라·음성·차대번호
+등은 출력하지 않으며 CAN 송신 기능이 없습니다. 입력은 `.zst` 로그입니다.
+`pycapnp`와 `zstandard`가 필요합니다. 원본 로그는 Git에 추가하지 않습니다.
+
+```sh
+python tools/porter_cruise_offline/inspect_porter_log.py /path/to/rlog.zst
+```
+
+스키마 경로가 다르면 `--schema /path/to/cereal/log.capnp`와
+`--car-schema-dir /path/to/opendbc/car`를 지정합니다.
+
+관측한 포터 기록에서는 기존 `carState`의 크루즈 상태/설정 속도가 전부
+비활성/0이었고, 원시 TCS13의 브레이크 신호 변화도 `brakePressed`에 반영되지
+않았습니다. E_EMS11의 `Cruise_Limit_Target` 후보는 운전자가 확인한
+50km/h 크루즈 및 브레이크 해제와 일치하는 50→0 변화를 보였습니다.
+`Cruise_Limit_Status`는 계속 0이어서 이를 크루즈 활성 비트로 사용할 근거는 없습니다.
+
+이 한 구간만으로 MAIN/SET/RES/CANCEL, 다른 설정 속도, 속도 제한 모드와의
+구분 및 메시지 유실 시 의미는 확정되지 않았습니다. 분석기는 `enabled`를
+만들지 않고 후보 값만 반환합니다. 송신 기록에도 크루즈 버튼이 없어 차량의
+버튼 수락·속도 반응을 검증한 기록으로 볼 수 없습니다.
 
 ## 판단 로직
 
