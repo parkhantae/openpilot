@@ -568,6 +568,17 @@ class VCruiseCarrot:
     
     return v_cruise_kph, button_type, long_pressed
 
+  def _cycle_gap_personality(self, CS, *, remote=False):
+    longitudinal_personality_max = supported_gap_levels(self.params.get_int("LongitudinalPersonalityMax"))
+    gap_levels = cruise_gap_levels(self.params.get_int("CruiseGapLevels"), longitudinal_personality_max)
+    if not self.CP.openpilotLongitudinalControl:
+      gap_levels = longitudinal_personality_max
+    if remote or CS.pcmCruiseGap == 0 or gap_levels < longitudinal_personality_max:
+      personality = next_gap_personality(self.params.get_int("LongitudinalPersonality"), gap_levels)
+    else:
+      personality = int(np.clip(CS.pcmCruiseGap - 1, 0, longitudinal_personality_max - 1))
+    self.params.put_int_nonblocking("LongitudinalPersonality", personality)
+
   def _update_cruise_buttons(self, CS, CC, v_cruise_kph):
     remote = self.bluetooth_commands.read(allowed=(CS.canValid and CS.cruiseState.available and
       CS.gearShifter == GearShifter.drive and not CS.buttonEvents and self.button_cnt == 0))
@@ -665,15 +676,7 @@ class VCruiseCarrot:
         self._cruise_speed_initialized = True
 
       elif button_type == ButtonType.gapAdjustCruise:
-        longitudinalPersonalityMax = supported_gap_levels(self.params.get_int("LongitudinalPersonalityMax"))
-        gap_levels = cruise_gap_levels(self.params.get_int("CruiseGapLevels"), longitudinalPersonalityMax)
-        if not self.CP.openpilotLongitudinalControl:
-          gap_levels = longitudinalPersonalityMax
-        if remote == 'gapAdjustCruise' or CS.pcmCruiseGap == 0 or gap_levels < longitudinalPersonalityMax:
-          personality = next_gap_personality(self.params.get_int('LongitudinalPersonality'), gap_levels)
-        else:
-          personality = int(np.clip(CS.pcmCruiseGap - 1, 0, longitudinalPersonalityMax - 1))
-        self.params.put_int_nonblocking('LongitudinalPersonality', personality)
+        self._cycle_gap_personality(CS, remote=remote == 'gapAdjustCruise')
         #self.events.append(EventName.personalityChanged)
       elif button_type == ButtonType.lfaButton:
         if self._lfa_button_mode == 0:
@@ -709,11 +712,17 @@ class VCruiseCarrot:
         self.useLaneLineSpeedApply = useLaneLineSpeed if self.useLaneLineSpeedApply == 0 else 0
 
       elif button_type == ButtonType.cancel:
-        self._cruise_cancel_state = True
-        self._lat_enabled = False
-        self._paddle_decel_active = False
-        #self.params.put_bool_nonblocking("ExperimentalMode", not self.params.get_bool("ExperimentalMode"))
-        self._add_log("Lateral " + "enabled" if self._lat_enabled else "disabled")
+        if remote is None and getattr(getattr(self, "CP", None), "carFingerprint", "") == "HYUNDAI_PORTER_II_EV":
+          # Porter has conventional cruise buttons but no dedicated following-gap
+          # button. A held CANCEL is distinct from its normal release event, so it
+          # can select the next vision gap while a short press remains CANCEL.
+          self._cycle_gap_personality(CS)
+        else:
+          self._cruise_cancel_state = True
+          self._lat_enabled = False
+          self._paddle_decel_active = False
+          #self.params.put_bool_nonblocking("ExperimentalMode", not self.params.get_bool("ExperimentalMode"))
+          self._add_log("Lateral " + "enabled" if self._lat_enabled else "disabled")
 
     if remote == 'carrotCruise':
       # Same acceleration-limiting mode as LFA mode 2 / paddle mode 3.

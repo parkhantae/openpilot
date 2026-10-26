@@ -723,3 +723,54 @@ def test_gap_long_press_still_changes_driving_mode():
   helper.params = SimpleNamespace(get_int=values.__getitem__, put_int_nonblocking=values.__setitem__)
   helper._update_cruise_buttons(CS, CC, 80)
   assert values == {"MyDrivingMode": 1, "LongitudinalPersonality": 1}
+
+
+def test_porter_cancel_long_press_cycles_vision_gap():
+  helper, CS, CC = make_cruise_helper(80, 0, False, True)
+  helper._prepare_buttons = lambda CS, speed, remote=None: (speed, ButtonType.cancel, True)
+  helper.CP = SimpleNamespace(carFingerprint="HYUNDAI_PORTER_II_EV", openpilotLongitudinalControl=False)
+  values = {"LongitudinalPersonalityMax": 4, "CruiseGapLevels": 2, "LongitudinalPersonality": 1}
+  helper.params = SimpleNamespace(get_int=values.__getitem__, put_int_nonblocking=values.__setitem__)
+  helper._lat_enabled = True
+  CS.pcmCruiseGap = 0
+
+  assert helper._update_cruise_buttons(CS, CC, 80) == 80
+  assert values["LongitudinalPersonality"] == 0
+  assert helper._lat_enabled
+
+
+def test_physical_cancel_hold_emits_one_long_action_then_normal_release():
+  helper = VCruiseCarrot.__new__(VCruiseCarrot)
+  helper.button_cnt = 0
+  helper.button_long_time = 1
+  helper.long_pressed = False
+  helper.button_prev = ButtonType.unknown
+  helper.button_big_step = False
+  helper._cruise_button_long_delay = 1
+  helper._cruise_speed_unit_basic = 1
+  helper._cruise_speed_unit = 10
+  helper._cruise_button_mode = 0
+  helper.is_metric = True
+  CS = car.CarState(buttonEvents=[{"type": "cancel", "pressed": True}])
+
+  assert helper._prepare_buttons(CS, 80)[1:] == (0, False)
+  CS.buttonEvents = []
+  actions = [helper._prepare_buttons(CS, 80)[1:] for _ in range(32)]
+  assert actions.count((ButtonType.cancel, True)) == 1
+
+  CS.buttonEvents = [{"type": "cancel", "pressed": False}]
+  assert helper._prepare_buttons(CS, 80)[1:] == (ButtonType.cancel, False)
+
+
+def test_porter_cancel_short_press_remains_cancel():
+  helper, CS, CC = make_cruise_helper(80, 0, False, True)
+  helper._prepare_buttons = lambda CS, speed, remote=None: (speed, ButtonType.cancel, False)
+  helper.CP = SimpleNamespace(carFingerprint="HYUNDAI_PORTER_II_EV", openpilotLongitudinalControl=False)
+  helper._cancel_button_mode = 0
+  values = {"LongitudinalPersonalityMax": 4, "CruiseGapLevels": 4, "LongitudinalPersonality": 1}
+  helper.params = SimpleNamespace(get_int=values.__getitem__, put_int_nonblocking=values.__setitem__)
+  CS.pcmCruiseGap = 0
+
+  assert helper._update_cruise_buttons(CS, CC, 80) == 80
+  assert values["LongitudinalPersonality"] == 1
+  assert helper._cruise_cancel_state

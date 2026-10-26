@@ -193,6 +193,8 @@ On other brands, tune delay first only if acceleration and braking are both cons
 
 Changes apply on the next gap-button press. If the current level is outside the new range, the first press selects the configured maximum. Unused TF and gap-specific following responsiveness values are preserved. Holding the gap button still changes driving mode. This applies with openpilot longitudinal control; stock ACC retains its own levels.
 
+Porter II EV has no dedicated steering-wheel gap button, so **holding CANCEL** cycles the vision following gap through TF1→TF4→TF3→TF2→TF1. A short CANCEL press retains its normal cruise-cancel behavior. Stock cruise also receives CANCEL while the button is held, so changing the gap while driving can disengage cruise.
+
 ### Four base time gaps
 
 Multiply stored values by 0.01 seconds. All four range from 40 to 300 in steps of 5.
