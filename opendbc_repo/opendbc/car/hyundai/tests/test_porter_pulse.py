@@ -32,24 +32,24 @@ class TestPorterPulse(unittest.TestCase):
     self.step(0)
     self.step(.12)
     self.step(.14)
-    self.assertIsNone(self.step(1))
+    self.assertIsNone(self.step(.5))
     self.assertFalse(self.p.fault)
     self.assertEqual(self.p.status, "retry_wait")
-    self.assertIsNone(self.step(1.49))
-    self.assertEqual(self.step(1.5), 1)
+    self.assertIsNone(self.step(.99))
+    self.assertEqual(self.step(1.0), 1)
     self.assertEqual((self.p.requests, self.p.timeouts), (2, 1))
 
   def test_three_consecutive_misses_back_off_then_retry(self):
-    for start in (0, 1.5, 3.0):
+    for start in (0, 1.0, 2.0):
       self.assertEqual(self.step(start), 1)
       self.assertEqual(self.step(start + .12), 0)
       self.assertEqual(self.step(start + .14), 0)
-      self.assertIsNone(self.step(start + 1.0))
+      self.assertIsNone(self.step(start + .5))
     self.assertFalse(self.p.fault)
     self.assertEqual(self.p.status, "retry_backoff")
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
-    self.assertIsNone(self.step(5.0))
-    self.assertEqual(self.step(7.0), 1)
+    self.assertIsNone(self.step(5.49))
+    self.assertEqual(self.step(5.5), 1)
 
   def test_ack_releases_early_and_obeys_gap(self):
     self.step(0)
@@ -59,14 +59,21 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.32, current=51), 1)
     self.assertEqual((self.p.requests, self.p.acks), (2, 1))
 
+  def test_ack_just_before_timeout_is_accepted(self):
+    self.step(0)
+    self.step(.12)
+    self.step(.14)
+    self.assertEqual(self.step(.49, current=51), 1)
+    self.assertEqual((self.p.requests, self.p.acks, self.p.timeouts), (2, 1, 0))
+
   def test_ack_resets_consecutive_timeout_budget(self):
     self.step(0)
     self.step(.12)
     self.step(.14)
-    self.step(1)
+    self.step(.5)
     self.assertEqual(self.p.consecutive_timeouts, 1)
-    self.assertEqual(self.step(1.5), 1)
-    self.assertEqual(self.step(1.54, current=51), 0)
+    self.assertEqual(self.step(1.0), 1)
+    self.assertEqual(self.step(1.04, current=51), 0)
     self.assertEqual(self.p.consecutive_timeouts, 0)
 
   def test_five_kph_target_converges_with_five_one_kph_steps(self):
@@ -94,9 +101,9 @@ class TestPorterPulse(unittest.TestCase):
 
   def test_driver_disable_rearms_timeout(self):
     self.step(0)
-    self.step(1)
-    self.step(1.1, enabled=False)
-    self.assertEqual(self.step(1.5), 1)
+    self.step(.5)
+    self.step(.6, enabled=False)
+    self.assertEqual(self.step(1.0), 1)
 
   def test_blocked_releases_but_never_presses(self):
     self.step(0)
@@ -167,14 +174,14 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.12, target=49, current=50), 0)
 
   def test_real_no_response_uses_bounded_retry_groups(self):
-    for start in (0, 1.5, 3.0):
+    for start in (0, 1.0, 2.0):
       self.step(start, target=38, current=34)
       self.step(start + .12, target=38, current=34)
       self.step(start + .14, target=38, current=34)
-      self.assertIsNone(self.step(start + 1.0, target=38, current=34))
-    self.assertIsNone(self.step(5, target=40, current=34))
+      self.assertIsNone(self.step(start + .5, target=38, current=34))
+    self.assertIsNone(self.step(5.49, target=40, current=34))
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
-    self.assertEqual(self.step(7, target=40, current=34), 1)
+    self.assertEqual(self.step(5.5, target=40, current=34), 1)
 
 
 if __name__ == "__main__":

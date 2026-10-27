@@ -107,6 +107,7 @@ class PorterCruiseButtons:
     self.timeouts = 0
     self.consecutive_timeouts = 0
     self.max_consecutive_timeouts = 3
+    self.ack_timeout = 0.5
     self.retry_backoff = 3.0
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
@@ -172,7 +173,7 @@ class PorterCruiseButtons:
           self.acks += 1
           self.consecutive_timeouts = 0
         self.acknowledged = True
-      if now - self.started >= 1.0 and not self.acknowledged:
+      if now - self.started >= self.ack_timeout and not self.acknowledged:
         self.phase = "idle"
         self.timeouts += 1
         self.consecutive_timeouts += 1
