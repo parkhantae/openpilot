@@ -9,7 +9,8 @@ import math
 # cannot override that ECU limit.
 PORTER_CRUISE_MIN_KPH = 30
 PORTER_CRUISE_MAX_KPH = 160
-PORTER_LEAD_REACTION_S = 1.5
+PORTER_LEAD_REACTION_S = 5.0
+PORTER_LEAD_HOLD_S = 0.6
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
@@ -42,6 +43,47 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
 
   lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6
   return max(PORTER_CRUISE_MIN_KPH, min(target_kph, lead_speed_kph))
+
+
+class PorterLeadTracker:
+  """Keep brief radar dropouts from releasing a conventional-cruise lead cap."""
+  def __init__(self, hold_seconds=PORTER_LEAD_HOLD_S):
+    self.hold_seconds = hold_seconds
+    self.last_seen = None
+    self.last_update = None
+    self.distance = 0.0
+    self.relative_speed = 0.0
+    self.closing = False
+
+  def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
+             lead_relative_speed, gap_level, *, lead_visible=True):
+    finite_lead = (lead_visible and all(math.isfinite(v) for v in (now, lead_distance, lead_relative_speed)) and
+                   lead_distance > 0)
+    if finite_lead:
+      self.last_seen = now
+      self.last_update = now
+      self.distance = lead_distance
+      self.relative_speed = lead_relative_speed
+    elif (self.last_seen is not None and math.isfinite(now) and now >= self.last_seen and
+          now - self.last_seen <= self.hold_seconds):
+      # Project a closing lead forward while radar briefly loses it. Never
+      # project an opening lead farther away during the hold.
+      self.distance = max(0.1, self.distance + min(0.0, self.relative_speed) * (now - self.last_update))
+      self.last_update = now
+    else:
+      self.last_seen = None
+      self.last_update = None
+      self.closing = False
+      return target_kph
+
+    self.closing = self.relative_speed <= 0.2
+    target_kph = porter_lead_target_kph(
+      target_kph, ego_speed, self.distance, self.relative_speed, gap_level, lead_visible=True)
+    if self.closing and math.isfinite(stock_target_kph):
+      # RES can restore the Porter's memorized speed in one large jump. Do not
+      # raise the stock setting while a tracked lead is not pulling away.
+      target_kph = min(target_kph, stock_target_kph)
+    return target_kph
 
 
 def update_porter_state(ret, cp, main_enabled, is_metric):
