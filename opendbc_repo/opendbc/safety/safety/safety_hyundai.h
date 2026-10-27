@@ -167,7 +167,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     }
     if (addr == 0x371) {
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
-      bool engaged = target >= 5 && target <= 160;
+      bool engaged = target >= 30 && target <= 160;
       bool recent_enable_button = hyundai_porter_enable_button_seen &&
                                   get_ts_elapsed(now, hyundai_porter_enable_button_ts) <= HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT;
       if (engaged && !cruise_engaged_prev &&

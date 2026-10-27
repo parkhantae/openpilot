@@ -157,7 +157,7 @@ The Porter II EV conventional-cruise path uses `CruiseButtonTest1 × 0.01 second
 
 For Porter conventional cruise, a new button request requires an unrounded target error of at least 1 km/h. This avoids unnecessary tiny requests around a rounding boundary. A full step has no additional debounce delay. The one-second acknowledgement window and existing pedal, gear, and signal-validity gates remain in force.
 
-Porter II EV uses a 5 km/h floor instead of the 30 km/h floor for other PCM vehicles. The stock set-speed state, Carrot target, button transmission, and panda permission checks use the same range. Available recordings only confirm set speeds from 30–50 km/h, so vehicle acceptance and actual speed holding from 5–29 km/h require on-vehicle validation.
+The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. Steering-wheel button emulation cannot change the stock ECU floor, so the Carrot target, stock set-speed state, button transmission, and panda permission checks use the same 30 km/h minimum. Vehicle speed can fall below 30 km/h while coasting, but stock cruise cannot be set to or hold 29 km/h or less.
 
 Porter vision-lead control uses the selected gap level and the projected distance 1.5 seconds ahead. When the gap is projected to fall below the selected spacing, it starts lowering the stock set speed toward the lead speed with 1 km/h SET inputs. It does not apply this cap while the lead is pulling away. This only reduces acceleration from conventional cruise; it cannot command the brakes or guarantee a safe gap, so the driver must brake immediately when the reduction is insufficient.
 

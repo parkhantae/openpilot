@@ -4,7 +4,10 @@ No direct acceleration/brake actuation. Missing/faulted input disables cruise.
 """
 import math
 
-PORTER_CRUISE_MIN_KPH = 5
+# Confirmed on the 2024 Porter II EV: the conventional-cruise ECU accepts
+# SET- down to 30 km/h and does not expose a lower set speed. Button emulation
+# cannot override that ECU limit.
+PORTER_CRUISE_MIN_KPH = 30
 PORTER_CRUISE_MAX_KPH = 160
 PORTER_LEAD_REACTION_S = 1.5
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)

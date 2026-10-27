@@ -431,4 +431,4 @@ The new Params key requires the normal build after updating. The current road
 camera supplies 20fps. Reduced processing overhead does not establish sustained
 20Hz detection; this change does not promise 20Hz or 50Hz detection.
 
-For Porter II EV conventional cruise, see [button-message tests](buttons-presets.md#button-spam) for the 5 km/h floor, timing limits, and bounded retry behavior after a missing set-speed response.
+For Porter II EV conventional cruise, see [button-message tests](buttons-presets.md#button-spam) for the confirmed 30 km/h floor, timing limits, and bounded retry behavior after a missing set-speed response.

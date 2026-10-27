@@ -9,12 +9,12 @@ from openpilot.selfdrive.carrot.bluetooth.model import BLUETOOTH_CANCEL
 
 
 @pytest.mark.parametrize(("fingerprint", "speed", "expected"), [
-  ("HYUNDAI_PORTER_II_EV", 5, 10),
-  ("HYUNDAI_PORTER_II_EV", 19, 20),
+  ("HYUNDAI_PORTER_II_EV", 5, 30),
+  ("HYUNDAI_PORTER_II_EV", 19, 30),
   ("HYUNDAI_PORTER_II_EV", 29, 30),
   ("OTHER", 19, 30),
 ])
-def test_porter_custom_cruise_speed_can_step_below_30(fingerprint, speed, expected):
+def test_pcm_cruise_speed_respects_stock_30_kph_floor(fingerprint, speed, expected):
   helper = VCruiseCarrot.__new__(VCruiseCarrot)
   helper.CP = SimpleNamespace(brand="hyundai", carFingerprint=fingerprint)
   helper._cruise_button_mode = 1

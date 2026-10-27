@@ -8,12 +8,12 @@ class TestNativePorter(unittest.TestCase):
         for button in (1, 2):
             self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
 
-    def test_low_speed_stock_cruise_allows_speed_buttons(self):
+    def test_below_stock_floor_does_not_enable_controls(self):
         init()
         seed(button=2, target=5)
-        self.assertTrue(lib.get_controls_allowed())
+        self.assertFalse(lib.get_controls_allowed())
         for button in (1, 2):
-            self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
+            self.assertFalse(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
 
     def test_no_engagement_or_resume_from_transmit(self):
         init()
