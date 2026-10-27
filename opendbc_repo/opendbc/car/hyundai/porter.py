@@ -155,6 +155,7 @@ class PorterCruiseButtons:
     self.started = 0.0
     self.hold = 0.06
     self.release_count = 0
+    self.pending_release = False
     self.acknowledged = False
     self.fault = False
     self.cancel_seen = False
@@ -166,20 +167,34 @@ class PorterCruiseButtons:
     self.ack_timeout = 0.5
     self.retry_backoff = 3.0
 
+  def _interrupt(self, fresh):
+    # A repeated/missing CLU11 sample cannot carry a new release frame. Keep
+    # that obligation after aborting the pulse, including a release transition
+    # that has not transmitted its first zero yet.
+    self.pending_release |= self.phase == "press" or (self.phase == "release" and self.release_count == 0)
+    self.phase = "idle"
+    if self.pending_release and fresh:
+      self.pending_release = False
+      return 0
+    return None
+
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
              manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3):
-    had_press = self.phase == "press"
     fresh = frame_key is not None and frame_key != self.last_frame
     if fresh:
       self.last_frame = frame_key
     if not math.isfinite(now) or (self.last_time is not None and now < self.last_time):
       self.fault = True
-      self.phase = "idle"
       self.status = "clock_fault"
-      return 0 if had_press and fresh and not manual else None
+      if manual:
+        self.phase = "idle"
+        self.pending_release = False
+        return None
+      return self._interrupt(fresh)
     self.last_time = now
     if manual:
       self.phase = "idle"
+      self.pending_release = False
       self.fault = False
       self.consecutive_timeouts = 0
       self.cancel_seen = False
@@ -187,20 +202,20 @@ class PorterCruiseButtons:
       self.status = "manual"
       return None
     if cancel:
-      self.phase = "idle"
+      self._interrupt(False)
       self.status = "cancel"
       if fresh and not self.cancel_seen:
         self.cancel_seen = True
+        self.pending_release = False
         return 4
       return None
     self.cancel_seen = False
     if not enabled:
-      self.phase = "idle"
       self.fault = False
       self.consecutive_timeouts = 0
       self.next_request = now + 0.3
       self.status = "inactive"
-      return 0 if had_press and fresh else None
+      return self._interrupt(fresh)
     finite = all(math.isfinite(v) for v in (target, current, press_seconds, gap_seconds))
     requested_target = target
     if finite:
@@ -210,10 +225,15 @@ class PorterCruiseButtons:
              PORTER_CRUISE_MIN_KPH <= current <= PORTER_CRUISE_MAX_KPH and
              press_seconds > 0 and gap_seconds >= 0)
     if blocked or not valid or frame_key is None:
-      self.phase = "idle"
       self.next_request = now + 0.3
       self.status = "blocked" if valid else "invalid_input"
-      return 0 if had_press and fresh else None
+      return self._interrupt(fresh)
+    if self.pending_release:
+      # Finish the aborted pulse before starting another one, even if the
+      # inhibit cleared during a long RX gap. Give the ECU a quiet interval.
+      self.next_request = now + max(0.3, gap_seconds)
+      self.status = "release"
+      return self._interrupt(fresh)
     if self.fault:
       self.status = "fault"
       return None
@@ -221,16 +241,14 @@ class PorterCruiseButtons:
       change = current - self.baseline
       if change and change * self.direction < 0:
         self.fault = True
-        self.phase = "idle"
         self.status = "wrong_direction"
-        return 0 if had_press and fresh else None
+        return self._interrupt(fresh)
       if change * self.direction > 0:
         if not self.acknowledged:
           self.acks += 1
           self.consecutive_timeouts = 0
         self.acknowledged = True
       if now - self.started >= self.ack_timeout and not self.acknowledged:
-        self.phase = "idle"
         self.timeouts += 1
         self.consecutive_timeouts += 1
         if self.consecutive_timeouts >= self.max_consecutive_timeouts:
@@ -246,7 +264,7 @@ class PorterCruiseButtons:
           # consecutive misses before entering the longer retry backoff.
           self.next_request = now + max(0.5, gap_seconds)
           self.status = "retry_wait"
-        return 0 if had_press and fresh else None
+        return self._interrupt(fresh)
       if self.phase == "press" and (self.acknowledged or now - self.started >= self.hold):
         self.phase = "release"
         self.release_count = 0

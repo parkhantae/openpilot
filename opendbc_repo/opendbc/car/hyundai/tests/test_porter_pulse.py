@@ -110,6 +110,51 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.04, blocked=True), 0)
     self.assertIsNone(self.step(.06, blocked=True))
 
+  def test_interrupted_press_remembers_release_until_next_stock_frame(self):
+    for interruption in ({"blocked": True}, {"enabled": False}, {"target": float("nan")},
+                         {"current": 49}, {"cancel": True}):
+      with self.subTest(interruption=interruption):
+        self.setUp()
+        self.assertEqual(self.step(0, key=10), 1)
+        self.assertIsNone(self.step(.01, key=10, **interruption))
+        self.assertIsNone(self.step(.02, key=10))
+        self.assertEqual(self.step(.04, key=11), 0)
+        self.assertIsNone(self.step(.06, key=12))
+        self.assertEqual(self.p.requests, 1)
+
+  def test_missing_stock_frame_cannot_discard_release(self):
+    self.assertEqual(self.step(0, key=10), 1)
+    self.assertIsNone(self.p.update(.01, 55, 50, None, enabled=True))
+    self.assertIsNone(self.p.update(.02, 55, 50, None, enabled=True))
+    self.assertEqual(self.step(.04, key=11), 0)
+    self.assertIsNone(self.step(.06, key=12))
+
+  def test_pending_release_precedes_a_new_request_after_long_gap(self):
+    self.assertEqual(self.step(0, key=10), 1)
+    self.assertIsNone(self.step(.01, key=10, blocked=True))
+    self.assertEqual(self.step(2, key=11), 0)
+    self.assertIsNone(self.step(2.02, key=12))
+    self.assertEqual(self.step(2.32, key=13), 1)
+    self.assertEqual((self.p.requests, self.p.timeouts), (2, 0))
+
+  def test_manual_button_owns_bus_instead_of_pending_release(self):
+    self.assertEqual(self.step(0, key=10), 1)
+    self.assertIsNone(self.step(.01, key=10, blocked=True))
+    self.assertIsNone(self.step(.04, key=11, manual=True))
+    self.assertIsNone(self.step(.06, key=12))
+    self.assertEqual(self.step(.36, key=13), 1)
+
+  def test_interruption_without_a_press_does_not_send_release(self):
+    self.assertIsNone(self.step(0, key=10, blocked=True))
+    self.assertIsNone(self.step(.4, key=11, target=50))
+
+  def test_release_transition_on_duplicate_frame_still_needs_release(self):
+    self.assertEqual(self.step(0, key=10), 1)
+    self.assertIsNone(self.step(.06, key=10))
+    self.assertEqual(self.p.phase, "release")
+    self.assertIsNone(self.step(.07, key=10, blocked=True))
+    self.assertEqual(self.step(.08, key=11), 0)
+
   def test_cancel_once_per_request(self):
     self.assertEqual(self.step(0, cancel=True), 4)
     self.assertIsNone(self.step(.02, cancel=True))

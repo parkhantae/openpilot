@@ -69,7 +69,6 @@ class TestPorterButtonGate(unittest.TestCase):
     self.assertEqual(self.function(self.controller, self.cc, self.cs), 1)
 
 
-
 class TestPorterMessagePath(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
@@ -123,6 +122,26 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.out.brakePressed = True
     self.assertEqual(self.tick(2), [0])
     self.assertEqual(self.tick(4), [])
+
+  def test_brake_between_stock_frames_preserves_release_to_packer(self):
+    self.assertEqual(self.tick(0), [1])
+    self.controller.frame = 1
+    self.cs.cp._last_update_nanos += 10_000_000
+    self.cs.out.brakePressed = True
+    self.assertEqual(self.function(self.controller, self.cc, self.cs, True), [])
+    self.cs.out.brakePressed = False
+    self.assertEqual(self.tick(4), [0])
+    self.assertEqual(self.tick(6), [])
+    self.assertEqual(self.controller.porter_buttons.requests, 1)
+
+  def test_rx_gap_releases_before_restarting_buttons(self):
+    self.assertEqual(self.tick(0), [1])
+    self.controller.frame = 12
+    self.cs.cp._last_update_nanos += 120_000_000
+    self.assertEqual(self.function(self.controller, self.cc, self.cs, True), [])
+    self.assertEqual(self.tick(14), [0])
+    self.assertEqual(self.tick(16), [])
+    self.assertEqual(self.controller.porter_buttons.requests, 1)
 
   def test_no_template_no_frame_and_pcm_policy(self):
     self.cs.clu11 = None
