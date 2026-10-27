@@ -52,9 +52,9 @@ def supports_porter_button_cruise(CP):
 class PorterCruiseButtons:
   """One bounded press/release, then wait for fresh OEM set-speed feedback.
 
-  None means no frame; 0 is an explicit release. A missing acknowledgement
-  latches output off until the driver disables cruise or uses a real button.
-  The timing follows observed short OEM presses, not a vehicle acceptance claim.
+  None means no frame; 0 is an explicit release. Missing acknowledgements use
+  bounded retry groups separated by a quiet period. The timing follows observed
+  short OEM presses, not a vehicle acceptance claim.
   """
   def __init__(self):
     self.phase = "idle"
@@ -75,6 +75,7 @@ class PorterCruiseButtons:
     self.timeouts = 0
     self.consecutive_timeouts = 0
     self.max_consecutive_timeouts = 3
+    self.retry_backoff = 3.0
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
              manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3):
@@ -125,7 +126,7 @@ class PorterCruiseButtons:
       self.status = "blocked" if valid else "invalid_input"
       return 0 if had_press and fresh else None
     if self.fault:
-      self.status = "no_ack"
+      self.status = "fault"
       return None
     if self.phase != "idle":
       change = current - self.baseline
@@ -144,17 +145,20 @@ class PorterCruiseButtons:
         self.timeouts += 1
         self.consecutive_timeouts += 1
         if self.consecutive_timeouts >= self.max_consecutive_timeouts:
-          self.fault = True
-          self.status = "no_ack"
+          # A temporary ECU miss must not disable speed matching for the rest
+          # of the drive. Keep each attempt bounded, then retry a new group
+          # after a longer quiet period.
+          self.consecutive_timeouts = 0
+          self.next_request = now + max(self.retry_backoff, gap_seconds)
+          self.status = "retry_backoff"
         else:
           # The conventional-cruise ECU can occasionally miss a complete
           # pulse. Retry after a bounded quiet period, then latch after three
-          # consecutive misses instead of transmitting indefinitely.
+          # consecutive misses before entering the longer retry backoff.
           self.next_request = now + max(0.5, gap_seconds)
           self.status = "retry_wait"
         return 0 if had_press and fresh else None
-      if self.phase == "press" and (self.acknowledged or now - self.started >= self.hold or
-                                     (target - current) * self.direction <= 0):
+      if self.phase == "press" and (self.acknowledged or now - self.started >= self.hold):
         self.phase = "release"
         self.release_count = 0
       if self.phase == "release":
