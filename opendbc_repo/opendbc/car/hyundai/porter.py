@@ -15,6 +15,13 @@ PORTER_LEAD_OPENING_CONFIRM_S = 0.5
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
+def porter_steer_request_frames(configured_frames):
+  # Hyundai's native safety requires 89 matching requests before another
+  # nonzero-torque request-bit cut. A lower user setting resets safety's
+  # torque history on rejection, so subsequent commands can remain blocked.
+  return max(89, configured_frames)
+
+
 def pcm_cruise_min_kph(CP):
   return PORTER_CRUISE_MIN_KPH if CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" else 30
 

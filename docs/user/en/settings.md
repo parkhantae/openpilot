@@ -263,6 +263,8 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
 | Device hardware | `HardwareC3xLite` | Speakerless C3X Lite audio and process configuration |
 
+For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.
+
 > [!CAUTION]
 > Incorrect `HyundaiCameraSCC`, `CanfdHDA2`, `EnableRadarTracks`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity`, or `SpeedFromPCM` values can change vehicle identification, SCC, radar, or longitudinal behavior. Confirm the vehicle, model year, HDA generation, harness location, and whether stock ACC is retained.
 

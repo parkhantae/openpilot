@@ -7,7 +7,7 @@ from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits, common_f
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
-from opendbc.car.hyundai.porter import PorterCruiseButtons
+from opendbc.car.hyundai.porter import PorterCruiseButtons, porter_steer_request_frames
 from opendbc.car.hyundai.stopping import CanfdStopping
 from opendbc.car.hyundai.steering_handover import SteeringHandover
 from opendbc.car.carlog import carlog
@@ -263,6 +263,8 @@ class CarController(CarControllerBase):
     if self.frame % 50 == 0:
       params = Params()
       self.max_angle_frames = params.get_int("MaxAngleFrames")
+      if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+        self.max_angle_frames = porter_steer_request_frames(self.max_angle_frames)
       steerMax = params.get_int("CustomSteerMax")
       steerDeltaUp = params.get_int("CustomSteerDeltaUp")
       steerDeltaDown = params.get_int("CustomSteerDeltaDown")

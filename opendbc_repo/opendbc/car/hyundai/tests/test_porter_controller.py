@@ -70,6 +70,23 @@ class TestPorterButtonGate(unittest.TestCase):
 
 
 class TestPorterMessagePath(unittest.TestCase):
+  def test_parameter_refresh_floors_porter_interval_only(self):
+    from opendbc.car.hyundai.porter import porter_steer_request_frames
+
+    tree = ast.parse((Path(__file__).resolve().parents[1] / "carcontroller.py").read_text(encoding="utf-8"))
+    update = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == "CarController"
+                  for n in c.body if isinstance(n, ast.FunctionDef) and n.name == "update")
+    refresh = next(n for n in update.body if isinstance(n, ast.If) and ast.unparse(n.test) == "self.frame % 50 == 0")
+    # Execute the actual periodic MaxAngleFrames read and its scoped guard.
+    code = compile(ast.Module(body=refresh.body[:3], type_ignores=[]), "actual_angle_parameter_refresh", "exec")
+    for vehicle, configured, expected in (("porter", 87, 89), ("porter", 89, 89),
+                                          ("porter", 100, 100), ("other", 87, 87)):
+      controller = NS(CP=NS(carFingerprint=vehicle))
+      env = {"self": controller, "Params": lambda configured=configured: NS(get_int=lambda key: configured),
+             "CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "porter_steer_request_frames": porter_steer_request_frames}
+      exec(code, env)
+      self.assertEqual(controller.max_angle_frames, expected)
+
   @classmethod
   def setUpClass(cls):
     directory = Path(__file__).resolve().parents[1]

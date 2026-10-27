@@ -267,6 +267,8 @@ VW MEB(ID.4 포함)에도 수동 조향비와 학습 비율이 적용됩니다. 
 | 차량 보조 | `MaxAngleFrames`, `SpeedFromPCM` | 최대 조향각 관련 프레임과 순정 SCC 속도 제어 방식 |
 | 기기 하드웨어 | `HardwareC3xLite` | 스피커가 없는 C3X Lite의 알림음과 프로세스 구성 |
 
+포터2 EV의 `MaxAngleFrames`는 저장값이 89보다 작아도 실제 제어에서는 최소 89프레임을 적용합니다. 큰 조향각에서 조향 요청 비트를 잠시 끊는 간격을 Panda 안전 검사의 최소 정상 요청 간격에 맞추기 위한 제한입니다. 다른 차종의 설정값은 변경하지 않습니다.
+
 > [!CAUTION]
 > `HyundaiCameraSCC`, `CanfdHDA2`, `EnableRadarTracks`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity`, `SpeedFromPCM`은 잘못 설정하면 차량 인식, SCC, 레이더와 가감속 동작이 달라질 수 있습니다. 차종, 연식, HDA 구성, 하네스 연결 위치와 순정 ACC 사용 여부를 확인한 뒤 변경하세요.
 

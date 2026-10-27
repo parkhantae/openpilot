@@ -3,6 +3,26 @@ from hyundai_porter_testlib import lib, packet, data, rx, seed, init, engage
 
 
 class TestNativePorter(unittest.TestCase):
+    def test_porter_large_angle_request_cuts_respect_native_safety(self):
+        from opendbc.car import common_fault_avoidance
+        from opendbc.car.hyundai.porter import porter_steer_request_frames
+
+        for configured in (0, 87, 89, 100):
+            with self.subTest(configured=configured):
+                engage()
+                counter = 0
+                cuts = 0
+                for frame in range(500):
+                    lib.set_timer(13000 + frame * 10000)
+                    seed(counter=frame + 3, target=31)
+                    counter, request = common_fault_avoidance(frame >= 100, True, counter,
+                                                              porter_steer_request_frames(configured), 2)
+                    torque = min(100, (frame + 1) * 3)
+                    payload = ((1024 + torque) << 16 | (int(request) << 27)).to_bytes(8, 'little')
+                    self.assertTrue(lib.safety_tx_hook(packet(0x340, payload)), (configured, frame))
+                    cuts += not request
+                self.assertGreaterEqual(cuts, 4)
+
     def test_fresh_stock_cruise_allows_speed_buttons(self):
         engage()
         for button in (1, 2):
