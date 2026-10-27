@@ -211,6 +211,7 @@ class CarrotServ:
     self.carrot_navi_route_sequence = -1
     self.carrot_navi_active = False
     self.carrot_navi_has_control = False
+    self.carrot_navi_guidance_owned = False
     self.carrot_navi_road_limit_valid = False
     self.carrot_navi_off_route = False
     self.carrot_navi_traffic_active = False
@@ -903,6 +904,16 @@ class CarrotServ:
     self.carrot_navi_vehicle_sequence = -1
     self.carrot_navi_route_sequence = -1
 
+  def _clear_turn_guidance(self):
+    self.nTBTTurnType = self.nTBTTurnTypeNext = -1
+    self.nTBTDist = self.nTBTDistNext = 0
+    self.xTurnInfo = self.xTurnInfoNext = -1
+    self.xDistToTurn = self.xDistToTurnNext = 0
+    self.navType = self.navTypeNext = "invalid"
+    self.navModifier = self.navModifierNext = ""
+    self.szTBTMainText = self.szNearDirName = self.szFarDirName = ""
+    self.szTBTMainTextNext = ""
+
   def _clear_carrot_navi_traffic(self):
     if not getattr(self, "carrot_navi_traffic_active", False):
       return
@@ -933,12 +944,9 @@ class CarrotServ:
     self.xSpdType = -1
     self.xSpdLimit = self.xSpdDist = 0
 
-    self.nTBTTurnType = self.nTBTTurnTypeNext = -1
-    self.nTBTDist = self.nTBTDistNext = 0
-    self.xTurnInfo = self.xTurnInfoNext = -1
-    self.xDistToTurn = self.xDistToTurnNext = 0
-    self.navType = self.navTypeNext = "invalid"
-    self.navModifier = self.navModifierNext = ""
+    if self.carrot_navi_guidance_owned:
+      self._clear_turn_guidance()
+    self.carrot_navi_guidance_owned = False
 
     self.nGoPosDist = self.nGoPosTime = 0
     self.last_update_gps_time_navi = 0
@@ -1056,6 +1064,19 @@ class CarrotServ:
     if not current_changed and not next_changed:
       return
 
+    # Speed, GPS, and connection heartbeats do not own turn guidance. Keep a
+    # valid legacy/native maneuver until 7714 supplies at least one guidance
+    # item. Once it does, its tombstones may clear the guidance it owns.
+    guidance_present = current.present or next_guidance.present
+    if not guidance_present and not self.carrot_navi_guidance_owned:
+      if current_changed:
+        self.carrot_navi_current_sequence = current.sequence
+      if next_changed:
+        self.carrot_navi_next_sequence = next_guidance.sequence
+      return
+    if guidance_present:
+      self.carrot_navi_guidance_owned = True
+
     old_current_dist = self.xDistToTurn
     old_next_dist = self.xDistToTurnNext
     if current_changed:
@@ -1073,9 +1094,17 @@ class CarrotServ:
       self.szTBTMainTextNext = next_guidance.main_text if next_guidance.present else ""
 
     self._update_tbt()
-    if not current_changed:
+    if current_changed and not current.present:
+      self.xTurnInfo = -1
+      self.xDistToTurn = 0
+      self.navType, self.navModifier = "invalid", ""
+    elif not current_changed:
       self.xDistToTurn = old_current_dist
-    if not next_changed:
+    if next_changed and not next_guidance.present:
+      self.xTurnInfoNext = -1
+      self.xDistToTurnNext = 0
+      self.navTypeNext, self.navModifierNext = "invalid", ""
+    elif not next_changed:
       self.xDistToTurnNext = old_next_dist
 
   def _update_carrot_navi(self, sm):
@@ -1096,7 +1125,10 @@ class CarrotServ:
 
     self.carrot_navi_control = navi
     new_session = navi.session_id != self.carrot_navi_session_id
-    if navi.session_id != self.carrot_navi_session_id:
+    if new_session:
+      if self.carrot_navi_guidance_owned:
+        self._clear_turn_guidance()
+      self.carrot_navi_guidance_owned = False
       self._reset_carrot_navi_sequences(navi.session_id)
     off_route_changed = navi.off_route != self.carrot_navi_off_route
     self.carrot_navi_off_route = navi.off_route
@@ -1366,7 +1398,8 @@ class CarrotServ:
       self.nTBTTurnType = self.nTBTTurnTypeNext = -1
       self.roadcate = 8
       self.nGoPosDist = 0
-    if self.active_carrot <= 1 or self.active_kisa_count > 0:
+    if (self.active_carrot <= 1 or self.active_kisa_count > 0 or
+        (carrot_navi_active and not self.carrot_navi_guidance_owned and self.nTBTTurnType < 0)):
       self.update_nav_instruction(sm)
 
     rear_camera_speed, rear_camera_remaining = self._rear_camera_speed(CS, delta_dist)
@@ -1374,8 +1407,7 @@ class CarrotServ:
       self.xSpdType = -1
       self.xSpdDist = self.xSpdLimit = 0
     if self.xTurnInfo < 0 or self.xDistToTurn < -50:
-      if self.xDistToTurn > 0:
-        self.xDistToTurn = 0
+      self.xDistToTurn = 0
       self.xTurnInfo = -1
       self.xDistToTurnNext = 0
       self.xTurnInfoNext = -1
@@ -1738,17 +1770,20 @@ class CarrotServ:
       self.nSdiPlusBlockDist = _i(json.get("nSdiPlusBlockDist"), 0)
       self.roadcate = _i(json.get("roadcate"), 0)
 
-      ## GuidePoint
-      self.nTBTDist = int(json.get("nTBTDist", 0))
-      self.nTBTTurnType = int(json.get("nTBTTurnType", -1))
-      self.szTBTMainText = _s(json.get("szTBTMainText"))
-      self.szNearDirName = _s(json.get("szNearDirName"))
-      self.szFarDirName = _s(json.get("szFarDirName"))
+      ## GuidePoint: structured 7714 guidance wins only after it has supplied
+      ## an actual maneuver. A speed-only 7714 connection leaves this legacy
+      ## fallback operational.
+      if not self.carrot_navi_guidance_owned:
+        self.nTBTDist = int(json.get("nTBTDist", 0))
+        self.nTBTTurnType = int(json.get("nTBTTurnType", -1))
+        self.szTBTMainText = _s(json.get("szTBTMainText"))
+        self.szNearDirName = _s(json.get("szNearDirName"))
+        self.szFarDirName = _s(json.get("szFarDirName"))
 
-      self.nTBTNextRoadWidth = int(json.get("nTBTNextRoadWidth", 0))
-      self.nTBTDistNext = int(json.get("nTBTDistNext", 0))
-      self.nTBTTurnTypeNext = int(json.get("nTBTTurnTypeNext", -1))
-      self.szTBTMainTextNext = json.get("szTBTMainText", "")
+        self.nTBTNextRoadWidth = int(json.get("nTBTNextRoadWidth", 0))
+        self.nTBTDistNext = int(json.get("nTBTDistNext", 0))
+        self.nTBTTurnTypeNext = int(json.get("nTBTTurnTypeNext", -1))
+        self.szTBTMainTextNext = json.get("szTBTMainText", "")
 
       self.nGoPosDist = int(json.get("nGoPosDist", 0))
       self.nGoPosTime = int(json.get("nGoPosTime", 0))
@@ -1767,7 +1802,8 @@ class CarrotServ:
         self._gps_sources().remove('external_navi')
 
       self.nPosSpeed = float(json.get("nPosSpeed", self.nPosSpeed))
-      self._update_tbt()
+      if not self.carrot_navi_guidance_owned:
+        self._update_tbt()
       self._update_sdi()
       print(
         f"sdi = {self.nSdiType}, {self.nSdiSpeedLimit}, {self.nSdiPlusType}, " +

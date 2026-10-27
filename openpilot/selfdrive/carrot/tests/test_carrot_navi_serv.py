@@ -45,6 +45,7 @@ def _serv():
   serv.carrot_navi_active = False
   serv.external_navigation_active = False
   serv.carrot_navi_has_control = False
+  serv.carrot_navi_guidance_owned = False
   serv.carrot_navi_road_limit_valid = False
   serv.carrot_navi_off_route = False
   serv.carrot_navi_traffic_active = False
@@ -171,6 +172,64 @@ def test_applies_new_navi_control_without_resetting_distance_on_heartbeat():
   serv.xDistToTurnNext = 3400
   assert serv._update_carrot_navi(sm)
   assert (serv.xSpdDist, serv.xDistToTurn, serv.xDistToTurnNext) == (400, 100, 3400)
+
+
+def test_speed_only_7714_preserves_legacy_turn_guidance_and_disconnect():
+  serv = _serv()
+  serv.nTBTDist, serv.nTBTTurnType = 310, 12
+  serv.xDistToTurn, serv.xTurnInfo = 310, 1
+  sm = _SubMaster({
+    "schemaVersion": 1,
+    "connected": True,
+    "sessionId": "speed-only",
+    "speed": {"meta": _meta(1), "roadLimitValid": True, "roadLimitKph": 80},
+    "navigationStatus": {"meta": _meta(1), "guidanceActive": True},
+  })
+
+  assert serv._update_carrot_navi(sm)
+  assert not serv.carrot_navi_guidance_owned
+  assert (serv.nTBTTurnType, serv.xTurnInfo, serv.xDistToTurn) == (12, 1, 310)
+
+  sm.data["connected"] = False
+  assert not serv._update_carrot_navi(sm)
+  assert (serv.nTBTTurnType, serv.xTurnInfo, serv.xDistToTurn) == (12, 1, 310)
+
+
+def test_7714_guidance_owns_turn_domain_and_blocks_legacy_overwrite():
+  serv = _serv()
+  data = _message()
+  assert serv._update_carrot_navi(_SubMaster(data))
+  assert serv.carrot_navi_guidance_owned
+
+  serv.update({
+    "nRoadLimitSpeed": 50,
+    "nTBTDist": 999,
+    "nTBTTurnType": 12,
+    "nTBTDistNext": 1200,
+    "nTBTTurnTypeNext": 13,
+  })
+  assert (serv.nTBTTurnType, serv.xTurnInfo, serv.xDistToTurn) == (117, 4, 131)
+
+  data["guidanceCurrent"] = {"meta": _meta(4, present=False)}
+  data["guidanceNext"] = {"meta": _meta(5, present=False)}
+  assert serv._update_carrot_navi(_SubMaster(data))
+  assert (serv.nTBTTurnType, serv.xTurnInfo, serv.xDistToTurn) == (-1, -1, 0)
+
+
+def test_new_speed_only_session_clears_guidance_owned_by_previous_session():
+  serv = _serv()
+  data = _message()
+  assert serv._update_carrot_navi(_SubMaster(data))
+
+  data = {
+    "schemaVersion": 1,
+    "connected": True,
+    "sessionId": "replacement",
+    "speed": {"meta": _meta(1), "roadLimitValid": True, "roadLimitKph": 80},
+  }
+  assert serv._update_carrot_navi(_SubMaster(data))
+  assert not serv.carrot_navi_guidance_owned
+  assert (serv.nTBTTurnType, serv.xTurnInfo, serv.xDistToTurn) == (-1, -1, 0)
 
 
 def test_disconnect_clears_7714_control_state():

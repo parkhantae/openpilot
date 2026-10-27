@@ -33,6 +33,8 @@ These gates are aids, not a replacement for the driver's safety judgment. openpi
 5. The comma driving model generates the lane-change path and the vehicle controller tracks it.
 6. The driver continues supervising and immediately steers to cancel or take control if conditions become unsafe.
 
+ATC requests a maneuver only when navigation supplies a valid left/right direction and remaining distance. While a 7714 connection supplies only speed-limit or GPS data, carrotpilot retains an available legacy 7713 or native-navigation maneuver. Once 7714 supplies real maneuver guidance, it takes priority. The system never guesses left or right when the direction is absent.
+
 The same maneuver can feel faster or slower with different scenes or installed model versions. That can be a difference in the model-generated path; `LaneChangeDelay` does not change the speed of a maneuver already in progress.
 
 ## What the lane-change settings control
