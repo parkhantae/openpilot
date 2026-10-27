@@ -13,15 +13,13 @@ class OverlayState:
     sm = ui.sm
     cs, ss, lp = sm['carState'], sm['selfdriveState'], sm['longitudinalPlan']
     cm, radar = sm['carrotMan'], sm['radarState']
-    cruise_state = getattr(cs, 'cruiseState', None)
     # Warnings, BSD and touch processing never wait for a layer's next turn.
     self.enabled = ui.started
     self.urgent = (ss.alertSize.raw != 0 or ss.alertHudVisual.raw != 0 or cs.leftBlindspot or cs.rightBlindspot or
                    sm['modelV2'].meta.laneChangeState.raw != 0 or bool(gui_app.mouse_events))
     self.key = (
       ui.started_frame, ui.status, camera, camera.is_connected(), stream, mode,
-      ss.enabled, ss.experimentalMode, cs.vCruiseCluster,
-      getattr(cruise_state, 'speed', 0.0), getattr(cruise_state, 'enabled', False), cs.gearShifter.raw,
+      ss.enabled, ss.experimentalMode, cs.vCruiseCluster, cs.gearShifter.raw,
       cs.brakePressed, cs.gasPressed, cs.brakeHoldActive, cs.softHoldActive, cs.carrotCruise,
       lp.xState, lp.trafficState, lp.allowThrottle, cm.trafficState,
       getattr(lp, 'signalDetectionSuspended', False),
