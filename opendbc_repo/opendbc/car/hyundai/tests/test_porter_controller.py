@@ -143,6 +143,25 @@ class TestPorterMessagePath(unittest.TestCase):
     self.assertEqual(self.tick(16), [])
     self.assertEqual(self.controller.porter_buttons.requests, 1)
 
+  def test_opposite_oem_speed_on_duplicate_sample_releases_and_keeps_fault(self):
+    # Recorded timing: SET- at 0/10/40ms, OEM 32->42 at 50ms while CLU11
+    # is unchanged. The release was lost before the pending-release fix.
+    self.cc.hudControl.setSpeed = 30.81 / 3.6
+    self.cs.out.cruiseState.speed = 32 / 3.6
+    self.assertEqual(self.tick(0), [2])
+    self.assertEqual(self.tick(1), [2])
+    self.assertEqual(self.tick(4), [2])
+    self.controller.frame = 5
+    self.cs.cp._last_update_nanos += 10_000_000
+    self.cs.out.cruiseState.speed = 42 / 3.6
+    self.assertEqual(self.function(self.controller, self.cc, self.cs, True), [])
+    self.assertEqual(self.controller.porter_buttons.status, "wrong_direction")
+    self.assertEqual(self.tick(6), [0])
+    self.assertEqual(self.tick(8), [])
+    self.assertEqual(self.controller.porter_buttons.status, "fault")
+    self.assertTrue(self.controller.porter_buttons.fault)
+    self.assertEqual((self.controller.porter_buttons.requests, self.controller.porter_buttons.acks), (1, 0))
+
   def test_no_template_no_frame_and_pcm_policy(self):
     self.cs.clu11 = None
     self.assertEqual(self.tick(0), [])
