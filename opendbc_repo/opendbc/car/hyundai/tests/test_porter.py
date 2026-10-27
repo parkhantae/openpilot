@@ -99,8 +99,8 @@ class TestPorterLeadTarget(unittest.TestCase):
     self.assertEqual(porter.porter_lead_target_kph(80, 20, 25, -5, 1), 54)
 
   def test_gap_level_changes_early_response_distance(self):
-    self.assertEqual(porter.porter_lead_target_kph(80, 20, 50, -5, 1), 80)
-    self.assertEqual(porter.porter_lead_target_kph(80, 20, 50, -5, 4), 54)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 70, -5, 1), 80)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 70, -5, 4), 54)
 
   def test_longer_coasting_horizon_starts_reduction_earlier(self):
     self.assertEqual(porter.porter_lead_target_kph(80, 10, 40, -5, 2), 30)
@@ -128,7 +128,14 @@ class TestPorterLeadTracker(unittest.TestCase):
     self.assertEqual(self.update(0, target=60, stock=42, distance=100, relative=-1), 42)
 
   def test_opening_lead_allows_higher_target(self):
-    self.assertEqual(self.update(0, target=60, stock=42, distance=30, relative=1), 60)
+    self.assertEqual(self.update(0, target=60, stock=42, distance=30, relative=1), 42)
+    self.assertEqual(self.update(.49, target=60, stock=42, distance=30, relative=1), 42)
+    self.assertEqual(self.update(.5, target=60, stock=42, distance=30, relative=1), 60)
+
+  def test_brief_opening_blip_does_not_restore_memorized_speed(self):
+    self.assertEqual(self.update(0, target=60, stock=42, distance=30, relative=-1), 42)
+    self.assertEqual(self.update(.1, target=60, stock=42, distance=30, relative=1), 42)
+    self.assertEqual(self.update(.2, target=60, stock=42, distance=30, relative=-1), 42)
 
   def test_short_dropout_keeps_conservative_cap(self):
     self.assertEqual(self.update(0), 30)

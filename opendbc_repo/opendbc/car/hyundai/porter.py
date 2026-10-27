@@ -9,8 +9,9 @@ import math
 # cannot override that ECU limit.
 PORTER_CRUISE_MIN_KPH = 30
 PORTER_CRUISE_MAX_KPH = 160
-PORTER_LEAD_REACTION_S = 5.0
+PORTER_LEAD_REACTION_S = 8.0
 PORTER_LEAD_HOLD_S = 0.6
+PORTER_LEAD_OPENING_CONFIRM_S = 0.5
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
@@ -54,6 +55,7 @@ class PorterLeadTracker:
     self.distance = 0.0
     self.relative_speed = 0.0
     self.closing = False
+    self.opening_since = None
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True):
@@ -64,21 +66,33 @@ class PorterLeadTracker:
       self.last_update = now
       self.distance = lead_distance
       self.relative_speed = lead_relative_speed
+      if lead_relative_speed > 0.2:
+        self.opening_since = now if self.opening_since is None else self.opening_since
+      else:
+        self.opening_since = None
     elif (self.last_seen is not None and math.isfinite(now) and now >= self.last_seen and
           now - self.last_seen <= self.hold_seconds):
       # Project a closing lead forward while radar briefly loses it. Never
       # project an opening lead farther away during the hold.
       self.distance = max(0.1, self.distance + min(0.0, self.relative_speed) * (now - self.last_update))
       self.last_update = now
+      self.opening_since = None
     else:
       self.last_seen = None
       self.last_update = None
       self.closing = False
+      self.opening_since = None
       return target_kph
 
-    self.closing = self.relative_speed <= 0.2
+    opening_confirmed = (self.opening_since is not None and
+                         now - self.opening_since >= PORTER_LEAD_OPENING_CONFIRM_S)
+    self.closing = not opening_confirmed
+    # Vision relative speed can briefly cross zero while range is noisy. Keep
+    # the existing cap until the lead has pulled away continuously, preventing
+    # a transient RES+ request from restoring the memorized cruise speed.
+    effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
     target_kph = porter_lead_target_kph(
-      target_kph, ego_speed, self.distance, self.relative_speed, gap_level, lead_visible=True)
+      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True)
     if self.closing and math.isfinite(stock_target_kph):
       # RES can restore the Porter's memorized speed in one large jump. Do not
       # raise the stock setting while a tracked lead is not pulling away.
