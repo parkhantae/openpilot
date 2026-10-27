@@ -157,6 +157,8 @@ The Porter II EV conventional-cruise path uses `CruiseButtonTest1 × 0.01 second
 
 For Porter conventional cruise, a new button request requires an unrounded target error of at least 1 km/h. This avoids unnecessary tiny requests around a rounding boundary. A full step has no additional debounce delay. Recorded successful vehicle responses took 35–56 ms, so a missing response now times out after 0.5 seconds and retries sooner. The existing pedal, gear, and signal-validity gates remain in force.
 
+Automatic Porter button holds are limited to the accepted route timing of 40–60 ms, or two to three CLU11 frames. In the latest failed route, panda transmitted every requested frame, but the stock cruise ECU ignored seven-frame holds lasting at least 120 ms. Two explicit release frames are still sent after every hold.
+
 The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. Steering-wheel button emulation cannot change the stock ECU floor, so the Carrot target, stock set-speed state, button transmission, and panda permission checks use the same 30 km/h minimum. Vehicle speed can fall below 30 km/h while coasting, but stock cruise cannot be set to or hold 29 km/h or less.
 
 With `SpeedFromPCM=0` on Porter, the stock button target uses the lower of the navigation camera approach profile and the longitudinal planner target. A higher terminal planner speed therefore cannot hide the current camera slowdown target. At 30 km/h and above, the cluster set speed follows in 1 km/h steps. A target below the stock floor, such as a 20 km/h limit, can only lower the stock setting to 30 km/h.

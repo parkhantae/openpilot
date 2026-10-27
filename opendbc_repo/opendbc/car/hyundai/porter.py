@@ -97,7 +97,7 @@ class PorterCruiseButtons:
     self.direction = 0
     self.baseline = 0
     self.started = 0.0
-    self.hold = 0.12
+    self.hold = 0.06
     self.release_count = 0
     self.acknowledged = False
     self.fault = False
@@ -222,7 +222,10 @@ class PorterCruiseButtons:
       self.direction = 1 if target > current else -1
       self.baseline = current
       self.started = now
-      self.hold = min(0.15, max(0.12, press_seconds))
+      # Accepted route samples changed the OEM target after two or three 50 Hz
+      # CLU11 button frames. Longer seven-frame synthetic holds were transmitted
+      # by panda but consistently ignored by the cruise ECU.
+      self.hold = min(0.06, max(0.04, press_seconds))
       self.next_request = now + max(0.3, gap_seconds)
       self.acknowledged = False
       self.phase = "press"

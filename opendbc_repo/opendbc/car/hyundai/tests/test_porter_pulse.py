@@ -17,10 +17,10 @@ class TestPorterPulse(unittest.TestCase):
 
   def test_press_is_at_least_observed_short_press_then_explicit_release(self):
     self.assertEqual(self.step(0), 1)
-    self.assertEqual(self.step(.10), 1)
-    self.assertEqual(self.step(.12), 0)
-    self.assertEqual(self.step(.14), 0)
-    self.assertIsNone(self.step(.16))
+    self.assertEqual(self.step(.04), 1)
+    self.assertEqual(self.step(.06), 0)
+    self.assertEqual(self.step(.08), 0)
+    self.assertIsNone(self.step(.10))
     self.assertEqual(self.p.status, "waiting_ack")
 
   def test_one_frame_per_stock_sample(self):
@@ -164,14 +164,13 @@ class TestPorterPulse(unittest.TestCase):
     self.step(0, target=52)
     self.assertEqual(self.step(.02, target=51.6), 1)
     self.assertEqual(self.step(.04, target=51.4), 1)
-    self.assertEqual(self.step(.06, target=51.6), 1)
-    self.assertEqual(self.step(.12, target=51.4), 0)
+    self.assertEqual(self.step(.06, target=51.6), 0)
 
   def test_target_crossing_does_not_truncate_unacknowledged_press(self):
     self.assertEqual(self.step(0, target=52, current=50), 1)
     self.assertEqual(self.step(.02, target=49, current=50), 1)
-    self.assertEqual(self.step(.10, target=49, current=50), 1)
-    self.assertEqual(self.step(.12, target=49, current=50), 0)
+    self.assertEqual(self.step(.04, target=49, current=50), 1)
+    self.assertEqual(self.step(.06, target=49, current=50), 0)
 
   def test_real_no_response_uses_bounded_retry_groups(self):
     for start in (0, 1.0, 2.0):
