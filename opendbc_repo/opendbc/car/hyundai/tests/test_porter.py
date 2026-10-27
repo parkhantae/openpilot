@@ -99,8 +99,11 @@ class TestPorterLeadTarget(unittest.TestCase):
     self.assertEqual(porter.porter_lead_target_kph(80, 20, 25, -5, 1), 54)
 
   def test_gap_level_changes_early_response_distance(self):
-    self.assertEqual(porter.porter_lead_target_kph(80, 20, 35, -5, 1), 80)
-    self.assertEqual(porter.porter_lead_target_kph(80, 20, 35, -5, 4), 54)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 50, -5, 1), 80)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 50, -5, 4), 54)
+
+  def test_longer_coasting_horizon_starts_reduction_earlier(self):
+    self.assertEqual(porter.porter_lead_target_kph(80, 10, 40, -5, 2), 30)
 
   def test_close_same_speed_lead_prevents_further_acceleration(self):
     self.assertEqual(porter.porter_lead_target_kph(80, 20, 20, 0, 2), 72)
@@ -112,6 +115,34 @@ class TestPorterLeadTarget(unittest.TestCase):
 
   def test_stopped_lead_target_respects_porter_floor(self):
     self.assertEqual(porter.porter_lead_target_kph(50, 15, 12, -15, 4), porter.PORTER_CRUISE_MIN_KPH)
+
+
+class TestPorterLeadTracker(unittest.TestCase):
+  def setUp(self):
+    self.tracker = porter.PorterLeadTracker()
+
+  def update(self, now, *, target=80, stock=50, ego=10, distance=40, relative=-5, visible=True, gap=2):
+    return self.tracker.update(now, target, stock, ego, distance, relative, gap, lead_visible=visible)
+
+  def test_closing_lead_never_raises_stock_setting(self):
+    self.assertEqual(self.update(0, target=60, stock=42, distance=100, relative=-1), 42)
+
+  def test_opening_lead_allows_higher_target(self):
+    self.assertEqual(self.update(0, target=60, stock=42, distance=30, relative=1), 60)
+
+  def test_short_dropout_keeps_conservative_cap(self):
+    self.assertEqual(self.update(0), 30)
+    self.assertEqual(self.update(.5, visible=False), 30)
+
+  def test_expired_dropout_releases_cap(self):
+    self.assertEqual(self.update(0), 30)
+    self.assertEqual(self.update(.3, visible=False), 30)
+    self.assertEqual(self.update(.59, visible=False), 30)
+    self.assertEqual(self.update(.61, visible=False), 80)
+
+  def test_invalid_or_reversed_time_does_not_reuse_lead(self):
+    self.assertEqual(self.update(1), 30)
+    self.assertEqual(self.update(.9, visible=False), 80)
 
 
 class TestPorterNaviTarget(unittest.TestCase):

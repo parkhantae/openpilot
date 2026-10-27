@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import pcm_cruise_min_kph, porter_lead_target_kph, porter_navi_target_kph
+from opendbc.car.hyundai.porter import PorterLeadTracker, pcm_cruise_min_kph, porter_navi_target_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -103,6 +103,7 @@ class Controls:
     elif self.CP.lateralTuning.which() == 'torque':
       self.LaC = LatControlTorque(self.CP, self.CI)
     self.carrot_controls = CarrotControls(self.CP)
+    self.porter_lead_tracker = PorterLeadTracker()
 
   def update(self):
     self.sm.update(15)
@@ -371,8 +372,9 @@ class Controls:
         navi_target_kph = porter_navi_target_kph(hudControl.setSpeed * CV.MS_TO_KPH, desired_kph)
         hudControl.setSpeed = float(navi_target_kph * CV.KPH_TO_MS)
         lead = self.sm['radarState'].leadOne
-        lead_target_kph = porter_lead_target_kph(
-          hudControl.setSpeed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
+        lead_target_kph = self.porter_lead_tracker.update(
+          self.sm.frame * DT_CTRL, hudControl.setSpeed * CV.MS_TO_KPH,
+          CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
           self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status)
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
     else:
