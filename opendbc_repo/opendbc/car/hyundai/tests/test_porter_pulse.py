@@ -69,6 +69,18 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(1.54, current=51), 0)
     self.assertEqual(self.p.consecutive_timeouts, 0)
 
+  def test_five_kph_target_converges_with_five_one_kph_steps(self):
+    now = 0.0
+    current = 50
+    for expected in range(51, 56):
+      self.assertEqual(self.step(now, target=55, current=current), 1)
+      current = expected
+      self.assertEqual(self.step(now + .04, target=55, current=current), 0)
+      self.assertEqual(self.step(now + .06, target=55, current=current), 0)
+      now += .32
+    self.assertIsNone(self.step(now, target=55, current=current))
+    self.assertEqual((self.p.requests, self.p.acks), (5, 5))
+
   def test_deceleration(self):
     self.assertEqual(self.step(0, target=45), 2)
     self.assertEqual(self.step(.06, target=45, current=49), 0)

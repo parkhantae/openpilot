@@ -34,6 +34,28 @@ class TestNativePorter(unittest.TestCase):
         seed(counter=13, target=50)
         self.assertFalse(lib.get_controls_allowed())
 
+    def test_delayed_target_within_one_second_of_physical_set_enables(self):
+        init()
+        lib.set_timer(2000)
+        seed(counter=1, button=2)
+        for i in range(20):
+            lib.set_timer(22000 + i * 20000)
+            seed(counter=i + 2)
+        self.assertFalse(lib.get_controls_allowed())
+        lib.set_timer(500000)
+        seed(counter=6, target=31)
+        self.assertTrue(lib.get_controls_allowed())
+
+    def test_physical_set_rearms_buttons_when_cruise_is_already_active(self):
+        init()
+        lib.set_timer(2000)
+        seed(counter=1, target=50)
+        self.assertFalse(lib.get_controls_allowed())
+        lib.set_timer(3000)
+        seed(counter=2, target=50, button=2)
+        self.assertTrue(lib.get_controls_allowed())
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=1))))
+
     def test_brake_parking_hold_and_gear_block(self):
         for address, changes in ((0x394, {'brake':True}), (0x394, {'park':True}),
                                  (0x507, {'hold':True}), (0x372, {'drive':False})):

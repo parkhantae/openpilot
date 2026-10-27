@@ -60,6 +60,9 @@ static bool hyundai_porter_drive = false;
 static bool hyundai_porter_hold = false;
 static bool hyundai_porter_park = false;
 static bool hyundai_porter_fault = false;
+static bool hyundai_porter_enable_button_seen = false;
+static uint32_t hyundai_porter_enable_button_ts = 0U;
+static const uint32_t HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT = 1000000U;
 
 static bool hyundai_porter_inputs_valid(void) {
   uint32_t now = microsecond_timer_get();
@@ -151,6 +154,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
   int addr = GET_ADDR(to_push);
 
   if (hyundai_porter_cc && bus == 0) {
+    uint32_t now = microsecond_timer_get();
     if (addr == 0x372) {
       hyundai_porter_drive = ((GET_BYTE(to_push, 2) & 0xfU) == 5U);
     }
@@ -164,16 +168,38 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     if (addr == 0x371) {
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
       bool engaged = target >= 5 && target <= 160;
-      if (engaged && !cruise_engaged_prev && hyundai_last_button_interaction < HYUNDAI_PREV_BUTTON_SAMPLES &&
+      bool recent_enable_button = hyundai_porter_enable_button_seen &&
+                                  get_ts_elapsed(now, hyundai_porter_enable_button_ts) <= HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT;
+      if (engaged && !cruise_engaged_prev &&
+          (recent_enable_button || hyundai_last_button_interaction < HYUNDAI_PREV_BUTTON_SAMPLES) &&
           hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
           !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed) {
         controls_allowed = true;
       }
-      if (!engaged) controls_allowed = false;
+      if (!engaged) {
+        controls_allowed = false;
+        if (hyundai_porter_enable_button_seen &&
+            get_ts_elapsed(now, hyundai_porter_enable_button_ts) > HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT) {
+          hyundai_porter_enable_button_seen = false;
+        }
+      }
       cruise_engaged_prev = engaged;
     }
-    if ((addr == 0x4f1) && ((GET_BYTE(to_push, 0) & 7U) == HYUNDAI_BTN_CANCEL || GET_BIT(to_push, 3U))) {
-      controls_allowed = false;
+    if (addr == 0x4f1) {
+      int button = GET_BYTE(to_push, 0) & 7U;
+      bool main_button = GET_BIT(to_push, 3U);
+      if (button == HYUNDAI_BTN_RESUME || button == HYUNDAI_BTN_SET) {
+        hyundai_porter_enable_button_seen = true;
+        hyundai_porter_enable_button_ts = now;
+        if (cruise_engaged_prev && hyundai_porter_inputs_valid() && hyundai_porter_drive &&
+            !hyundai_porter_hold && !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed) {
+          controls_allowed = true;
+        }
+      }
+      if (button == HYUNDAI_BTN_CANCEL || main_button) {
+        controls_allowed = false;
+        hyundai_porter_enable_button_seen = false;
+      }
     }
     if (!hyundai_porter_drive || hyundai_porter_hold || hyundai_porter_park || hyundai_porter_fault || !hyundai_porter_inputs_valid()) {
       controls_allowed = false;
@@ -529,6 +555,8 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_porter_hold = false;
   hyundai_porter_park = false;
   hyundai_porter_fault = false;
+  hyundai_porter_enable_button_seen = false;
+  hyundai_porter_enable_button_ts = 0U;
   if (hyundai_porter_cc) {
     static const CanMsg porter_tx[] = {{0x340, 0, 8}, {0x4f1, 0, 4}, {0x485, 0, 8}};
     static RxCheck porter_rx[] = {
