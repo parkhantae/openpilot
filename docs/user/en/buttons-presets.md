@@ -163,6 +163,8 @@ The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. 
 
 With `SpeedFromPCM=0` on Porter, the stock button target uses the lower of the navigation camera approach profile and the longitudinal planner target. A higher terminal planner speed therefore cannot hide the current camera slowdown target. At 30 km/h and above, the cluster set speed follows in 1 km/h steps. A target below the stock floor, such as a 20 km/h limit, can only lower the stock setting to 30 km/h.
 
+While Porter stock cruise is active, the comma cruise number displays the current stock setting reported by the vehicle. Navigation and lead slowdown targets still drive the button controller, while the displayed number stays aligned with the cluster as the vehicle follows in 1 km/h steps.
+
 Porter vision-lead control uses the selected gap level and the projected distance 5 seconds ahead. When the gap is projected to fall below the selected spacing, it starts lowering the stock set speed toward the lead speed with 1 km/h SET inputs. A radar dropout of up to 0.6 seconds keeps projecting the last lead distance and relative speed, and RES+ cannot raise the stock setting while the tracked lead is not pulling away. This reduces acceleration from conventional cruise earlier; it cannot command the brakes or guarantee a safe gap, so the driver must brake immediately when the reduction is insufficient.
 
 At roughly 0.01 seconds per control frame, `Test2=30` is about 0.30 seconds. The code may instead use a separate seven-frame wait after detecting that the stock set speed changed.

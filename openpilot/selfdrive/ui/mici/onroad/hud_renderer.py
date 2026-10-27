@@ -10,6 +10,7 @@ from openpilot.selfdrive.carrot.deceleration_source import (
   external_navigation_connected,
   navigation_status_presentation,
 )
+from openpilot.selfdrive.ui.cruise_display import displayed_cruise_speed_kph
 # from openpilot.selfdrive.ui.mici.onroad.torque_bar import TorqueBar # 아이콘에 토크 적용: 토크바 미사용
 from openpilot.selfdrive.ui.mici.onroad import blend_colors
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
@@ -253,10 +254,7 @@ class HudRenderer(Widget):
     controls_state = sm['controlsState']
     car_state = sm['carState']
 
-    v_cruise_cluster = car_state.vCruiseCluster
-    set_speed = (
-      controls_state.deprecated.vCruise if v_cruise_cluster == 0.0 else v_cruise_cluster
-    )
+    set_speed = displayed_cruise_speed_kph(car_state, controls_state, ui_state.CP)
     engaged = sm['selfdriveState'].enabled
     if (set_speed != self.set_speed and engaged) or (engaged and not self._engaged):
       self._set_speed_changed_time = rl.get_time()
