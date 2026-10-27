@@ -17,6 +17,15 @@ def pcm_cruise_min_kph(CP):
   return PORTER_CRUISE_MIN_KPH if CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" else 30
 
 
+def porter_navi_target_kph(planner_target_kph, navi_target_kph):
+  """Apply the current navigation cap to the stock-cruise button target."""
+  if not math.isfinite(planner_target_kph):
+    return planner_target_kph
+  if math.isfinite(navi_target_kph) and 0 < navi_target_kph <= 250:
+    planner_target_kph = min(planner_target_kph, navi_target_kph)
+  return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
+
+
 def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True):
   """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
   values = (target_kph, ego_speed, lead_distance, lead_relative_speed)

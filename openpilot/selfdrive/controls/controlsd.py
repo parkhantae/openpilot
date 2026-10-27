@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import pcm_cruise_min_kph, porter_lead_target_kph
+from opendbc.car.hyundai.porter import pcm_cruise_min_kph, porter_lead_target_kph, porter_navi_target_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -365,6 +365,11 @@ class Controls:
         hudControl.setSpeed = float(max(pcm_min_kph * CV.KPH_TO_MS, setSpeed))
       if (self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and speed_from_pcm != 1 and
           CC.enabled and CS.cruiseState.enabled):
+        # Conventional cruise follows one-km/h button requests. Ensure its
+        # target cannot remain above the current navigation camera profile
+        # just because the longitudinal plan's terminal speed is higher.
+        navi_target_kph = porter_navi_target_kph(hudControl.setSpeed * CV.MS_TO_KPH, desired_kph)
+        hudControl.setSpeed = float(navi_target_kph * CV.KPH_TO_MS)
         lead = self.sm['radarState'].leadOne
         lead_target_kph = porter_lead_target_kph(
           hudControl.setSpeed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,

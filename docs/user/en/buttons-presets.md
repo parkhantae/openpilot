@@ -159,6 +159,8 @@ For Porter conventional cruise, a new button request requires an unrounded targe
 
 The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. Steering-wheel button emulation cannot change the stock ECU floor, so the Carrot target, stock set-speed state, button transmission, and panda permission checks use the same 30 km/h minimum. Vehicle speed can fall below 30 km/h while coasting, but stock cruise cannot be set to or hold 29 km/h or less.
 
+With `SpeedFromPCM=0` on Porter, the stock button target uses the lower of the navigation camera approach profile and the longitudinal planner target. A higher terminal planner speed therefore cannot hide the current camera slowdown target. At 30 km/h and above, the cluster set speed follows in 1 km/h steps. A target below the stock floor, such as a 20 km/h limit, can only lower the stock setting to 30 km/h.
+
 Porter vision-lead control uses the selected gap level and the projected distance 1.5 seconds ahead. When the gap is projected to fall below the selected spacing, it starts lowering the stock set speed toward the lead speed with 1 km/h SET inputs. It does not apply this cap while the lead is pulling away. This only reduces acceleration from conventional cruise; it cannot command the brakes or guarantee a safe gap, so the driver must brake immediately when the reduction is insufficient.
 
 At roughly 0.01 seconds per control frame, `Test2=30` is about 0.30 seconds. The code may instead use a separate seven-frame wait after detecting that the stock set speed changed.

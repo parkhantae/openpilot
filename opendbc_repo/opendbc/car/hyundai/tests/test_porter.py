@@ -1,4 +1,5 @@
 import importlib.util
+import math
 from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
@@ -111,6 +112,21 @@ class TestPorterLeadTarget(unittest.TestCase):
 
   def test_stopped_lead_target_respects_porter_floor(self):
     self.assertEqual(porter.porter_lead_target_kph(50, 15, 12, -15, 4), porter.PORTER_CRUISE_MIN_KPH)
+
+
+class TestPorterNaviTarget(unittest.TestCase):
+  def test_navigation_profile_caps_higher_planner_target(self):
+    self.assertEqual(porter.porter_navi_target_kph(65, 50), 50)
+
+  def test_lower_planner_target_is_preserved(self):
+    self.assertEqual(porter.porter_navi_target_kph(45, 50), 45)
+
+  def test_below_stock_floor_clamps_to_30(self):
+    self.assertEqual(porter.porter_navi_target_kph(35, 20), porter.PORTER_CRUISE_MIN_KPH)
+
+  def test_invalid_navigation_target_does_not_override_planner(self):
+    self.assertEqual(porter.porter_navi_target_kph(60, float("nan")), 60)
+    self.assertTrue(math.isnan(porter.porter_navi_target_kph(float("nan"), 50)))
 
 
 if __name__ == "__main__":
