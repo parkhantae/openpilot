@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import pcm_cruise_min_kph
+from opendbc.car.hyundai.porter import pcm_cruise_min_kph, porter_lead_target_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -363,6 +363,13 @@ class Controls:
         hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
       else:
         hudControl.setSpeed = float(max(pcm_min_kph * CV.KPH_TO_MS, setSpeed))
+      if (self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and speed_from_pcm != 1 and
+          CC.enabled and CS.cruiseState.enabled):
+        lead = self.sm['radarState'].leadOne
+        lead_target_kph = porter_lead_target_kph(
+          hudControl.setSpeed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
+          self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status)
+        hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     hudControl.speedVisible = CC.enabled

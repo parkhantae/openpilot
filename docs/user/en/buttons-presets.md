@@ -159,6 +159,8 @@ For Porter conventional cruise, a new button request requires an unrounded targe
 
 Porter II EV uses a 5 km/h floor instead of the 30 km/h floor for other PCM vehicles. The stock set-speed state, Carrot target, button transmission, and panda permission checks use the same range. Available recordings only confirm set speeds from 30–50 km/h, so vehicle acceptance and actual speed holding from 5–29 km/h require on-vehicle validation.
 
+Porter vision-lead control uses the selected gap level and the projected distance 1.5 seconds ahead. When the gap is projected to fall below the selected spacing, it starts lowering the stock set speed toward the lead speed with 1 km/h SET inputs. It does not apply this cap while the lead is pulling away. This only reduces acceleration from conventional cruise; it cannot command the brakes or guarantee a safe gap, so the driver must brake immediately when the reduction is insufficient.
+
 At roughly 0.01 seconds per control frame, `Test2=30` is about 0.30 seconds. The code may instead use a separate seven-frame wait after detecting that the stock set speed changed.
 
 Scope and exclusions:

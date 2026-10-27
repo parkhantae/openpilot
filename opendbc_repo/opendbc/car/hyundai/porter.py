@@ -6,10 +6,30 @@ import math
 
 PORTER_CRUISE_MIN_KPH = 5
 PORTER_CRUISE_MAX_KPH = 160
+PORTER_LEAD_REACTION_S = 1.5
+PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
 def pcm_cruise_min_kph(CP):
   return PORTER_CRUISE_MIN_KPH if CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" else 30
+
+
+def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True):
+  """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
+  values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
+  if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
+    return target_kph
+  if lead_relative_speed > 0.2:
+    return target_kph
+
+  gap_index = min(len(PORTER_GAP_TIME_S), max(1, int(gap_level or 2))) - 1
+  desired_distance = max(7.0, 5.0 + ego_speed * PORTER_GAP_TIME_S[gap_index])
+  projected_distance = lead_distance + min(0.0, lead_relative_speed) * PORTER_LEAD_REACTION_S
+  if projected_distance >= desired_distance:
+    return target_kph
+
+  lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6
+  return max(PORTER_CRUISE_MIN_KPH, min(target_kph, lead_speed_kph))
 
 
 def update_porter_state(ret, cp, main_enabled, is_metric):

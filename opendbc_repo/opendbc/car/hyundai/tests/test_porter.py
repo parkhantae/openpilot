@@ -93,5 +93,25 @@ class TestPorterState(unittest.TestCase):
     self.assertEqual(porter.pcm_cruise_min_kph(cp), 30)
 
 
+class TestPorterLeadTarget(unittest.TestCase):
+  def test_close_closing_lead_caps_target_to_lead_speed(self):
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 25, -5, 1), 54)
+
+  def test_gap_level_changes_early_response_distance(self):
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 35, -5, 1), 80)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 35, -5, 4), 54)
+
+  def test_close_same_speed_lead_prevents_further_acceleration(self):
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 20, 0, 2), 72)
+
+  def test_opening_distant_or_absent_lead_does_not_change_target(self):
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 15, 1, 4), 80)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 100, -1, 4), 80)
+    self.assertEqual(porter.porter_lead_target_kph(80, 20, 15, -5, 4, lead_visible=False), 80)
+
+  def test_stopped_lead_target_respects_porter_floor(self):
+    self.assertEqual(porter.porter_lead_target_kph(50, 15, 12, -15, 4), porter.PORTER_CRUISE_MIN_KPH)
+
+
 if __name__ == "__main__":
   unittest.main()
