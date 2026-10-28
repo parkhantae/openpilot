@@ -23,6 +23,39 @@ class TestPorterPulse(unittest.TestCase):
     self.assertIsNone(self.step(.10))
     self.assertEqual(self.p.status, "waiting_ack")
 
+  def test_large_uptime_and_early_rx_cannot_add_fourth_press(self):
+    # Segment 538 contains four-frame attempts despite the 60 ms clamp.
+    # Early samples can exhaust the frame budget before the elapsed limit.
+    for start in (0.0, 25.56, 2000.0, 100000.0):
+      for target, button in ((55, 1), (45, 2)):
+        with self.subTest(start=start, target=target):
+          self.setUp()
+          sent = [self.step(start + dt, target=target, key=i)
+                  for i, dt in enumerate((0, .019, .038, .057, .078))]
+          self.assertEqual(sent, [button, button, button, 0, 0])
+
+  def test_segment_538_first_failed_request_transmission_times(self):
+    # Rounded sendcan times relative to the first carState, without route IDs.
+    # The early second CLU sample formerly allowed a fourth nonzero TX.
+    times = (3.042276, 3.0523, 3.0713, 3.0918, 3.1117)
+    sent = [self.step(t, target=35, current=34, key=i)
+            for i, t in enumerate(times)]
+    self.assertEqual(sent, [1, 1, 1, 0, 0])
+
+  def test_duplicate_samples_do_not_consume_press_budget(self):
+    self.assertEqual(self.step(2000, key=1), 1)
+    self.assertIsNone(self.step(2000.01, key=1))
+    self.assertEqual(self.step(2000.02, key=2), 1)
+    self.assertIsNone(self.step(2000.03, key=2))
+    self.assertEqual(self.step(2000.04, key=3), 1)
+    self.assertIsNone(self.step(2000.05, key=3))
+    self.assertEqual(self.step(2000.06, key=4), 0)
+
+  def test_short_setting_limits_press_to_two_fresh_samples(self):
+    sent = [self.step(dt, key=i, press_seconds=.04)
+            for i, dt in enumerate((0, .015, .03, .05))]
+    self.assertEqual(sent, [1, 1, 0, 0])
+
   def test_one_frame_per_stock_sample(self):
     self.assertEqual(self.step(0, key=10), 1)
     self.assertIsNone(self.step(.01, key=10))

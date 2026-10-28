@@ -181,6 +181,8 @@ class PorterCruiseButtons:
     self.baseline = 0
     self.started = 0.0
     self.hold = 0.06
+    self.press_count = 0
+    self.press_limit = 3
     self.release_count = 0
     self.pending_release = False
     self.acknowledged = False
@@ -292,7 +294,8 @@ class PorterCruiseButtons:
           self.next_request = now + max(0.5, gap_seconds)
           self.status = "retry_wait"
         return self._interrupt(fresh)
-      if self.phase == "press" and (self.acknowledged or now - self.started >= self.hold):
+      if self.phase == "press" and (self.acknowledged or self.press_count >= self.press_limit or
+                                    now - self.started >= self.hold - 1e-9):
         self.phase = "release"
         self.release_count = 0
       if self.phase == "release":
@@ -323,13 +326,18 @@ class PorterCruiseButtons:
       self.direction = 1 if target > current else -1
       self.baseline = current
       self.started = now
-      # Accepted route samples changed the OEM target after two or three 50 Hz
-      # CLU11 button frames. Longer seven-frame synthetic holds were transmitted
-      # by panda but consistently ignored by the cruise ECU.
+      # Bound both elapsed time and actual fresh-sample transmissions. At a
+      # large uptime, subtraction can put 60 ms just below the threshold and
+      # permit a fourth press. Scheduler/RX jitter must not add extra frames.
       self.hold = min(0.06, max(0.04, press_seconds))
+      self.press_limit = math.ceil(self.hold / 0.02 - 1e-9)
+      self.press_count = 0
       self.next_request = now + max(0.3, gap_seconds)
       self.acknowledged = False
       self.phase = "press"
       self.requests += 1
     self.status = "press"
-    return (1 if self.direction > 0 else 2) if fresh else None
+    if fresh:
+      self.press_count += 1
+      return 1 if self.direction > 0 else 2
+    return None
