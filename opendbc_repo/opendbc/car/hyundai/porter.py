@@ -26,16 +26,22 @@ def pcm_cruise_min_kph(CP):
   return PORTER_CRUISE_MIN_KPH if CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" else 30
 
 
-def porter_navi_target_kph(planner_target_kph, navi_target_kph):
+def porter_below_cruise_minimum(target_kph):
+  # Account for the float32 representation of exactly 30 km/h in m/s.
+  return math.isfinite(target_kph) and 0 <= target_kph < PORTER_CRUISE_MIN_KPH - 1e-5
+
+
+def porter_navi_target_kph(planner_target_kph, navi_target_kph, *, minimum_kph=PORTER_CRUISE_MIN_KPH):
   """Apply the current navigation cap to the stock-cruise button target."""
   if not math.isfinite(planner_target_kph):
     return planner_target_kph
   if math.isfinite(navi_target_kph) and 0 < navi_target_kph <= 250:
     planner_target_kph = min(planner_target_kph, navi_target_kph)
-  return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
+  return max(minimum_kph, planner_target_kph)
 
 
-def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True):
+def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *,
+                           lead_visible=True, minimum_kph=PORTER_CRUISE_MIN_KPH):
   """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
   values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
   if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
@@ -50,7 +56,7 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
     return target_kph
 
   lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6
-  return max(PORTER_CRUISE_MIN_KPH, min(target_kph, lead_speed_kph))
+  return max(minimum_kph, min(target_kph, lead_speed_kph))
 
 
 class PorterLeadTracker:
@@ -67,7 +73,7 @@ class PorterLeadTracker:
     self.decel_cap_time = None
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
-             lead_relative_speed, gap_level, *, lead_visible=True):
+             lead_relative_speed, gap_level, *, lead_visible=True, minimum_kph=PORTER_CRUISE_MIN_KPH):
     if (self.last_update is not None and
         (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):
       self.decel_cap = self.decel_cap_time = None
@@ -105,7 +111,8 @@ class PorterLeadTracker:
     # a transient RES+ request from restoring the memorized cruise speed.
     effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
     lead_target_kph = porter_lead_target_kph(
-      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True)
+      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level,
+      lead_visible=True, minimum_kph=minimum_kph)
     if opening_confirmed:
       self.decel_cap = self.decel_cap_time = None
     elif lead_target_kph < min(target_kph, stock_target_kph):

@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import PorterLeadTracker, pcm_cruise_min_kph, porter_navi_target_kph
+from opendbc.car.hyundai.porter import PorterLeadTracker, pcm_cruise_min_kph, porter_navi_target_kph, porter_below_cruise_minimum
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -372,14 +372,19 @@ class Controls:
         # Conventional cruise follows one-km/h button requests. Ensure its
         # target cannot remain above the current navigation camera profile
         # just because the longitudinal plan's terminal speed is higher.
-        navi_target_kph = porter_navi_target_kph(hudControl.setSpeed * CV.MS_TO_KPH, desired_kph)
-        hudControl.setSpeed = float(navi_target_kph * CV.KPH_TO_MS)
+        # Preserve the sub-minimum planner/navigation target for cancellation;
+        # the displayed/button set speed is still clamped to the OEM floor.
+        raw_target_kph = desired_kph if speed_from_pcm == 2 or (speed_from_pcm == 3 and lp.xState != 3) else setSpeed * CV.MS_TO_KPH
+        navi_target_kph = porter_navi_target_kph(raw_target_kph, desired_kph, minimum_kph=0)
         lead = self.sm['radarState'].leadOne
         lead_target_kph = self.porter_lead_tracker.update(
-          self.sm.frame * DT_CTRL, hudControl.setSpeed * CV.MS_TO_KPH,
+          self.sm.frame * DT_CTRL, navi_target_kph,
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
-          self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status)
-        hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
+          self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status, minimum_kph=0)
+        if porter_below_cruise_minimum(lead_target_kph):
+          CC.cruiseControl.cancel = True
+          CC.cruiseControl.resume = False
+        hudControl.setSpeed = float(max(pcm_min_kph, lead_target_kph) * CV.KPH_TO_MS)
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     hudControl.speedVisible = CC.enabled

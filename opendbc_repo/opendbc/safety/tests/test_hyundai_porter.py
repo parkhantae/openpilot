@@ -28,6 +28,14 @@ class TestNativePorter(unittest.TestCase):
         for button in (1, 2):
             self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
 
+    def test_cancel_is_permitted_but_off_cruise_cannot_be_resumed_by_tx(self):
+        engage()
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=4))))
+        rx(0x371, target=0)
+        self.assertFalse(lib.get_controls_allowed())
+        for button in (1, 2):
+            self.assertFalse(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
+
     def test_below_stock_floor_does_not_enable_controls(self):
         init()
         seed(button=2, target=5)

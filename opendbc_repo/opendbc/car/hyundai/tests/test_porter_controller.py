@@ -140,6 +140,16 @@ class TestPorterMessagePath(unittest.TestCase):
     self.assertEqual(self.tick(2), [0])
     self.assertEqual(self.tick(4), [])
 
+  def test_cancellation_reaches_packer_without_speed_or_resume_buttons(self):
+    self.cc.cruiseControl.cancel = True
+    self.assertEqual(self.tick(0), [4])
+    self.assertEqual(self.tick(2), [])
+    self.cs.out.cruiseState.enabled = False
+    self.assertEqual(self.tick(4), [])
+    self.cc.cruiseControl.cancel = False
+    self.cc.hudControl.setSpeed = 50 / 3.6
+    self.assertEqual(self.tick(100), [])
+
   def test_brake_between_stock_frames_preserves_release_to_packer(self):
     self.assertEqual(self.tick(0), [1])
     self.controller.frame = 1
