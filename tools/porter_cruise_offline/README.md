@@ -41,6 +41,21 @@ python -m unittest discover -s opendbc_repo/opendbc/safety/tests -p test_hyundai
 
 ## 읽기 전용 로그 분석기
 
+### 순정 버튼 파형과 주입 메시지 비교
+
+```sh
+python tools/porter_cruise_offline/analyze_buttons.py /path/to/rlog.zst
+# 같은 부팅·주행 세션의 연속 구간은 순서대로 함께 전달할 수 있습니다.
+python tools/porter_cruise_offline/analyze_buttons.py /path/to/segment2.zst /path/to/segment3.zst
+python -m pytest -q -c /dev/null --rootdir=. --confcutdir=tools/porter_cruise_offline tools/porter_cruise_offline/test_analyze_buttons.py
+```
+
+전체 openpilot 스키마로 bus 0 순정 CLU11, `sendcan` 주입, bus 128 송신 확인을 구분합니다. 순정/자동 누름 길이·프레임 수·카운터 진행, 설정 속도 변화, 순정 메시지와 같은 카운터를 쓰면서 버튼 값이 다른 프레임 수를 JSON으로 출력합니다. 송신 확인은 주소/버스/전체 바이트의 중복 개수까지 대조합니다. 직접 버튼 조작이 겹치면 자동 입력의 응답으로 단정하지 않습니다.
+
+카운터 중복은 성공·무응답 양쪽에 존재할 수 있으므로 그 자체를 거부 원인으로 판정하지 않습니다. 0.5초 안의 설정 속도 변화도 물리적인 가감속을 검증하지 않습니다. 구간 경계의 누름·해제·응답 누락은 별도로 고려해야 합니다. 원본 식별 정보나 위치·영상·음성은 출력하지 않습니다.
+
+이 도구는 읽기 전용이며 차량 송신 방식은 변경하지 않습니다. 같은 물리 버스에 이미 송신된 순정 메시지는 Panda 소프트웨어로 사후 제거할 수 없습니다. 순정 신호를 대체·중계하려면 송신측과 수신측을 분리할 수 있는 실제 하네스/버스 구성을 먼저 확인해야 합니다. 근거 없이 카운터·패리티를 바꾸거나 CAN 메시지의 버스를 옮기는 방식은 적용하지 않습니다.
+
 ```sh
 python tools/porter_cruise_offline/inspect_porter_log.py /path/to/rlog.zst
 ```
