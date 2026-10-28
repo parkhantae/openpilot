@@ -12,6 +12,7 @@ PORTER_CRUISE_MAX_KPH = 160
 PORTER_LEAD_REACTION_S = 8.0
 PORTER_LEAD_HOLD_S = 0.6
 PORTER_LEAD_OPENING_CONFIRM_S = 0.5
+PORTER_BUTTON_ACCEL_CONFIRM_S = 0.5
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
@@ -188,6 +189,8 @@ class PorterCruiseButtons:
     self.acknowledged = False
     self.fault = False
     self.cancel_seen = False
+    self.confirm_acceleration = False
+    self.accel_since = None
     self.requests = 0
     self.acks = 0
     self.timeouts = 0
@@ -220,8 +223,13 @@ class PorterCruiseButtons:
         self.pending_release = False
         return None
       return self._interrupt(fresh)
+    if self.last_time is not None and now - self.last_time > 0.1 + 1e-9:
+      # A gap without observations is not continuous target confirmation.
+      self.accel_since = None
     self.last_time = now
     if manual:
+      self.confirm_acceleration = False
+      self.accel_since = None
       self.phase = "idle"
       self.pending_release = False
       self.fault = False
@@ -231,6 +239,7 @@ class PorterCruiseButtons:
       self.status = "manual"
       return None
     if cancel:
+      self.accel_since = None
       self._interrupt(False)
       self.status = "cancel"
       if fresh and not self.cancel_seen:
@@ -240,6 +249,8 @@ class PorterCruiseButtons:
       return None
     self.cancel_seen = False
     if not enabled:
+      self.confirm_acceleration = False
+      self.accel_since = None
       self.fault = False
       self.consecutive_timeouts = 0
       self.next_request = now + 0.3
@@ -254,9 +265,19 @@ class PorterCruiseButtons:
              PORTER_CRUISE_MIN_KPH <= current <= PORTER_CRUISE_MAX_KPH and
              press_seconds > 0 and gap_seconds >= 0)
     if blocked or not valid or frame_key is None:
+      self.accel_since = None
       self.next_request = now + 0.3
       self.status = "blocked" if valid else "invalid_input"
       return self._interrupt(fresh)
+    if self.confirm_acceleration:
+      # After SET-, require a continuously higher target before reversing to
+      # RES+. Short planner/lead fluctuations must not undo the reduction.
+      # This timer runs during the normal release/ack gap, not after it.
+      if requested_target - current >= 1.0 - 1e-5:
+        if self.accel_since is None:
+          self.accel_since = now
+      else:
+        self.accel_since = None
     if self.pending_release:
       # Finish the aborted pulse before starting another one, even if the
       # inhibit cleared during a long RX gap. Give the ECU a quiet interval.
@@ -320,10 +341,16 @@ class PorterCruiseButtons:
       if at_target or now < self.next_request:
         self.status = "at_target" if at_target else "cooldown"
         return None
+      if (target > current and self.confirm_acceleration and
+          (self.accel_since is None or now - self.accel_since < PORTER_BUTTON_ACCEL_CONFIRM_S - 1e-9)):
+        self.status = "accel_confirm"
+        return None
       if not fresh:
         self.status = "waiting_frame"
         return None
       self.direction = 1 if target > current else -1
+      self.confirm_acceleration = self.direction < 0
+      self.accel_since = None
       self.baseline = current
       self.started = now
       # Bound both elapsed time and actual fresh-sample transmissions. At a

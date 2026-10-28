@@ -126,6 +126,62 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.06, target=45, current=49), 0)
     self.assertEqual(self.p.acks, 1)
 
+  def finish_deceleration(self):
+    self.assertEqual(self.step(0, target=40, current=50), 2)
+    self.assertEqual(self.step(.04, target=40, current=49), 0)
+    self.assertEqual(self.step(.06, target=40, current=49), 0)
+
+  def test_deceleration_to_acceleration_requires_continuous_higher_target(self):
+    self.finish_deceleration()
+    for tick in range(10, 60):
+      self.assertIsNone(self.step(tick * .01, target=55, current=49))
+    self.assertEqual(self.p.status, "accel_confirm")
+    self.assertEqual(self.step(.60, target=55, current=49), 1)
+    self.assertEqual(self.step(.64, target=55, current=50), 0)
+    self.assertEqual(self.step(.66, target=55, current=50), 0)
+    # Confirmation applies only to the reversal, not each following RES+.
+    self.assertEqual(self.step(.92, target=55, current=50), 1)
+
+  def test_short_high_target_blip_after_deceleration_never_sends_res(self):
+    self.finish_deceleration()
+    for tick in range(10, 40):
+      self.assertIsNone(self.step(tick * .01, target=55, current=49))
+    self.assertIsNone(self.step(.4, target=49, current=49))
+    for tick in range(50, 100):
+      self.assertIsNone(self.step(tick * .01, target=55, current=49))
+    self.assertEqual(self.step(1., target=55, current=49), 1)
+
+  def test_reversal_confirmation_never_delays_deceleration(self):
+    self.finish_deceleration()
+    self.assertIsNone(self.step(.1, target=55, current=49))
+    self.assertEqual(self.step(.32, target=40, current=49), 2)
+    self.assertEqual(self.step(.36, target=40, current=48), 0)
+    self.assertEqual(self.step(.38, target=40, current=48), 0)
+    self.assertEqual(self.step(.64, target=40, current=48), 2)
+
+  def test_blocked_input_restarts_reversal_confirmation(self):
+    self.finish_deceleration()
+    self.step(.1, target=55, current=49)
+    self.assertIsNone(self.step(.2, target=55, current=49, blocked=True))
+    for tick in range(30, 80):
+      self.assertIsNone(self.step(tick * .01, target=55, current=49))
+    self.assertEqual(self.step(.8, target=55, current=49), 1)
+
+  def test_observation_gap_cannot_confirm_acceleration(self):
+    self.finish_deceleration()
+    self.assertIsNone(self.step(.1, target=55, current=49))
+    for tick in range(62, 112):
+      self.assertIsNone(self.step(tick * .01, target=55, current=49))
+    self.assertEqual(self.step(1.12, target=55, current=49), 1)
+
+  def test_manual_or_disable_does_not_keep_old_reversal_gate(self):
+    for interruption in ({"manual": True}, {"enabled": False}):
+      with self.subTest(interruption=interruption):
+        self.setUp()
+        self.finish_deceleration()
+        self.assertIsNone(self.step(.1, **interruption))
+        self.assertEqual(self.step(.42, target=55, current=49), 1)
+
   def test_manual_input_wins_and_rearms(self):
     self.step(0)
     self.assertIsNone(self.step(.04, manual=True))
