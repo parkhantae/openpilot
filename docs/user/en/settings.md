@@ -265,6 +265,8 @@ These settings describe the car, harness, and device hardware configuration. Do 
 
 For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.
 
+Porter II EV conventional-cruise button control retains a lead deceleration target for up to 0.6 seconds when brief relative-speed variation removes the constraint. Only another calculated lead constraint refreshes the timer; confirmed continuous lead opening or expired observations clears it. Lower navigation or planner targets still take priority. This does not provide direct braking or stopping, and the stock set-speed minimum remains 30 km/h.
+
 > [!CAUTION]
 > Incorrect `HyundaiCameraSCC`, `CanfdHDA2`, `EnableRadarTracks`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity`, or `SpeedFromPCM` values can change vehicle identification, SCC, radar, or longitudinal behavior. Confirm the vehicle, model year, HDA generation, harness location, and whether stock ACC is retained.
 

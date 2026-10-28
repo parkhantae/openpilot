@@ -63,9 +63,14 @@ class PorterLeadTracker:
     self.relative_speed = 0.0
     self.closing = False
     self.opening_since = None
+    self.decel_cap = None
+    self.decel_cap_time = None
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True):
+    if (self.last_update is not None and
+        (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):
+      self.decel_cap = self.decel_cap_time = None
     finite_lead = (lead_visible and all(math.isfinite(v) for v in (now, lead_distance, lead_relative_speed)) and
                    lead_distance > 0)
     if finite_lead:
@@ -89,6 +94,7 @@ class PorterLeadTracker:
       self.last_update = None
       self.closing = False
       self.opening_since = None
+      self.decel_cap = self.decel_cap_time = None
       return target_kph
 
     opening_confirmed = (self.opening_since is not None and
@@ -98,8 +104,22 @@ class PorterLeadTracker:
     # the existing cap until the lead has pulled away continuously, preventing
     # a transient RES+ request from restoring the memorized cruise speed.
     effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
-    target_kph = porter_lead_target_kph(
+    lead_target_kph = porter_lead_target_kph(
       target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True)
+    if opening_confirmed:
+      self.decel_cap = self.decel_cap_time = None
+    elif lead_target_kph < min(target_kph, stock_target_kph):
+      self.decel_cap = lead_target_kph
+      self.decel_cap_time = now
+    if self.decel_cap_time is not None:
+      # One noisy projection must not erase a deceleration target before the
+      # next bounded button request. Only a real lead constraint refreshes
+      # this timer; ordinary samples cannot prolong an old cap indefinitely.
+      if 0 <= now - self.decel_cap_time <= self.hold_seconds:
+        lead_target_kph = min(lead_target_kph, self.decel_cap)
+      else:
+        self.decel_cap = self.decel_cap_time = None
+    target_kph = lead_target_kph
     if self.closing and math.isfinite(stock_target_kph):
       # RES can restore the Porter's memorized speed in one large jump. Do not
       # raise the stock setting while a tracked lead is not pulling away.

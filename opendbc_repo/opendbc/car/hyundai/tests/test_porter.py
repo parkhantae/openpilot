@@ -141,6 +141,47 @@ class TestPorterLeadTracker(unittest.TestCase):
     self.assertEqual(self.update(0), 30)
     self.assertEqual(self.update(.5, visible=False), 30)
 
+  def test_brief_closing_projection_noise_keeps_deceleration_target(self):
+    # Recorded pattern: a closing lead requests ~53 km/h, then a small
+    # relative-speed change puts the projection outside the selected gap.
+    cap = self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
+    self.assertAlmostEqual(cap, 54)
+    self.assertEqual(self.update(.05, target=80, stock=70, ego=19, distance=56, relative=-1), cap)
+    self.assertEqual(self.update(.3, target=80, stock=70, ego=19, distance=56, relative=-1), cap)
+    self.assertEqual(self.update(.61, target=80, stock=70, ego=19, distance=56, relative=-1), 70)
+
+  def test_deceleration_hold_expires_even_with_continuous_lead_samples(self):
+    self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
+    for i in range(1, 61):
+      self.update(i * .01, target=80, stock=70, ego=19, distance=56, relative=-1)
+    self.assertEqual(self.update(.61, target=80, stock=70, ego=19, distance=56, relative=-1), 70)
+
+  def test_new_closing_constraint_refreshes_cap_but_lower_target_wins(self):
+    self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
+    self.assertAlmostEqual(self.update(.1, target=80, stock=70, ego=19, distance=40, relative=-3), 57.6)
+    self.assertEqual(self.update(.2, target=45, stock=70, ego=19, distance=56, relative=-1), 45)
+
+  def test_expired_observation_gap_does_not_restore_an_old_deceleration_cap(self):
+    self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
+    self.assertEqual(self.update(2, target=80, stock=70, ego=19, distance=56, relative=-1), 70)
+
+  def test_held_lead_target_allows_next_acknowledged_deceleration_step(self):
+    pulse = porter.PorterCruiseButtons()
+
+    def step(now, stock, relative):
+      target = self.update(now, target=80, stock=stock, ego=19, distance=56, relative=relative)
+      return pulse.update(now, target, stock, now, enabled=True)
+    self.assertEqual(step(0, 71, -4), 2)
+    self.assertEqual(step(.04, 70, -1), 0)
+    self.assertEqual(step(.06, 70, -1), 0)
+    self.assertEqual(step(.32, 70, -1), 2)
+    self.assertEqual((pulse.requests, pulse.acks), (2, 1))
+
+  def test_confirmed_opening_lead_clears_deceleration_hold(self):
+    self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
+    self.update(.05, target=80, stock=70, ego=19, distance=56, relative=5)
+    self.assertEqual(self.update(.56, target=80, stock=70, ego=19, distance=56, relative=5), 80)
+
   def test_expired_dropout_releases_cap(self):
     self.assertEqual(self.update(0), 30)
     self.assertEqual(self.update(.3, visible=False), 30)
