@@ -102,7 +102,7 @@ class TestPorterPulse(unittest.TestCase):
     keys = [tick // 2 for tick, _ in outputs]
     self.assertEqual(len(keys), len(set(keys)))
 
-  def test_acknowledged_delayed_slot_is_retained(self):
+  def finish_acknowledged_delayed_press(self):
     self.p.retry_sample_delay = .01
     self.assertIsNone(self.step(0, key=0))
     self.assertEqual(self.step(.01, key=0), 1)
@@ -112,6 +112,10 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.05, key=2, current=51), 0)
     self.assertEqual((self.p.acks, self.p.timeouts), (1, 0))
     self.assertEqual(self.p.retry_sample_delay, .01)
+
+  def test_acknowledged_delayed_slot_is_retained(self):
+    self.finish_acknowledged_delayed_press()
+    self.assertEqual(self.p.preferred_sample_delay, .01)
 
   def test_delayed_slot_does_not_delay_driver_cancel_or_pedal_release(self):
     for inhibit, expected in (({"cancel": True}, 4), ({"blocked": True}, 0),
@@ -141,6 +145,63 @@ class TestPorterPulse(unittest.TestCase):
         self.assertEqual(self.p.retry_sample_delay, 0)
         self.assertEqual(self.p.requests, 0)
         self.assertEqual(self.step(.32, key=1), 1)
+
+  def test_acknowledged_slot_survives_manual_and_cruise_off_without_pressing(self):
+    for inhibit in ({"manual": True}, {"enabled": False}):
+      with self.subTest(inhibit=inhibit):
+        self.setUp()
+        self.finish_acknowledged_delayed_press()
+        self.assertEqual(self.p.preferred_sample_delay, .01)
+        self.assertIsNone(self.step(.06, key=3, current=51, **inhibit))
+        self.assertEqual(self.p.retry_sample_delay, .01)
+        self.assertEqual(self.p.requests, 1)
+        self.assertIsNone(self.step(.38, key=19, current=51))
+        self.assertEqual(self.step(.39, key=19, current=51), 1)
+
+  def test_unacknowledged_trial_cannot_replace_last_success(self):
+    self.finish_acknowledged_delayed_press()
+    # A failed alternate-slot trial must not overwrite the successful slot.
+    self.p.retry_sample_delay = 0
+    self.assertEqual(self.step(.4, key=20, current=51), 1)
+    self.assertEqual(self.step(.46, key=23, current=51), 0)
+    self.assertEqual(self.step(.48, key=24, current=51), 0)
+    self.assertIsNone(self.step(.9, key=45, current=51))
+    self.assertEqual(self.p.timeouts, 1)
+    self.assertEqual(self.p.preferred_sample_delay, .01)
+    self.assertIsNone(self.step(.92, key=46, current=51, manual=True))
+    self.assertEqual(self.p.retry_sample_delay, .01)
+
+  def test_new_successful_default_slot_replaces_older_delayed_preference(self):
+    self.finish_acknowledged_delayed_press()
+    self.p.retry_sample_delay = 0
+    self.assertEqual(self.step(.4, key=20, current=51), 1)
+    self.assertEqual(self.step(.44, key=22, current=52), 0)
+    self.assertEqual(self.p.preferred_sample_delay, 0)
+    self.assertIsNone(self.step(.46, key=23, current=52, manual=True))
+    self.assertEqual(self.p.retry_sample_delay, 0)
+
+  def test_late_ack_remembers_request_slot_not_release_fallback_slot(self):
+    self.p.retry_sample_delay = .01
+    self.assertIsNone(self.step(0, key=0))
+    self.assertEqual(self.step(.01, key=0), 1)
+    # No intervening ticks: the existing 100 ms fallback changes to slot zero.
+    for sample in range(1, 7):
+      self.step(sample * .02, key=sample)
+    self.assertEqual(self.p.retry_sample_delay, 0)
+    self.assertIsNone(self.step(.13, key=6, current=51))
+    self.assertEqual(self.p.preferred_sample_delay, .01)
+    self.assertIsNone(self.step(.14, key=7, current=51, manual=True))
+    self.assertEqual(self.p.retry_sample_delay, .01)
+
+  def test_physical_button_and_new_controller_do_not_inherit_preference(self):
+    self.finish_acknowledged_delayed_press()
+    # A physical SET at another speed is not acknowledgement of our request.
+    self.p.retry_sample_delay = 0
+    self.assertIsNone(self.step(.06, key=3, current=60, manual=True))
+    self.assertEqual(self.p.preferred_sample_delay, .01)
+    other = module.PorterCruiseButtons()
+    self.assertEqual((other.preferred_sample_delay, other.retry_sample_delay), (0, 0))
+    self.assertEqual(other.requests, 0)
 
   def test_unavailable_delayed_slot_falls_back_after_bounded_wait(self):
     self.p.retry_sample_delay = .01

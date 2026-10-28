@@ -179,6 +179,8 @@ class PorterCruiseButtons:
     self.sample_frame = None
     self.sample_seen = 0.0
     self.retry_sample_delay = 0.0
+    self.preferred_sample_delay = 0.0
+    self.request_sample_delay = 0.0
     self.slot_wait_since = None
     self.last_time = None
     self.next_request = 0.0
@@ -254,7 +256,7 @@ class PorterCruiseButtons:
       self.accel_since = None
     self.last_time = now
     if manual:
-      self.retry_sample_delay = 0.0
+      self.retry_sample_delay = self.preferred_sample_delay
       self.confirm_acceleration = False
       self.accel_since = None
       self.phase = "idle"
@@ -276,7 +278,7 @@ class PorterCruiseButtons:
       return None
     self.cancel_seen = False
     if not enabled:
-      self.retry_sample_delay = 0.0
+      self.retry_sample_delay = self.preferred_sample_delay
       self.confirm_acceleration = False
       self.accel_since = None
       self.fault = False
@@ -325,6 +327,11 @@ class PorterCruiseButtons:
         if not self.acknowledged:
           self.acks += 1
           self.consecutive_timeouts = 0
+          # Remember only a positively acknowledged request in this controller
+          # session. Manual/disabled paths cannot learn from physical buttons.
+          # Attribute a late ACK to the slot used to start this request, even
+          # if scheduling fallback changed the current slot while releasing.
+          self.preferred_sample_delay = self.request_sample_delay
         self.acknowledged = True
       if now - self.started >= self.ack_timeout and not self.acknowledged:
         self.timeouts += 1
@@ -385,6 +392,7 @@ class PorterCruiseButtons:
       self.accel_since = None
       self.baseline = current
       self.started = now
+      self.request_sample_delay = self.retry_sample_delay
       # Bound both elapsed time and actual fresh-sample transmissions. At a
       # large uptime, subtraction can put 60 ms just below the threshold and
       # permit a fourth press. Scheduler/RX jitter must not add extra frames.

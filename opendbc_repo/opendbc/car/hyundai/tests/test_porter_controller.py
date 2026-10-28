@@ -140,6 +140,36 @@ class TestPorterMessagePath(unittest.TestCase):
         outputs.append((tick, messages))
     self.assertEqual(outputs, [(1, [1]), (3, [1]), (5, [1]), (7, [0]), (9, [0])])
 
+  def test_learned_slot_survives_manual_and_disabled_message_path(self):
+    self.controller.porter_buttons.retry_sample_delay = .01
+
+    def tick(frame):
+      self.controller.frame = frame
+      self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
+      self.cs.cp.ts_nanos["CLU11"]["counter"] = 1_000_000_000 + (frame // 2) * 20_000_000
+      self.cs.clu11["CF_Clu_AliveCnt1"] = (frame // 2) % 16
+      return self.function(self.controller, self.cc, self.cs, True)
+
+    self.assertEqual(tick(0), [])
+    self.assertEqual(tick(1), [1])
+    self.cs.out.cruiseState.speed = 51 / 3.6
+    for frame in range(2, 6):
+      tick(frame)
+    self.cs.cruise_buttons = [2]
+    self.assertEqual(tick(6), [])
+    self.assertEqual(self.controller.porter_buttons.retry_sample_delay, .01)
+    self.cs.cruise_buttons = [0]
+    self.cc.enabled = False
+    self.cs.out.cruiseState.enabled = False
+    for frame in range(7, 20):
+      self.assertEqual(tick(frame), [])
+    self.assertEqual(self.controller.porter_buttons.requests, 1)
+    self.assertEqual(self.controller.porter_buttons.retry_sample_delay, .01)
+    self.cc.enabled = True
+    self.cs.out.cruiseState.enabled = True
+    self.assertEqual(tick(50), [])
+    self.assertEqual(tick(51), [1])
+
   def test_explicit_zero_release_reaches_packer(self):
     self.assertEqual(self.tick(0), [1])
     self.assertEqual(self.tick(12), [0])
