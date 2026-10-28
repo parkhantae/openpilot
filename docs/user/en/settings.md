@@ -473,3 +473,5 @@ USB-CAN requests the initial blink; the existing vehicle indicator-hold function
 A hold-start request without confirmed lamp activation expires after four seconds, allowing the next button press to start a new request.
 
 ATC mode 4 optionally triggers the physical right indicator before a TBT right turn, at an eligible lane-change speed and within 250 m, until turning starts. It requires the supported USB2CAN indicator setup, right lane, BSD and fresh rear-gap checks; existing manual/Bluetooth lane-change behavior is unchanged. See [lane changes](lane-change.md).
+
+Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Vehicle Aux to request stock-cruise cancellation for a valid sub-30 km/h target held for 0.3s in SpeedFromPCM=0. This does not brake, stop or automatically re-engage. See [Porter button controls](buttons-presets.md#button-spam).

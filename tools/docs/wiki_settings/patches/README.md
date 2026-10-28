@@ -81,3 +81,12 @@ git apply --unidiff-zero /absolute/path/to/rav4-radar-display.patch
 
 Only the matching manual regions are edited. Validate both pages and regenerate
 the catalog before publishing, following the authoring guide.
+
+## Porter below-30 target cancellation
+
+`porter-auto-cancel-below30.patch` supplies Korean/English manual regions for
+`PorterAutoCancelBelow30` on c3-pht-porter. Generate initial pages from that branch's
+catalog, then use `git apply --check` and `git apply` on this patch in the staged
+Wiki directory; regenerate to preserve the reviewed manual content. Validate
+before publishing. This branch-specific patch is not a live Wiki publication
+and must not be generated from a catalog that lacks this setting.

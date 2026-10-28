@@ -457,7 +457,8 @@
           "zh": "车辆辅助",
           "params": [
             "MaxAngleFrames",
-            "SpeedFromPCM"
+            "SpeedFromPCM",
+            "PorterAutoCancelBelow30"
           ]
         },
         {
@@ -1938,6 +1939,22 @@
       "cgroup": "启动设置",
       "ctitle": "解除最小转向速度限制",
       "cdescr": "配备 smdps: 1",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "unit": 1
+    },
+    {
+      "group": "시작",
+      "name": "PorterAutoCancelBelow30",
+      "title": "포터: 목표 30km/h 미만 크루즈 취소",
+      "descr": "기본 OFF. 포터2 EV의 SpeedFromPCM=0에서만 적용합니다. ON이면 유효한 계획·선택·내비 목표 또는 기존 앞차 제한의 30km/h 미만 목표가 0.3초 유지될 때 순정 크루즈 취소를 요청합니다. 실제 차량속도 기준이 아닙니다. 취소는 브레이크 제동·정차가 아니며 자동 재시작하지 않습니다. 변경 즉시 반영합니다.",
+      "egroup": "START",
+      "etitle": "Porter: cancel cruise below 30 km/h target",
+      "edescr": "Default OFF. Porter II EV with SpeedFromPCM=0 only. ON requests stock cruise cancellation after a valid planner, selected, navigation or existing lead-limited target stays below 30 km/h for 0.3s. This uses target speed, not vehicle speed. Cancellation does not brake or stop the vehicle; no automatic re-engagement. Applies immediately.",
+      "cgroup": "启动设置",
+      "ctitle": "Porter：目标低于30km/h时取消巡航",
+      "cdescr": "默认关闭。仅适用于Porter II EV且SpeedFromPCM=0。有效目标低于30km/h持续0.3秒后请求取消原厂巡航。依据目标速度而非实际车速；取消不代表制动或停车，不会自动重新开启。立即生效。",
       "min": 0,
       "max": 1,
       "default": 0,

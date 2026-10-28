@@ -1,0 +1,58 @@
+--- a/EN-Porter-cancel-cruise-below-30-km-h-target.md
++++ b/EN-Porter-cancel-cruise-below-30-km-h-target.md
+@@ -26,7 +26,25 @@
+ <!-- CARROT:AUTO:END PorterAutoCancelBelow30 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterAutoCancelBelow30 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="955757825664131ece955bdb1aae6b5c18c29384d6a7f67ddebf71e2302ff9da" reviewed-at="2026-10-28T23:52:35.547492+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Interrupted confirmation restarts the timer. Once cancellation starts, the request remains until stock cruise reports OFF.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Default OFF. Enable only for Porter II EV with SpeedFromPCM=0. Switching OFF does not re-engage cruise; the driver decides when to use cruise again.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Cancellation does not brake or stop the vehicle. It uses the existing button path, so stock vehicle acceptance still requires validation.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterAutoCancelBelow30 -->
+ 
+ <!-- CARROT:SETTING:END PorterAutoCancelBelow30 -->
+--- a/KO-포터-목표-30km-h-미만-크루즈-취소.md
++++ b/KO-포터-목표-30km-h-미만-크루즈-취소.md
+@@ -26,7 +26,25 @@
+ <!-- CARROT:AUTO:END PorterAutoCancelBelow30 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterAutoCancelBelow30 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="955757825664131ece955bdb1aae6b5c18c29384d6a7f67ddebf71e2302ff9da" reviewed-at="2026-10-28T23:52:35.549706+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++유효한 낮은 목표의 연속 확인이 끊기면 확인 시간을 다시 셉니다. 취소가 시작되면 순정 OFF 신호까지 취소 요청을 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기본 OFF입니다. 포터2 EV와 SpeedFromPCM=0에서만 켜세요. OFF 전환은 크루즈를 다시 켜지 않으며, 재사용은 운전자가 직접 결정합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++취소는 자동 제동이나 정차가 아닙니다. 기존 버튼 경로를 통해 취소를 요청하므로 순정 차량 응답은 별도 확인이 필요합니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterAutoCancelBelow30 -->
+ 
+ <!-- CARROT:SETTING:END PorterAutoCancelBelow30 -->

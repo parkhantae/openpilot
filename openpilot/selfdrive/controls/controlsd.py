@@ -15,6 +15,7 @@ from collections import deque
 
 from opendbc.car.car_helpers import interfaces
 from opendbc.car.hyundai.porter import PorterLeadTracker, pcm_cruise_min_kph, porter_navi_target_kph
+from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -106,6 +107,28 @@ class Controls:
       self.LaC = LatControlTorque(self.CP, self.CI)
     self.carrot_controls = CarrotControls(self.CP)
     self.porter_lead_tracker = PorterLeadTracker()
+    self.porter_low_speed_cancel = PorterLowSpeedCancel()
+
+  def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
+    eligible = (self.CP.brand == "hyundai" and self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
+                self.CP.pcmCruise and not self.CP.openpilotLongitudinalControl and
+                self.params.get_bool("PorterAutoCancelBelow30") and self.params.get_int("SpeedFromPCM") == 0 and
+                CC.enabled and CS.canValid and not CS.accFaulted and self.sm.all_checks(['carState']))
+    target = None
+    if eligible:
+      lead = self.sm['radarState'].leadOne
+      target = porter_cancel_target(
+        planner_kph if self.sm.all_checks(['longitudinalPlan']) else None, CS.vCruiseCluster,
+        carrot_man.desiredSpeed if carrot_man is not None else None,
+        CS.vEgo, lead.dRel, lead.vRel, self.sm['selfdriveState'].personality.raw + 1,
+        lead_visible=self.sm.all_checks(['radarState']) and lead.status)
+    previous = self.porter_low_speed_cancel.active
+    if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, target,
+                                           eligible=eligible, cruise_enabled=CS.cruiseState.enabled):
+      CC.cruiseControl.cancel = True
+      CC.cruiseControl.resume = False
+    if previous != self.porter_low_speed_cancel.active:
+      cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s", self.porter_low_speed_cancel.active, target)
 
   def update(self):
     self.sm.update(15)
@@ -382,6 +405,7 @@ class Controls:
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
+    self.update_porter_cancel(CS, CC, setSpeed * CV.MS_TO_KPH if len(speeds) else None, carrot_man)
     hudControl.speedVisible = CC.enabled
     hudControl.lanesVisible = CC.enabled
     hudControl.leadVisible = self.sm['longitudinalPlan'].hasLead
