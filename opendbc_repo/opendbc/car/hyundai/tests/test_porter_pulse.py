@@ -82,7 +82,92 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.p.status, "retry_backoff")
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
     self.assertIsNone(self.step(5.49))
-    self.assertEqual(self.step(5.5), 1)
+    self.assertIsNone(self.step(5.5, key=550))
+    self.assertEqual(self.step(5.51, key=550), 1)
+
+  def test_complete_failed_group_changes_tx_slot_not_retry_rate_or_size(self):
+    requests, outputs = [], []
+    for tick in range(562):
+      before = self.p.requests
+      out = self.step(tick * .01, key=tick // 2)
+      if before != self.p.requests:
+        requests.append(round(tick * .01, 2))
+      if out is not None:
+        outputs.append((tick, out))
+    self.assertEqual(requests, [0., 1., 2., 5.51])
+    self.assertEqual(self.p.retry_sample_delay, .01)
+    self.assertEqual([item for item in outputs if item[0] >= 550],
+                     [(551, 1), (553, 1), (555, 1), (557, 0), (559, 0)])
+    # Both slots still emit at most one frame for each 50 Hz stock sample.
+    keys = [tick // 2 for tick, _ in outputs]
+    self.assertEqual(len(keys), len(set(keys)))
+
+  def test_acknowledged_delayed_slot_is_retained(self):
+    self.p.retry_sample_delay = .01
+    self.assertIsNone(self.step(0, key=0))
+    self.assertEqual(self.step(.01, key=0), 1)
+    self.assertIsNone(self.step(.02, key=1, current=51))
+    self.assertEqual(self.step(.03, key=1, current=51), 0)
+    self.assertIsNone(self.step(.04, key=2, current=51))
+    self.assertEqual(self.step(.05, key=2, current=51), 0)
+    self.assertEqual((self.p.acks, self.p.timeouts), (1, 0))
+    self.assertEqual(self.p.retry_sample_delay, .01)
+
+  def test_delayed_slot_does_not_delay_driver_cancel_or_pedal_release(self):
+    for inhibit, expected in (({"cancel": True}, 4), ({"blocked": True}, 0),
+                              ({"enabled": False}, 0), ({"manual": True}, None)):
+      with self.subTest(inhibit=inhibit):
+        self.setUp()
+        self.p.retry_sample_delay = .01
+        self.assertIsNone(self.step(0, key=0))
+        self.assertEqual(self.step(.01, key=0), 1)
+        # A new sample is immediately usable for an interrupt, without waiting.
+        self.assertEqual(self.step(.02, key=1, **inhibit), expected)
+
+  def test_delayed_slot_remembers_release_across_rx_loss(self):
+    self.p.retry_sample_delay = .01
+    self.assertIsNone(self.step(0, key=0))
+    self.assertEqual(self.step(.01, key=0), 1)
+    self.assertIsNone(self.p.update(.02, 55, 50, None, enabled=True))
+    self.assertEqual(self.step(.03, key=1), 0)
+    self.assertEqual(self.p.requests, 1)
+
+  def test_rearm_restores_default_slot_and_no_automatic_enable(self):
+    for inhibit in ({"manual": True}, {"enabled": False}):
+      with self.subTest(inhibit=inhibit):
+        self.setUp()
+        self.p.retry_sample_delay = .01
+        self.assertIsNone(self.step(0, key=0, **inhibit))
+        self.assertEqual(self.p.retry_sample_delay, 0)
+        self.assertEqual(self.p.requests, 0)
+        self.assertEqual(self.step(.32, key=1), 1)
+
+  def test_unavailable_delayed_slot_falls_back_after_bounded_wait(self):
+    self.p.retry_sample_delay = .01
+    # No control tick between stock samples: do not starve requests forever.
+    for tick in range(5):
+      self.assertIsNone(self.step(tick * .02, key=tick))
+    self.assertEqual(self.p.requests, 0)
+    self.assertEqual(self.step(.1, key=5), 1)
+    self.assertEqual(self.p.retry_sample_delay, 0)
+    self.assertEqual(self.step(.12, key=6), 1)
+    self.assertEqual(self.step(.14, key=7), 1)
+    self.assertEqual(self.step(.16, key=8), 0)
+    self.assertEqual(self.step(.18, key=9), 0)
+    self.assertEqual(self.p.requests, 1)
+    self.assertIsNone(self.step(.6, key=10))
+    self.assertEqual(self.p.timeouts, 1)
+
+  def test_repeated_failed_groups_alternate_two_bounded_slots(self):
+    slots = []
+    previous_timeouts = 0
+    for tick in range(1500):
+      self.step(tick * .01, key=tick // 2)
+      if self.p.timeouts != previous_timeouts:
+        previous_timeouts = self.p.timeouts
+        if previous_timeouts % 3 == 0:
+          slots.append(self.p.retry_sample_delay)
+    self.assertEqual(slots[:3], [.01, 0, .01])
 
   def test_ack_releases_early_and_obeys_gap(self):
     self.step(0)
@@ -314,7 +399,8 @@ class TestPorterPulse(unittest.TestCase):
       self.assertIsNone(self.step(start + .5, target=38, current=34))
     self.assertIsNone(self.step(5.49, target=40, current=34))
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
-    self.assertEqual(self.step(5.5, target=40, current=34), 1)
+    self.assertIsNone(self.step(5.5, target=40, current=34, key=550))
+    self.assertEqual(self.step(5.51, target=40, current=34, key=550), 1)
 
 
 if __name__ == "__main__":

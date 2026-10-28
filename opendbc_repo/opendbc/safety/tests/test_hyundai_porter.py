@@ -28,6 +28,33 @@ class TestNativePorter(unittest.TestCase):
         for button in (1, 2):
             self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
 
+    def test_both_button_retry_slots_pass_native_safety_with_fresh_inputs(self):
+        from opendbc.car.hyundai.porter import PorterCruiseButtons
+
+        for delay in (0, .01):
+            for target, expected_button in ((55, 1), (45, 2)):
+                with self.subTest(delay=delay, target=target):
+                    engage()
+                    pulse = PorterCruiseButtons()
+                    pulse.retry_sample_delay = delay
+                    outputs = []
+                    for tick in range(16):
+                        lib.set_timer(13000 + tick * 10000)
+                        counter = tick // 2 + 3
+                        if tick % 2 == 0:
+                            seed(target=50, counter=counter)
+                        button = pulse.update(tick * .01, target, 50, counter,
+                                              enabled=True)
+                        if button is not None:
+                            outputs.append((tick, button))
+                            self.assertTrue(lib.safety_tx_hook(packet(
+                                0x4f1, data(0x4f1, button=button, counter=counter + 1))))
+                    offset = 1 if delay else 0
+                    self.assertEqual(outputs, [(offset, expected_button),
+                                               (offset + 2, expected_button),
+                                               (offset + 4, expected_button),
+                                               (offset + 6, 0), (offset + 8, 0)])
+
     def test_below_stock_floor_does_not_enable_controls(self):
         init()
         seed(button=2, target=5)

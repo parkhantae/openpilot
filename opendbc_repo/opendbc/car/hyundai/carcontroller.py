@@ -707,9 +707,10 @@ class CarController(CarControllerBase):
                        self.porter_buttons.acks, self.porter_buttons.timeouts)
       if porter_status != getattr(self, "porter_button_status", None):
         self.porter_button_status = porter_status
-        cloudlog.info("PorterButtons: status=%s req=%d ack=%d noack=%d target=%.2f stock=%.2f blocked=%s fresh=%s",
+        cloudlog.info("PorterButtons: status=%s req=%d ack=%d noack=%d target=%.2f stock=%.2f blocked=%s fresh=%s delay_ms=%.0f",
                       *porter_status, CC.hudControl.setSpeed * CV.MS_TO_KPH,
-                      CS.out.cruiseState.speed * CV.MS_TO_KPH, blocked, fresh)
+                      CS.out.cruiseState.speed * CV.MS_TO_KPH, blocked, fresh,
+                      self.porter_buttons.retry_sample_delay * 1000)
       if button is not None:
         can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, button, self.CP))
       return can_sends

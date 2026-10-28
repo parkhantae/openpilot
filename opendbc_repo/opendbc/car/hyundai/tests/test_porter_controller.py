@@ -127,6 +127,19 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.cp.ts_nanos["CLU11"]["counter"] = self.cs.cp._last_update_nanos
     return self.function(self.controller, self.cc, self.cs, True)
 
+  def test_delayed_retry_slot_reaches_packer_once_per_stock_sample(self):
+    self.controller.porter_buttons.retry_sample_delay = .01
+    outputs = []
+    for tick in range(12):
+      self.controller.frame = tick
+      self.cs.cp._last_update_nanos = 1_000_000_000 + tick * 10_000_000
+      self.cs.cp.ts_nanos["CLU11"]["counter"] = 1_000_000_000 + (tick // 2) * 20_000_000
+      self.cs.clu11["CF_Clu_AliveCnt1"] = tick // 2
+      messages = self.function(self.controller, self.cc, self.cs, True)
+      if messages:
+        outputs.append((tick, messages))
+    self.assertEqual(outputs, [(1, [1]), (3, [1]), (5, [1]), (7, [0]), (9, [0])])
+
   def test_explicit_zero_release_reaches_packer(self):
     self.assertEqual(self.tick(0), [1])
     self.assertEqual(self.tick(12), [0])

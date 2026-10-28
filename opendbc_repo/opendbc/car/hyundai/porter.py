@@ -176,6 +176,10 @@ class PorterCruiseButtons:
     self.phase = "idle"
     self.status = "inactive"
     self.last_frame = None
+    self.sample_frame = None
+    self.sample_seen = 0.0
+    self.retry_sample_delay = 0.0
+    self.slot_wait_since = None
     self.last_time = None
     self.next_request = 0.0
     self.direction = 0
@@ -212,7 +216,29 @@ class PorterCruiseButtons:
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
              manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3):
+    if frame_key != self.sample_frame:
+      self.sample_frame = frame_key
+      self.sample_seen = now
     fresh = frame_key is not None and frame_key != self.last_frame
+    # Alternate RX-relative timing only after a whole unacknowledged group.
+    # Consume the sample when its delayed slot is reached, so a repeated RX
+    # sample can carry one delayed transmission, never a duplicate transmission.
+    bypass_delay = (manual or cancel or blocked or not enabled or self.pending_release or
+                    frame_key is None or not math.isfinite(now))
+    if self.retry_sample_delay and not bypass_delay:
+      if fresh and now - self.sample_seen < self.retry_sample_delay - 1e-9:
+        self.slot_wait_since = now if self.slot_wait_since is None else self.slot_wait_since
+        if now - self.slot_wait_since >= 0.1 - 1e-9:
+          # If RX/scheduling never exposes the delayed slot, return to normal
+          # timing rather than silently starving all future button requests.
+          self.retry_sample_delay = 0.0
+          self.slot_wait_since = None
+        else:
+          fresh = False
+      elif fresh:
+        self.slot_wait_since = None
+    else:
+      self.slot_wait_since = None
     if fresh:
       self.last_frame = frame_key
     if not math.isfinite(now) or (self.last_time is not None and now < self.last_time):
@@ -228,6 +254,7 @@ class PorterCruiseButtons:
       self.accel_since = None
     self.last_time = now
     if manual:
+      self.retry_sample_delay = 0.0
       self.confirm_acceleration = False
       self.accel_since = None
       self.phase = "idle"
@@ -249,6 +276,7 @@ class PorterCruiseButtons:
       return None
     self.cancel_seen = False
     if not enabled:
+      self.retry_sample_delay = 0.0
       self.confirm_acceleration = False
       self.accel_since = None
       self.fault = False
@@ -306,6 +334,10 @@ class PorterCruiseButtons:
           # of the drive. Keep each attempt bounded, then retry a new group
           # after a longer quiet period.
           self.consecutive_timeouts = 0
+          # Do not retry forever in the same slot between OEM zero frames.
+          # This changes timing, not payload/counter, pulse size or retry rate.
+          # A successful slot is retained until another full failed group.
+          self.retry_sample_delay = 0.01 if self.retry_sample_delay == 0 else 0.0
           self.next_request = now + max(self.retry_backoff, gap_seconds)
           self.status = "retry_backoff"
         else:
