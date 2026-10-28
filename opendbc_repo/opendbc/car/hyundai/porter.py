@@ -15,33 +15,6 @@ PORTER_LEAD_OPENING_CONFIRM_S = 0.5
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
-class PorterLowSpeedCancel:
-  """Separate cancellation decision; never changes the working button target."""
-  def __init__(self):
-    self.since = None
-    self.last_time = None
-    self.active = False
-
-  def update(self, now, target_kph, *, eligible, cruise_enabled):
-    clock_valid = math.isfinite(now) and (self.last_time is None or now >= self.last_time)
-    self.last_time = now if math.isfinite(now) else None
-    if not eligible or not cruise_enabled or not clock_valid:
-      self.since = None
-      self.active = False
-      return False
-    if self.active:
-      return True  # wait for OEM cruise-off acknowledgement, never request RES
-    # Ignore unavailable/invalid targets, and tolerate float32 encoding of 30.
-    below = target_kph is not None and math.isfinite(target_kph) and 0 <= target_kph < PORTER_CRUISE_MIN_KPH - 1e-5
-    if not below:
-      self.since = None
-      return False
-    if self.since is None:
-      self.since = now
-    self.active = now - self.since >= 0.3 - 1e-9
-    return self.active
-
-
 def porter_steer_request_frames(configured_frames):
   # Hyundai's native safety requires 89 matching requests before another
   # nonzero-torque request-bit cut. A lower user setting resets safety's
@@ -62,8 +35,7 @@ def porter_navi_target_kph(planner_target_kph, navi_target_kph):
   return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
 
 
-def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *,
-                           lead_visible=True, minimum_kph=PORTER_CRUISE_MIN_KPH):
+def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True):
   """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
   values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
   if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
@@ -78,7 +50,7 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
     return target_kph
 
   lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6
-  return max(minimum_kph, min(target_kph, lead_speed_kph))
+  return max(PORTER_CRUISE_MIN_KPH, min(target_kph, lead_speed_kph))
 
 
 class PorterLeadTracker:

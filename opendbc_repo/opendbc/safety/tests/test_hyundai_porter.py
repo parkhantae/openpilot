@@ -28,19 +28,6 @@ class TestNativePorter(unittest.TestCase):
         for button in (1, 2):
             self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
 
-    def test_cancel_ack_then_physical_set_restores_button_authority(self):
-        engage()
-        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=4))))
-        rx(0x371, target=0)
-        self.assertFalse(lib.get_controls_allowed())
-        self.assertFalse(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=1))))
-        lib.set_timer(23000)
-        seed(counter=3, button=2, target=0)
-        lib.set_timer(43000)
-        seed(counter=4, target=40)
-        self.assertTrue(lib.get_controls_allowed())
-        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=1))))
-
     def test_below_stock_floor_does_not_enable_controls(self):
         init()
         seed(button=2, target=5)

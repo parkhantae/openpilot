@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import PorterLeadTracker, PorterLowSpeedCancel, pcm_cruise_min_kph, porter_navi_target_kph, porter_lead_target_kph
+from opendbc.car.hyundai.porter import PorterLeadTracker, pcm_cruise_min_kph, porter_navi_target_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -106,7 +106,6 @@ class Controls:
       self.LaC = LatControlTorque(self.CP, self.CI)
     self.carrot_controls = CarrotControls(self.CP)
     self.porter_lead_tracker = PorterLeadTracker()
-    self.porter_low_speed_cancel = PorterLowSpeedCancel()
 
   def update(self):
     self.sm.update(15)
@@ -381,34 +380,6 @@ class Controls:
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
           self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status)
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
-      if self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV":
-        # Evaluate cancellation independently: preserve the proven HUD/button
-        # target and its lead-hold history, including after manual re-engagement.
-        cancel_targets = []
-        if self.sm.all_checks(['longitudinalPlan']) and len(speeds) and all(math.isfinite(v) and v >= 0 for v in speeds):
-          raw_plan_kph = desired_kph if speed_from_pcm == 2 or (speed_from_pcm == 3 and lp.xState != 3) else setSpeed * CV.MS_TO_KPH
-          cancel_targets.append(raw_plan_kph)
-        if carrot_man is not None:
-          cancel_targets.append(desired_kph)
-        if self.sm.all_checks(['radarState']):
-          lead = self.sm['radarState'].leadOne
-          if lead.status:
-            cancel_targets.append(porter_lead_target_kph(
-              CS.vCruiseCluster, CS.vEgo, lead.dRel, lead.vRel,
-              self.sm['selfdriveState'].personality.raw + 1, minimum_kph=0))
-        cancel_targets = [v for v in cancel_targets if math.isfinite(v) and v >= 0]
-        cancel_target = min(cancel_targets) if cancel_targets else None
-        eligible = (CC.enabled and speed_from_pcm != 1 and self.sm.all_checks(['carState']) and
-                    CS.canValid and not CS.gasPressed and not CS.brakePressed and
-                    not any(event.pressed for event in CS.buttonEvents))
-        was_cancelling = self.porter_low_speed_cancel.active
-        low_speed_cancel = self.porter_low_speed_cancel.update(
-          self.sm.frame * DT_CTRL, cancel_target, eligible=eligible, cruise_enabled=CS.cruiseState.enabled)
-        if was_cancelling != self.porter_low_speed_cancel.active:
-          cloudlog.info("PorterLowSpeedCancel: active=%s raw_target=%s", self.porter_low_speed_cancel.active, cancel_target)
-        if low_speed_cancel:
-          CC.cruiseControl.cancel = True
-          CC.cruiseControl.resume = False
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     hudControl.speedVisible = CC.enabled
