@@ -491,4 +491,4 @@ Porter automatic SET tolerates at most 0.1s of request blocking at gas release, 
 
 Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.
 
-Porter automatic SET alternates 0/10ms retry slots after missing feedback and remembers only a stock-ON-confirmed slot. Pulse and retry-rate limits remain unchanged.
+Porter automatic SET alternates 0/10ms retry slots after missing feedback and remembers only a stock-ON-confirmed slot. Pulse and retry-rate limits remain unchanged. A confirmed startup slot is also handed to speed matching, which changes its next trial slot after each missed request.

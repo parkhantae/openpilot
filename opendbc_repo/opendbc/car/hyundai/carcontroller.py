@@ -736,6 +736,8 @@ class CarController(CarControllerBase):
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
                     any(c.safetyParam in (9217, 25601) for c in self.CP.safetyConfigs)))
+      if self.porter_main_set.confirmed_slot is not None:
+        self.porter_buttons.adopt_confirmed_slot(self.porter_main_set.confirmed_slot)
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
       if cancel_status != getattr(self, "porter_cancel_status", None):
         self.porter_cancel_status = cancel_status

@@ -236,6 +236,9 @@ class TestPorterMainSet(unittest.TestCase):
     self.assertEqual(self.state.pulse_delay, .01)
     self.assertEqual(self.tick(168,stock_enabled=True),0)
     self.assertEqual(self.state.preferred_delay,.01)
+    self.assertEqual(self.state.confirmed_slot, .01)
+    self.tick(169, stock_enabled=True)
+    self.assertIsNone(self.state.confirmed_slot)
     self.tick(170,blocked=True)
     self.assertEqual(self.state.retry_delay,.01)
 
@@ -245,6 +248,30 @@ class TestPorterMainSet(unittest.TestCase):
       self.tick(t)
     self.tick(168,manual_button=2,stock_enabled=True)
     self.assertEqual(self.state.preferred_delay,0.)
+    self.assertIsNone(self.state.confirmed_slot)
+
+  def test_controller_hands_off_only_confirmed_auto_set_feedback(self):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    from opendbc.car.hyundai.porter import PorterCruiseButtons
+    tree = ast.parse((Path(__file__).resolve().parents[1] / 'carcontroller.py').read_text())
+    handoff = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                   ast.unparse(n.test) == 'self.porter_main_set.confirmed_slot is not None')
+    code = compile(ast.Module(body=[handoff], type_ignores=[]), 'actual_controller_slot_handoff', 'exec')
+    obj = NS(porter_main_set=self.state, porter_buttons=PorterCruiseButtons())
+    self.arm()
+    for t in range(3, 168):
+      self.tick(t)
+    exec(code, {'self': obj})
+    self.assertEqual(obj.porter_buttons.retry_sample_delay, 0.)  # TX alone teaches nothing
+    self.tick(168, stock_enabled=True)
+    exec(code, {'self': obj})
+    self.assertEqual(obj.porter_buttons.retry_sample_delay, .01)
+    self.tick(169, stock_enabled=True)
+    obj.porter_buttons.retry_sample_delay = 0.
+    exec(code, {'self': obj})
+    self.assertEqual(obj.porter_buttons.retry_sample_delay, 0.)  # no repeated overwrite
 
   def test_unavailable_delayed_slot_has_bounded_fallback(self):
     self.arm()

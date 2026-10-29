@@ -30,8 +30,12 @@ class PorterMainSet:
     self.pulse_delay = 0.
     self.awaiting_stock = False
     self.slot_wait_since = None
+    self.confirmed_slot = None
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False):
+    # A one-update event, emitted only by actual stock-ON feedback. Other
+    # button transmitters may adopt it without inferring success from TX.
+    self.confirmed_slot = None
     fresh = key is not None and key != self.last_key
     if fresh:
       self.last_key = key
@@ -54,6 +58,7 @@ class PorterMainSet:
       if (self.awaiting_stock and clock_ok and configured and now - self.started <= .5 and
           not manual_button and not main_pressed and not blocked and not gas_pressed):
         self.preferred_delay = self.pulse_delay
+        self.confirmed_slot = self.pulse_delay
       self.awaiting_stock = False
       self.retry_delay = self.preferred_delay
     if manual_button or main_pressed or blocked or not configured or not clock_ok:

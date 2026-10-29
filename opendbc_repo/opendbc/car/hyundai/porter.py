@@ -221,6 +221,11 @@ class PorterCruiseButtons:
     self.ack_timeout = 0.5
     self.retry_backoff = 3.0
 
+  def adopt_confirmed_slot(self, delay):
+    """Carry a stock-ON-confirmed startup slot into idle speed matching."""
+    if self.phase == "idle" and not self.pending_release and delay in (0., .01):
+      self.preferred_sample_delay = self.retry_sample_delay = delay
+
   def _interrupt(self, fresh):
     # A repeated/missing CLU11 sample cannot carry a new release frame. Keep
     # that obligation after aborting the pulse, including a release transition
@@ -238,7 +243,7 @@ class PorterCruiseButtons:
       self.sample_frame = frame_key
       self.sample_seen = now
     fresh = frame_key is not None and frame_key != self.last_frame
-    # Alternate RX-relative timing only after a whole unacknowledged group.
+    # Each unacknowledged request tries the other RX-relative timing slot.
     # Consume the sample when its delayed slot is reached, so a repeated RX
     # sample can carry one delayed transmission, never a duplicate transmission.
     bypass_delay = (manual or cancel or blocked or not enabled or self.pending_release or
@@ -352,15 +357,15 @@ class PorterCruiseButtons:
       if now - self.started >= self.ack_timeout and not self.acknowledged:
         self.timeouts += 1
         self.consecutive_timeouts += 1
+        # Do not spend a full failed group repeating a slot already unanswered.
+        # Keep the existing quiet periods and three-miss backoff; only the
+        # next request's timing changes, never the successful-slot memory.
+        self.retry_sample_delay = .01 - self.request_sample_delay
         if self.consecutive_timeouts >= self.max_consecutive_timeouts:
           # A temporary ECU miss must not disable speed matching for the rest
           # of the drive. Keep each attempt bounded, then retry a new group
           # after a longer quiet period.
           self.consecutive_timeouts = 0
-          # Do not retry forever in the same slot between OEM zero frames.
-          # This changes timing, not payload/counter, pulse size or retry rate.
-          # A successful slot is retained until another full failed group.
-          self.retry_sample_delay = 0.01 if self.retry_sample_delay == 0 else 0.0
           self.next_request = now + max(self.retry_backoff, gap_seconds)
           self.status = "retry_backoff"
         else:

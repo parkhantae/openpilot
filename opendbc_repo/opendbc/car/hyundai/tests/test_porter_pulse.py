@@ -69,23 +69,19 @@ class TestPorterPulse(unittest.TestCase):
     self.assertFalse(self.p.fault)
     self.assertEqual(self.p.status, "retry_wait")
     self.assertIsNone(self.step(.99))
-    self.assertEqual(self.step(1.0), 1)
+    self.assertIsNone(self.step(1.0, key=100))
+    self.assertEqual(self.step(1.01, key=100), 1)
     self.assertEqual((self.p.requests, self.p.timeouts), (2, 1))
 
   def test_three_consecutive_misses_back_off_then_retry(self):
-    for start in (0, 1.0, 2.0):
-      self.assertEqual(self.step(start), 1)
-      self.assertEqual(self.step(start + .12), 0)
-      self.assertEqual(self.step(start + .14), 0)
-      self.assertIsNone(self.step(start + .5))
+    for tick in range(553):
+      self.step(tick*.01, key=tick//2)
     self.assertFalse(self.p.fault)
-    self.assertEqual(self.p.status, "retry_backoff")
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
-    self.assertIsNone(self.step(5.49))
-    self.assertIsNone(self.step(5.5, key=550))
-    self.assertEqual(self.step(5.51, key=550), 1)
+    self.assertEqual(self.step(5.53, key=276), 1)
+    self.assertEqual(self.p.requests, 4)
 
-  def test_complete_failed_group_changes_tx_slot_not_retry_rate_or_size(self):
+  def test_each_miss_changes_slot_without_increasing_retry_rate_or_size(self):
     requests, outputs = [], []
     for tick in range(562):
       before = self.p.requests
@@ -94,10 +90,10 @@ class TestPorterPulse(unittest.TestCase):
         requests.append(round(tick * .01, 2))
       if out is not None:
         outputs.append((tick, out))
-    self.assertEqual(requests, [0., 1., 2., 5.51])
+    self.assertEqual(requests, [0., 1.01, 2.02, 5.53])
     self.assertEqual(self.p.retry_sample_delay, .01)
     self.assertEqual([item for item in outputs if item[0] >= 550],
-                     [(551, 1), (553, 1), (555, 1), (557, 0), (559, 0)])
+                     [(553, 1), (555, 1), (557, 1), (559, 0), (561, 0)])
     # Both slots still emit at most one frame for each 50 Hz stock sample.
     keys = [tick // 2 for tick, _ in outputs]
     self.assertEqual(len(keys), len(set(keys)))
@@ -251,8 +247,10 @@ class TestPorterPulse(unittest.TestCase):
     self.step(.14)
     self.step(.5)
     self.assertEqual(self.p.consecutive_timeouts, 1)
-    self.assertEqual(self.step(1.0), 1)
-    self.assertEqual(self.step(1.04, current=51), 0)
+    self.assertIsNone(self.step(1.0, key=100))
+    self.assertEqual(self.step(1.01, key=100), 1)
+    self.assertIsNone(self.step(1.04, key=104, current=51))
+    self.assertEqual(self.step(1.05, key=104, current=51), 0)
     self.assertEqual(self.p.consecutive_timeouts, 0)
 
   def test_five_kph_target_converges_with_five_one_kph_steps(self):
@@ -452,16 +450,40 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual(self.step(.04, target=49, current=50), 1)
     self.assertEqual(self.step(.06, target=49, current=50), 0)
 
-  def test_real_no_response_uses_bounded_retry_groups(self):
-    for start in (0, 1.0, 2.0):
-      self.step(start, target=38, current=34)
-      self.step(start + .12, target=38, current=34)
-      self.step(start + .14, target=38, current=34)
-      self.assertIsNone(self.step(start + .5, target=38, current=34))
-    self.assertIsNone(self.step(5.49, target=40, current=34))
+  def test_changed_target_cannot_bypass_no_response_backoff(self):
+    for tick in range(553):
+      self.step(tick*.01, key=tick//2, target=38 if tick<300 else 40, current=34)
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
-    self.assertIsNone(self.step(5.5, target=40, current=34, key=550))
-    self.assertEqual(self.step(5.51, target=40, current=34, key=550), 1)
+    self.assertEqual(self.step(5.53, target=40, current=34, key=276), 1)
+
+  def test_confirmed_startup_slot_is_used_without_changing_rearm_deadline(self):
+    self.step(0, enabled=False)
+    self.p.adopt_confirmed_slot(.01)
+    self.assertEqual(self.p.preferred_sample_delay, .01)
+    self.assertIsNone(self.step(.29, key=14))
+    self.assertIsNone(self.step(.30, key=15))
+    self.assertEqual(self.step(.31, key=15), 1)
+    self.assertEqual(self.p.request_sample_delay, .01)
+    # No ACK: next request changes to immediate, without erasing success.
+    for tick in range(32,82):
+      self.step(tick*.01, key=tick//2)
+    self.assertEqual(self.p.retry_sample_delay, 0.)
+    self.assertEqual(self.p.preferred_sample_delay, .01)
+    self.assertIsNone(self.step(.82, enabled=False))
+    self.assertEqual(self.p.retry_sample_delay, .01)
+
+  def test_slot_handoff_cannot_replace_an_active_pulse_or_pending_release(self):
+    self.step(0)
+    self.p.adopt_confirmed_slot(.01)
+    self.assertEqual(self.p.retry_sample_delay, 0.)
+    self.p.phase = 'idle'
+    self.p.pending_release = True
+    self.p.adopt_confirmed_slot(.01)
+    self.assertEqual(self.p.retry_sample_delay, 0.)
+    self.p.pending_release = False
+    for invalid in (None, -.01, .02, float('nan')):
+      self.p.adopt_confirmed_slot(invalid)
+      self.assertEqual(self.p.retry_sample_delay, 0.)
 
 
 if __name__ == "__main__":

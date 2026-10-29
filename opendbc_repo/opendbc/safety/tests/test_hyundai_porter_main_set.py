@@ -219,3 +219,33 @@ class TestPorterMainSetSafety(unittest.TestCase):
           starts.append(tick)
     self.assertEqual(starts,[52,163])
     self.assertEqual(pulse.preferred_delay,.01)
+
+  def test_startup_handoff_and_each_missed_speed_retry_pass_native(self):
+    from opendbc.car.hyundai.porter import PorterCruiseButtons
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    init(9217)
+    startup, speed = PorterMainSet(), PorterCruiseButtons()
+    requests = []
+    for tick in range(850):
+      lib.set_timer(21000+tick*10000)
+      counter, stock = tick//2, tick>=168
+      if tick % 2 == 0:
+        seed(counter=counter, main=tick==0, target=40 if stock else 0, speed=40)
+      before = speed.requests
+      button = speed.update(tick*.01, 45, 40, counter, enabled=stock)
+      if speed.requests != before:
+        requests.append((tick*.01, speed.request_sample_delay))
+      main_button = startup.update(tick*.01, counter, main_pressed=tick<2, manual_button=0,
+                                   blocked=False, request=not stock, stock_enabled=stock, configured=True)
+      if startup.confirmed_slot is not None:
+        speed.adopt_confirmed_slot(startup.confirmed_slot)
+      if button is None:
+        button = main_button
+      if button is not None:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter+1))),
+                        (tick, button))
+    self.assertEqual([slot for _, slot in requests[:4]], [.01, 0., .01, 0.])
+    self.assertGreaterEqual(requests[1][0]-requests[0][0], 1.)
+    self.assertGreaterEqual(requests[2][0]-requests[1][0], 1.)
+    self.assertGreaterEqual(requests[3][0]-requests[2][0], 3.5)
+    self.assertEqual(speed.preferred_sample_delay, .01)  # misses do not teach success
