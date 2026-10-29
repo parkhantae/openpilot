@@ -10,7 +10,7 @@ class TestPorterMainSet(unittest.TestCase):
     args = dict(main_pressed=False, manual_button=0, blocked=False, request=True,
                 stock_enabled=False, configured=True)
     args.update(kw)
-    return self.state.update(tick * .01, tick // 2 if tick % 2 == 0 else None, **args)
+    return self.state.update(tick * .01, tick // 2, **args)
 
   def arm(self):
     self.tick(0, main_pressed=True)
@@ -188,9 +188,9 @@ class TestPorterMainSet(unittest.TestCase):
       self.tick(t, gas_pressed=True, request=False)
     for t in range(100, 105):
       self.assertIsNone(self.tick(t, request=False))
-    for t in range(105, 116):
+    for t in range(105, 115):
       self.assertIsNone(self.tick(t))
-    self.assertEqual(self.tick(116), 2)
+    self.assertEqual(self.tick(115), 2)
 
   def test_request_chatter_restarts_continuous_confirmation(self):
     self.arm()
@@ -222,3 +222,38 @@ class TestPorterMainSet(unittest.TestCase):
     for t in range(100, 110):
       self.assertIsNone(self.tick(t))
     self.assertEqual(self.tick(110), 2)
+
+  def test_unacknowledged_startup_tries_other_slot_and_learns_real_feedback(self):
+    self.arm()
+    starts=[]
+    for t in range(3, 168):
+      was_pressing=self.state.pressing
+      b=self.tick(t)
+      if b==2 and not was_pressing:
+        starts.append(t)
+    self.assertEqual(starts, [52,163])
+    self.assertEqual(self.state.preferred_delay, 0.)
+    self.assertEqual(self.state.pulse_delay, .01)
+    self.assertEqual(self.tick(168,stock_enabled=True),0)
+    self.assertEqual(self.state.preferred_delay,.01)
+    self.tick(170,blocked=True)
+    self.assertEqual(self.state.retry_delay,.01)
+
+  def test_physical_set_does_not_learn_automatic_slot(self):
+    self.arm()
+    for t in range(3, 168):
+      self.tick(t)
+    self.tick(168,manual_button=2,stock_enabled=True)
+    self.assertEqual(self.state.preferred_delay,0.)
+
+  def test_unavailable_delayed_slot_has_bounded_fallback(self):
+    self.arm()
+    starts=[]
+    for t in range(3, 200):
+      was_pressing=self.state.pressing
+      b=self.state.update(t*.01,t,main_pressed=False,manual_button=0,blocked=False,
+                          request=True,stock_enabled=False,configured=True)
+      if b==2 and not was_pressing:
+        starts.append(t)
+    self.assertEqual(starts,[52,168])
+    self.assertEqual(self.state.pulse_delay,0.)

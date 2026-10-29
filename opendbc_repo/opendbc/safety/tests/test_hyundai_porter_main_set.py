@@ -198,3 +198,24 @@ class TestPorterMainSetSafety(unittest.TestCase):
       seed(counter=counter, speed=40)
     self.assertTrue(self.tx(counter=36))
     self.assertFalse(lib.get_controls_allowed())
+
+  def test_startup_timing_trial_and_feedback_learning_pass_native(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    init(9217)
+    pulse=PorterMainSet()
+    starts=[]
+    for tick in range(180):
+      lib.set_timer(21000+tick*10000)
+      counter=tick//2
+      stock=tick>=168
+      if tick % 2==0:
+        seed(counter=counter,main=tick==0,target=40 if stock else 0,speed=40)
+      was=pulse.pressing
+      b=pulse.update(tick*.01,counter,main_pressed=tick<2,manual_button=0,blocked=False,
+                     request=True,stock_enabled=stock,configured=True)
+      if b is not None:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=b,counter=counter+1))),(tick,b))
+        if b==2 and not was:
+          starts.append(tick)
+    self.assertEqual(starts,[52,163])
+    self.assertEqual(pulse.preferred_delay,.01)

@@ -744,9 +744,10 @@ class CarController(CarControllerBase):
       if (any(c.safetyParam in (9217, 25601) for c in self.CP.safetyConfigs) and
           main_status != getattr(self, "porter_main_status", None)):
         self.porter_main_status = main_status
-        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s",
+        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s delay_ms=%.0f preferred_ms=%.0f",
                       *main_status, CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
-                      self.porter_main_set.main_known)
+                      self.porter_main_set.main_known, self.porter_main_set.pulse_delay * 1000,
+                      self.porter_main_set.preferred_delay * 1000)
       if cancel_busy:
         button = cancel_button
       elif button is None:
