@@ -111,7 +111,7 @@ class Controls:
 
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
     auto_set = (self.params.get_bool("PorterAutoSetMain") and
-                any(c.safetyParam in (9217, 25601) for c in getattr(self.CP, 'safetyConfigs', ())))
+                any(c.safetyParam in (9217, 25601, 58369) for c in getattr(self.CP, 'safetyConfigs', ())))
     # PCM disengagement clears enabled even while AlwaysLateral remains ready.
     # Lateral readiness does not authorize SET; physical MAIN is checked below.
     ready = CC.enabled or (auto_set and getattr(CC, 'latActive', False))

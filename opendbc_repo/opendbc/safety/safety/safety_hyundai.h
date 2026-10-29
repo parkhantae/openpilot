@@ -56,10 +56,18 @@ static const CanMsg HYUNDAI_TX_MSGS[] = {
 static bool hyundai_legacy = false;
 static bool hyundai_cruise_buttons_alt = false;
 static bool hyundai_porter_cc = false;
-// Optional MAIN-authorized SET: never enabled by the old 1025 configuration.
+// Optional driver-authorized SET: never enabled by the old 1025 configuration.
 static bool hyundai_porter_main_set = false;
 static bool hyundai_porter_main = false;
 static bool hyundai_porter_main_known = false;
+// New profile only: one fresh pedal cycle can grant a bounded startup trial
+// without claiming knowledge of MAIN. Only stock engagement confirms MAIN.
+static bool hyundai_porter_startup_gas = false;
+static bool hyundai_porter_startup_grant = false;
+static bool hyundai_porter_startup_released = false;
+static bool hyundai_porter_startup_valid = false;
+static uint32_t hyundai_porter_startup_ts = 0U;
+static uint32_t hyundai_porter_startup_grant_ts = 0U;
 static bool hyundai_porter_main_prev = false;
 static bool hyundai_porter_main_armed = false;
 static bool hyundai_porter_speed_ok = false;
@@ -191,25 +199,43 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
       if (hyundai_porter_main_set) hyundai_porter_limiter = GET_BIT(to_push, 13U);
       if (hyundai_porter_main_set) {
         bool raw_gas = (((GET_BYTE(to_push, 4) & 0x7FU) << 1) | GET_BYTE(to_push, 3) >> 7) != 0U;
-        bool rearm_ready = hyundai_porter_main && hyundai_porter_main_known && !hyundai_porter_rearm_manual && !cruise_engaged_prev &&
+        bool rearm_ready = hyundai_porter_main && (hyundai_porter_main_known || hyundai_porter_startup_gas) &&
+                           !hyundai_porter_rearm_manual && !cruise_engaged_prev &&
                            hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
                            !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed && !hyundai_porter_limiter;
-        if (!rearm_ready) hyundai_porter_rearm_gas = false;
+        if (!rearm_ready) {
+          hyundai_porter_rearm_gas = false;
+          hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
+        } else if (!hyundai_porter_main_known) {
+          if (!hyundai_porter_startup_valid) {
+            hyundai_porter_startup_valid = true;
+            hyundai_porter_startup_ts = now;
+          }
+          if (!raw_gas) hyundai_porter_startup_released = true;
+        }
         if (rearm_ready && !hyundai_porter_main_armed) {
-          if (raw_gas && !hyundai_porter_raw_gas_prev) {
+          if (raw_gas && !hyundai_porter_raw_gas_prev && (hyundai_porter_main_known || hyundai_porter_startup_released)) {
             hyundai_porter_rearm_gas = true;
             hyundai_porter_rearm_ts = now;
           } else if (!raw_gas && hyundai_porter_raw_gas_prev) {
-            if (hyundai_porter_rearm_gas && hyundai_porter_speed_ok &&
-                get_ts_elapsed(now, hyundai_porter_rearm_ts) >= 100000U) hyundai_porter_main_armed = true;
+            if (hyundai_porter_rearm_gas && hyundai_porter_speed_ok && get_ts_elapsed(now, hyundai_porter_rearm_ts) >= 100000U) {
+              if (hyundai_porter_main_known) {
+                hyundai_porter_main_armed = true;
+              } else if (get_ts_elapsed(now, hyundai_porter_startup_ts) >= 500000U) {
+                hyundai_porter_startup_grant = true;
+                hyundai_porter_startup_grant_ts = now;
+              }
+            }
             hyundai_porter_rearm_gas = false;
           }
         }
+        if (raw_gas) hyundai_porter_startup_grant = false;
         hyundai_porter_raw_gas_prev = raw_gas;
       }
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
       bool engaged = target >= 30 && target <= 160;
       if (hyundai_porter_main_set && engaged) {
+        hyundai_porter_startup_grant = false;
         hyundai_porter_set_active = false;
         // Synchronize parity once on actual engagement; never rearm on feedback.
         if (!cruise_engaged_prev && !hyundai_porter_main_prev && hyundai_porter_inputs_valid() &&
@@ -248,6 +274,9 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
         }
       }
       if (hyundai_porter_main_set) {
+        if (main_button || button != HYUNDAI_BTN_NONE) {
+          hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
+        }
         hyundai_porter_rearm_manual = main_button || button != HYUNDAI_BTN_NONE;
         hyundai_porter_clu_ts = now;
         hyundai_porter_clu_counter = GET_BYTE(to_push, 3) >> 4;
@@ -272,6 +301,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
       }
     }
     if (!hyundai_porter_drive || hyundai_porter_hold || hyundai_porter_park || hyundai_porter_fault || !hyundai_porter_inputs_valid()) {
+      hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
       controls_allowed = false;
     }
   }
@@ -342,6 +372,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     }
     if (hyundai_porter_main_set && (brake_pressed || hyundai_porter_hold || hyundai_porter_park ||
                                    hyundai_porter_fault || !hyundai_porter_inputs_valid())) {
+      hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
       hyundai_porter_main_armed = false;
       hyundai_porter_rearm_gas = false;
       hyundai_porter_set_active = false;
@@ -368,6 +399,7 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
   if (hyundai_porter_cc && !hyundai_porter_inputs_valid()) controls_allowed = false;
   if (hyundai_porter_main_set && (brake_pressed || hyundai_porter_hold || hyundai_porter_park ||
                                  hyundai_porter_fault || !hyundai_porter_inputs_valid())) {
+    hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
     hyundai_porter_main_armed = false;
     hyundai_porter_rearm_gas = false;
     hyundai_porter_set_active = false;
@@ -436,9 +468,13 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
                      hyundai_porter_drive && !hyundai_porter_hold && !hyundai_porter_park &&
                      !hyundai_porter_fault && !brake_pressed && !gas_pressed;
     bool main_set = false;
-    if (hyundai_porter_main_set && button == HYUNDAI_BTN_NONE) hyundai_porter_set_active = false;
+    if (hyundai_porter_main_set && button == HYUNDAI_BTN_NONE) {
+      hyundai_porter_set_active = false;
+      hyundai_porter_startup_grant = false;
+    }
     if (hyundai_porter_main_set && !cruise_engaged_prev && button == HYUNDAI_BTN_SET &&
-        hyundai_porter_main_armed && hyundai_porter_main && hyundai_porter_main_known && hyundai_porter_speed_ok && !hyundai_porter_limiter &&
+        hyundai_porter_main && ((hyundai_porter_main_known && hyundai_porter_main_armed) || hyundai_porter_startup_grant) &&
+        hyundai_porter_speed_ok && !hyundai_porter_limiter &&
         hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
         !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed && !gas_pressed &&
         !GET_BIT(to_send, 3U) && !GET_BIT(to_send, 4U)) {
@@ -446,10 +482,12 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
       int counter = GET_BYTE(to_send, 3) >> 4;
       bool fresh_sample = hyundai_porter_clu_ts != hyundai_porter_set_rx_ts &&
                           counter == ((hyundai_porter_clu_counter + 1) & 15);
-      bool main_confirmed = get_ts_elapsed(now, hyundai_porter_main_ts) >= 500000U;
+      bool main_confirmed = hyundai_porter_main_known ? get_ts_elapsed(now, hyundai_porter_main_ts) >= 500000U :
+                            (hyundai_porter_startup_valid && get_ts_elapsed(now, hyundai_porter_startup_ts) >= 500000U);
       bool retry_ready = !hyundai_porter_set_seen ||
                          get_ts_elapsed(now, hyundai_porter_set_start) >= hyundai_porter_set_wait;
-      if (!hyundai_porter_set_active && fresh_sample && main_confirmed && retry_ready) {
+      bool grant_ready = !hyundai_porter_startup_grant || get_ts_elapsed(now, hyundai_porter_startup_grant_ts) <= 100000U;
+      if (!hyundai_porter_set_active && fresh_sample && main_confirmed && retry_ready && grant_ready) {
         hyundai_porter_set_active = true;
         hyundai_porter_set_seen = true;
         hyundai_porter_set_start = now;
@@ -462,10 +500,13 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
           get_ts_elapsed(now, hyundai_porter_set_start) < 120000U) {
         main_set = true;
         hyundai_porter_set_frames += 1;
+        if (hyundai_porter_set_frames >= 6) hyundai_porter_startup_grant = false;
         hyundai_porter_set_rx_ts = hyundai_porter_clu_ts;
         // Only actual stock engagement may enable controls after this pulse.
         hyundai_porter_enable_button_seen = true;
         hyundai_porter_enable_button_ts = now;
+      } else {
+        hyundai_porter_startup_grant = false;
       }
     }
     return !GET_BIT(to_send, 3U) && (button == HYUNDAI_BTN_NONE || main_set || (step && permitted) ||
@@ -673,6 +714,10 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_porter_main_set = hyundai_porter_cc && GET_FLAG(param, 8192U);
   hyundai_porter_main = hyundai_porter_main_prev = hyundai_porter_main_armed = false;
   hyundai_porter_main = hyundai_porter_main_set && GET_FLAG(param, 16384U);
+  hyundai_porter_startup_gas = hyundai_porter_main && GET_FLAG(param, 32768U);
+  hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
+  hyundai_porter_startup_ts = 0U;
+  hyundai_porter_startup_grant_ts = 0U;
   hyundai_porter_main_known = false;
   hyundai_porter_speed_ok = hyundai_porter_set_active = hyundai_porter_set_seen = false;
   hyundai_porter_set_start = hyundai_porter_set_wait = hyundai_porter_clu_ts = hyundai_porter_set_rx_ts = 0U;
@@ -698,7 +743,7 @@ static safety_config hyundai_init(uint16_t param) {
       {.msg = {{0x507, 0, 4, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, {0}, {0}}},
     };
     // Never combine conventional cruise with direct longitudinal or camera SCC mode.
-    if (param != 1025U && param != 9217U && param != 25601U) {
+    if (param != 1025U && param != 9217U && param != 25601U && param != 58369U) {
       safety_config invalid = {0};
       return invalid;
     }

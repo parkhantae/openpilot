@@ -3,6 +3,74 @@ from opendbc.car.hyundai.porter_main_set import PorterMainSet
 
 
 class TestPorterMainSet(unittest.TestCase):
+  def test_actual_interface_and_controller_select_versioned_startup_profile(self):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    from opendbc.car.hyundai.values import HyundaiFlags, HyundaiSafetyFlags
+    root = Path(__file__).resolve().parents[1]
+    tree = ast.parse((root / 'interface.py').read_text())
+    block = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                 ast.unparse(n.test) == 'candidate == CAR.HYUNDAI_PORTER_II_EV')
+    code = compile(ast.Module(body=[block], type_ignores=[]), 'actual_porter_profile', 'exec')
+    for enabled, engage, expected in ((False,2,1025), (True,0,9217), (True,2,58369)):
+      ret = NS(flags=0)
+      exec(code, dict(candidate='porter', CAR=NS(HYUNDAI_PORTER_II_EV='porter'), ret=ret,
+                      params=NS(get_bool=lambda key,e=enabled:e, get_int=lambda key,e=engage:e),
+                      HyundaiFlags=HyundaiFlags, HyundaiSafetyFlags=HyundaiSafetyFlags,
+                      structs=NS(CarParams=NS(SafetyModel=NS(hyundai='hyundai'))),
+                      get_safety_config=lambda model,param:NS(safetyParam=param)))
+      self.assertEqual(ret.safetyConfigs[0].safetyParam | HyundaiSafetyFlags.EV_GAS, expected)
+    tree = ast.parse((root / 'carcontroller.py').read_text())
+    node = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
+                ast.unparse(n.targets[0]) == 'self.porter_main_set')
+    code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_startup_init', 'exec')
+    for profile in (1025,9217,25601,58369):
+      obj = NS()
+      exec(code, dict(self=obj, CP=NS(safetyConfigs=[NS(safetyParam=profile)]), PorterMainSet=PorterMainSet))
+      self.assertEqual(obj.porter_main_set.allow_startup_gas, profile==58369)
+
+  def test_startup_gas_is_one_attempt_per_fresh_pedal_cycle_without_main_proof(self):
+    self.state = PorterMainSet(initial_main=True, allow_startup_gas=True)
+    outputs = []
+    for t in range(500):
+      gas = 20 <= t < 100
+      b = self.tick(t, gas_pressed=gas, request=not gas)
+      if b is not None:
+        outputs.append((t, b))
+    self.assertEqual(outputs, [(100, 2), (102, 2), (104, 2), (106, 2), (108, 2), (110, 2), (112, 0)])
+    self.assertFalse(self.state.main_known)
+    self.assertFalse(self.state.armed)
+
+  def test_startup_gas_held_at_boot_requires_release_then_new_press(self):
+    self.state = PorterMainSet(initial_main=True, allow_startup_gas=True)
+    for t in range(200):
+      self.assertIsNone(self.tick(t, gas_pressed=t<100, request=t>=100))
+    for t in range(200, 240):
+      self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
+    self.assertEqual(self.tick(240), 2)
+    self.assertEqual(self.tick(242, stock_enabled=True), 0)
+    self.assertTrue(self.state.main_known)
+
+  def test_startup_grant_expires_without_delayed_engagement(self):
+    self.state = PorterMainSet(initial_main=True, allow_startup_gas=True)
+    self.state.next_request = 3.
+    for t in range(400):
+      self.assertIsNone(self.tick(t, gas_pressed=20<=t<100, request=not 20<=t<100))
+    self.assertFalse(self.state.startup_grant)
+
+  def test_startup_pedal_cannot_bypass_main_off_cancel_brake_or_option(self):
+    for override in (dict(main_pressed=True), dict(manual_button=4), dict(blocked=True), dict(configured=False)):
+      self.state = PorterMainSet(initial_main=True, allow_startup_gas=True)
+      for t in range(100):
+        self.tick(t, gas_pressed=t>=20, request=t<20)
+      self.assertIsNone(self.tick(100, **override))
+      for t in range(101, 250):
+        self.assertIsNone(self.tick(t))
+    self.state = PorterMainSet(initial_main=False, allow_startup_gas=True)
+    for t in range(250):
+      self.assertIsNone(self.tick(t, gas_pressed=20<=t<100, request=not 20<=t<100))
+
   def setUp(self):
     self.state = PorterMainSet()
 

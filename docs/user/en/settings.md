@@ -477,7 +477,7 @@ ATC mode 4 optionally triggers the physical right indicator before a TBT right t
 
 Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Porter Only to request stock-cruise cancellation for a valid sub-30 km/h target held for 0.3s in SpeedFromPCM=0. This does not brake, stop or automatically re-engage. See [Porter button controls](buttons-presets.md#button-spam).
 
-Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and physically authorize through MAIN; target and actual speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
+Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and verify CRUISE standby; target and actual speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
 
 
 With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby requests SET− at current speed on the next available sample without extra release-confirmation delay. All other authorization and revocation guards remain.
@@ -493,3 +493,5 @@ Porter automatic SET initializes MAIN parity consistently with AutoEngage while 
 Porter automatic SET alternates 0/10ms retry slots after missing feedback and remembers only a stock-ON-confirmed slot. Pulse and retry-rate limits remain unchanged. A confirmed startup slot is also handed to speed matching, which changes its next trial slot after each missed request.
 
 Porter GAP is configured once through common TF1–TF4. Button deceleration and low-target cancellation share the planner’s applied following time. Duplicate Porter-only gap controls were removed; their legacy values are unused and common TF settings are preserved.
+
+Initial AutoEngage=2 standby can request one SET trial without MAIN confirmation, after observing released gas and a fresh press of at least 0.1s followed by release at 30 km/h or above. Failure requires a new pedal cycle; the initial indication alone cannot start cruise. Restart after updating to apply the new Panda profile.

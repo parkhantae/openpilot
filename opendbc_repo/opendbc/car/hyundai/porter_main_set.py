@@ -1,9 +1,9 @@
-"""Physical-MAIN-only, bounded SET pulses; no remembered-speed RES requests."""
+"""Driver-authorized bounded SET pulses; no remembered-speed RES requests."""
 import math
 
 
 class PorterMainSet:
-  def __init__(self, initial_main=False):
+  def __init__(self, initial_main=False, allow_startup_gas=False):
     self.main = bool(initial_main)
     self.main_known = False
     self.previous_main = False
@@ -32,6 +32,12 @@ class PorterMainSet:
     self.awaiting_stock = False
     self.slot_wait_since = None
     self.confirmed_slot = None
+    self.allow_startup_gas = allow_startup_gas
+    self.startup_released = False
+    self.startup_gas_since = None
+    self.startup_valid_since = None
+    self.startup_grant = False
+    self.startup_grant_since = None
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False):
     # A one-update event, emitted only by actual stock-ON feedback. Other
@@ -82,6 +88,33 @@ class PorterMainSet:
         self.armed = False
     if blocked:
       self.armed = False
+    startup_ready = (self.allow_startup_gas and configured and self.main and not self.main_known and clock_ok and
+                     not blocked and not main_pressed and not manual_button and not stock_enabled)
+    if not startup_ready:
+      self.startup_released = self.startup_grant = False
+      self.startup_gas_since = self.startup_valid_since = None
+    else:
+      if self.startup_valid_since is None:
+        self.startup_valid_since = now
+      if not gas_pressed:
+        self.startup_released = True
+      if gas_pressed and not self.raw_previous_gas and self.startup_released:
+        self.startup_gas_since = now
+      elif not gas_pressed and self.raw_previous_gas:
+        if (self.startup_gas_since is not None and now - self.startup_gas_since >= .1 - 1e-9 and
+            now - self.startup_valid_since >= .5 - 1e-9 and request):
+          # A fresh driver pedal cycle grants one bounded trial, NOT knowledge
+          # of OEM MAIN state. Only actual stock ON may synchronize that state.
+          self.startup_grant = True
+          self.startup_grant_since = now
+          self.previous_gas = True
+          self.main_since = self.startup_valid_since
+        self.startup_gas_since = None
+      if gas_pressed or not request:
+        self.startup_grant = False
+      if (self.startup_grant and not self.pressing and self.startup_grant_since is not None and
+          now - self.startup_grant_since > .1 + 1e-9):
+        self.startup_grant = False
     rearm_ready = (configured and self.main and self.main_known and clock_ok and not blocked and not main_pressed and
                    not manual_button and not stock_enabled)
     if not rearm_ready:
@@ -95,7 +128,7 @@ class PorterMainSet:
           self.previous_gas = True
         self.rearm_gas_since = None
     self.raw_previous_gas = gas_pressed
-    eligible = self.armed and configured and clock_ok and not blocked and not main_pressed and not manual_button
+    eligible = (self.armed or self.startup_grant) and configured and clock_ok and not blocked and not main_pressed and not manual_button
     if eligible and not stock_enabled and self.previous_gas and not gas_pressed:
       self.gas_release_since = now
     self.previous_gas = gas_pressed if eligible and not stock_enabled else False
@@ -111,6 +144,7 @@ class PorterMainSet:
       if self.pressing:
         self.pending_release = True
         self.awaiting_stock = False
+        self.startup_grant = False
       self.pressing = False
       if stock_enabled:
         self.attempts = 0
@@ -126,6 +160,7 @@ class PorterMainSet:
     if self.pressing:
       if now - self.started >= .12 - 1e-9 or self.frames >= 6:
         self.pressing = False
+        self.startup_grant = False
         self.pending_release = True
         self.retry_delay = .01 - self.pulse_delay
         self.next_request = now + self.retry_wait

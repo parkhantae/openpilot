@@ -3,6 +3,108 @@ from hyundai_porter_testlib import lib, packet, data, seed, init
 
 
 class TestPorterMainSetSafety(unittest.TestCase):
+  def startup_pedal(self, param=58369, **overrides):
+    init(param)
+    for tick in range(91):
+      lib.set_timer(21000+tick*10000)
+      if tick % 2 == 0:
+        args = dict(speed=40, gas=20<=tick<90)
+        args.update(overrides)
+        seed(counter=tick//2, **args)
+
+  def test_new_startup_profile_grants_one_bounded_set_not_controls(self):
+    self.startup_pedal()
+    self.assertFalse(lib.get_controls_allowed())
+    self.assertFalse(self.tx(button=1, counter=46))
+    for i in range(6):
+      if i:
+        lib.set_timer(921000+i*20000)
+        seed(counter=45+i, speed=40)
+      self.assertTrue(self.tx(counter=46+i))
+    lib.set_timer(1041000)
+    seed(counter=51, speed=40)
+    self.assertFalse(self.tx(counter=52))
+    self.assertTrue(self.tx(button=0, counter=52))
+    lib.set_timer(3021000)
+    seed(counter=52, speed=40)
+    self.assertFalse(self.tx(counter=53))  # no blind retry after quiet period
+    self.assertFalse(lib.get_controls_allowed())
+
+  def test_startup_profile_and_all_existing_override_limits_are_required(self):
+    for param in (1025, 9217, 25601):
+      self.startup_pedal(param)
+      self.assertFalse(self.tx(counter=46))
+    for guard in (dict(speed=29), dict(speed=161), dict(brake=True), dict(hold=True),
+                  dict(park=True), dict(drive=False), dict(main=True), dict(button=4), dict(gas=True)):
+      self.startup_pedal(**guard)
+      self.assertFalse(self.tx(counter=46), guard)
+
+  def test_startup_unused_permission_expires_after_release(self):
+    self.startup_pedal()
+    lib.set_timer(1041000)
+    seed(counter=46, speed=40)
+    self.assertFalse(self.tx(counter=47))
+
+  def test_startup_valid_observation_survives_native_timer_wrap(self):
+    init(58369)
+    for tick in range(91):
+      lib.set_timer((0xffffffff-700000+tick*10000) & 0xffffffff)
+      if tick % 2 == 0:
+        seed(counter=tick//2, speed=40, gas=20<=tick<90)
+    self.assertTrue(self.tx(counter=46))
+
+  def test_host_startup_gas_and_native_agree_without_main_button(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    init(58369)
+    pulse = PorterMainSet(initial_main=True, allow_startup_gas=True)
+    outputs = []
+    for tick in range(500):
+      lib.set_timer(21000+tick*10000)
+      counter = tick//2
+      gas = 20<=tick<100
+      if tick % 2 == 0:
+        seed(counter=counter, speed=40, gas=gas)
+      b = pulse.update(tick*.01, counter, main_pressed=False, manual_button=0, blocked=False,
+                       request=not gas, stock_enabled=False, configured=True, gas_pressed=gas)
+      if b is not None:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=b, counter=counter+1))), (tick,b))
+        outputs.append(b)
+    self.assertEqual(outputs, [2]*6+[0])
+    self.assertFalse(pulse.main_known)
+    self.assertFalse(lib.get_controls_allowed())
+
+  def test_startup_held_gas_at_boot_is_not_a_new_driver_cycle(self):
+    lib.set_safety_hooks(8, 58369)
+    lib.init_tests()
+    for tick in range(91):
+      lib.set_timer(21000+tick*10000)
+      if tick % 2 == 0:
+        seed(counter=tick//2, speed=40, gas=tick<80)
+    self.assertFalse(self.tx(counter=46))
+
+  def test_startup_permission_is_revoked_by_override_before_transmission(self):
+    for guard in (dict(brake=True), dict(hold=True), dict(park=True), dict(drive=False),
+                  dict(button=4), dict(main=True)):
+      self.startup_pedal()
+      lib.set_timer(941000)
+      seed(counter=46, speed=40, **guard)
+      lib.set_timer(961000)
+      seed(counter=47, speed=40)
+      self.assertFalse(self.tx(counter=48), guard)
+
+  def test_startup_stock_feedback_not_pedal_grant_enables_controls(self):
+    self.startup_pedal()
+    self.assertTrue(self.tx(counter=46))
+    self.assertFalse(lib.get_controls_allowed())
+    lib.set_timer(941000)
+    seed(counter=46, speed=40, target=40)
+    self.assertTrue(lib.get_controls_allowed())
+
+  def test_startup_flag_without_initial_main_on_is_rejected(self):
+    lib.set_safety_hooks(8, 41985)
+    lib.init_tests()
+    self.assertFalse(lib.safety_config_valid())
+
   def prepare(self, param=9217):
     init(param)
     lib.set_timer(21000)

@@ -230,7 +230,7 @@ class CarInterface(CarInterfaceBase):
       if params.get_bool("PorterAutoSetMain"):
         ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_SET.value
         if params.get_int("AutoEngage") == 2:
-          ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_INITIAL_ON.value
+          ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_INITIAL_ON.value | HyundaiSafetyFlags.PORTER_STARTUP_GAS.value
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot

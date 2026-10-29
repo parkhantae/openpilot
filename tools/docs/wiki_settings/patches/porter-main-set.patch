@@ -5,24 +5,24 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="67857a2c1c05095e84258d4d10e641957df5220faa48db12e7df6954971e4e3e" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="bbb0ee42e0a8fcd46da01e0e777f87a0c51f3839bf3ac56c98633b89eda9c121" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+실제 MAIN 허가와 인게이지 또는 조향 제어 활성 상태에서 목표·실제 속도가 모두 30km/h 이상이면 0.5초 확인 후 SET−를 요청합니다. 대기 중 유효한 엑셀 해제는 추가 확인 대기 없이 다음 송신 가능한 주기에 SET−를 요청하며 해제 순간의 요청 차단은 최대 0.1초만 보존합니다. 회복 후에는 추가 확인 대기 없이 요청합니다. 순정 크루즈가 켜진 피드백은 MAIN 추적만 동기화하며 해제된 허가를 복구하지 않습니다.
++MAIN 확인 후에는 기존 대기·엑셀 해제 SET을 사용합니다. AutoEngage=2의 초기 대기에서 MAIN 이력이 없으면, 놓인 엑셀 관측 뒤 새로 0.1초 이상 밟았다가 목표·실제 속도 30km/h 이상에서 놓을 때 SET을 1회 요청합니다. 실패하면 새 페달 입력이 필요합니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+ON 변경 후 재시작하고 MAIN을 직접 켜세요. 초기 MAIN 추적은 AutoEngage와 맞추지만 초기값만으로 SET을 허가하지 않습니다. 브레이크·CANCEL 뒤에는 MAIN 대기를 유지하고 엑셀을 새로 밟아 30km/h 이상에서 놓으면 다시 허용합니다. MAIN OFF에서는 시작하지 않습니다.
++ON 후 업데이트·재시작하여 새 Panda 설정을 적용하고 계기판 CRUISE 대기를 확인하세요. 초기 유효 관측 0.5초와 해제 후 0.1초 내 요청 기회를 요구하며, 이미 엑셀을 밟고 재시작했다면 놓았다가 새로 밟아야 합니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+실제 속도가 30km/h 미만이면 운전자가 가속해야 합니다. 최초 SET은 최대 6프레임/120ms이며 순정 ON 확인 시 해제합니다. 미응답 재시도는 0/10ms 슬롯을 교대하고 실제 ON 응답으로 확인한 슬롯만 기억합니다. 성공 슬롯은 가감속에도 전달하며 가감속 무응답마다 다음 슬롯을 바꾸되 기존 대기시간은 유지합니다. 직접 제동·정지 출발이 아니며 실차 수락 여부는 미검증입니다.
++초기 ON 표시만으로 시작하지 않으며 실제 순정 ON만 MAIN 확인을 동기화합니다. 명시적 MAIN OFF·브레이크·CANCEL·무효 신호를 차단하고 최대 6프레임/120ms와 기존 요청 간격을 유지합니다. 순정 ECU의 수락과 실차 동작은 미검증입니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END PorterAutoSetMain -->
  
@@ -34,24 +34,24 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="67857a2c1c05095e84258d4d10e641957df5220faa48db12e7df6954971e4e3e" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="bbb0ee42e0a8fcd46da01e0e777f87a0c51f3839bf3ac56c98633b89eda9c121" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Physical MAIN authorization plus engagement or active lateral control and target/actual speeds of at least 30 km/h must persist for 0.5 seconds before SET−. A valid gas release requests SET on the next available sample without an extra confirmation dwell. A request gap at release is retained for at most 0.1s and recovery requests SET without an extra confirmation dwell. Actual stock engagement synchronizes MAIN tracking without restoring revoked authorization.
++MAIN-confirmed operation retains its standby and gas-release SET behavior. Initial AutoEngage=2 standby without MAIN history can grant one SET after observing released gas, a fresh press of at least 0.1s, and release with target/actual speed at least 30 km/h. Failure requires a new pedal cycle.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+After turning ON, restart and physically operate MAIN. Initial MAIN parity follows AutoEngage but never authorizes SET by itself. After brake or CANCEL, retain MAIN standby and rearm only on a fresh gas press/release at 30 km/h or above. MAIN OFF prevents automatic starts.
++After enabling, update and restart to apply the new Panda profile; verify CRUISE standby on the dash. Require 0.5s of initial valid observation and a trial within 0.1s of release. Gas held at restart must be released and pressed again.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Below 30 km/h actual speed, the driver must accelerate. Startup SET is bounded to six frames/120ms and releases on stock ON. Missing feedback alternates 0/10ms retry slots; only stock-ON-confirmed timing is remembered. The confirmed startup slot also carries into speed matching; each unanswered speed request changes its next slot without shortening quiet periods. No direct braking or standstill launch; vehicle acceptance remains unvalidated.
++The initial indication alone cannot start cruise; only stock ON confirms MAIN. Explicit MAIN OFF, brake, CANCEL and invalid inputs block; retain six-frame/120ms pulses and existing retry intervals. ECU acceptance and vehicle behavior remain unverified.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END PorterAutoSetMain -->
  
