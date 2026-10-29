@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
 
-from opendbc.car.hyundai.porter import porter_gap_time_s
+from opendbc.car.hyundai.porter import porter_gap_time_s, porter_auto_set_speed_valid
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 
 
@@ -73,7 +73,8 @@ class TestPorterCancelPublish(unittest.TestCase):
     tree = ast.parse((root / 'openpilot/selfdrive/controls/controlsd.py').read_text())
     fn = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == 'Controls'
               for n in c.body if isinstance(n, ast.FunctionDef) and n.name == 'update_porter_cancel')
-    env = dict(porter_gap_time_s=porter_gap_time_s, PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
+    env = dict(porter_auto_set_speed_valid=porter_auto_set_speed_valid, porter_gap_time_s=porter_gap_time_s,
+               PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
                DT_CTRL=.01, CV=NS(MS_TO_KPH=3.6), cloudlog=NS(info=lambda *args: None))
     exec(compile(ast.Module(body=[fn], type_ignores=[]), 'actual_porter_cancel_adapter', 'exec'), env)
     cls.function = staticmethod(env['update_porter_cancel'])
@@ -192,4 +193,23 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.cc.latActive = False
     self.cc.cruiseControl.resume = False
     self.run_frames(planner=34, start=40)
+    self.assertFalse(self.cc.cruiseControl.resume)
+
+  def test_cluster_profile_accepts_dashboard30_with_plausible_wheels_only(self):
+    self.values['PorterAutoSetMain'] = True
+    self.obj.CP.safetyConfigs = [NS(safetyParam=60417)]
+    self.cs.cruiseState.enabled = False
+    self.cs.cruiseState.available = True
+    self.cs.vEgo = 29.5/3.6
+    self.cs.vEgoCluster = 31.5/3.6
+    self.cs.wheelSpeeds = NS(fl=29.5/3.6, rr=29.5/3.6)
+    self.cc.enabled, self.cc.latActive = False, True
+    self.cc.cruiseControl.resume = False
+    self.run_frames(planner=31.5)
+    self.assertTrue(self.cc.cruiseControl.resume)
+    self.cc.cruiseControl.resume = False
+    self.run_frames(planner=29, start=40)
+    self.assertFalse(self.cc.cruiseControl.resume)  # target floor is unchanged
+    self.cs.vEgoCluster = 29.875/3.6
+    self.run_frames(planner=31.5, start=80)
     self.assertFalse(self.cc.cruiseControl.resume)

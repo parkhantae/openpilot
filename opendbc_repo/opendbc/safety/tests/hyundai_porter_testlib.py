@@ -40,16 +40,18 @@ def packet(address, payload, bus=0):
     return result
 
 
-def data(address, target=0, button=0, brake=False, gas=False, drive=True, hold=False, park=False, counter=0, speed=0, main=False):
+def data(address, target=0, button=0, brake=False, gas=False, drive=True, hold=False, park=False, counter=0, speed=0, main=False, cluster_speed=None, cluster_metric=True, speed_fl=None, speed_rr=None):
     value = 0
     if address == 0x371:
         value = (target << 23) | (int(gas) << 31)
     elif address == 0x394:
         value = (counter % 8 << 13) | (int(brake) * 2 << 45) | (int(park) << 53) | (int(brake) << 55)
     elif address == 0x386:
-        value = ((counter % 16 & 3) << 14) | ((counter % 16 >> 2) << 30) | int(speed * 32) | (int(speed * 32) << 48)
+        value = ((counter % 16 & 3) << 14) | ((counter % 16 >> 2) << 30) | int((speed if speed_fl is None else speed_fl) * 32) | (int((speed if speed_rr is None else speed_rr) * 32) << 48)
     elif address == 0x4f1:
-        value = button | (int(main) << 3) | ((counter % 16) << 28)
+        cluster = round((speed if cluster_speed is None else cluster_speed) * 8)
+        value = (button | (int(main) << 3) | ((counter % 16) << 28) | ((cluster // 4) << 8) |
+                 ((cluster % 4) << 6) | (int(not cluster_metric) << 17))
     elif address == 0x372:
         value = (5 if drive else 0) << 16
     elif address == 0x507:

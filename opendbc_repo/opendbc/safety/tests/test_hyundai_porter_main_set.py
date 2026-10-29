@@ -434,3 +434,75 @@ class TestPorterMainSetSafety(unittest.TestCase):
         self.assertTrue(rejected)  # stale delayed packets remain forbidden
       else:
         self.assertEqual(rejected, [])
+
+  def test_cluster_profile_can_set_at_dashboard31_and_wheels29(self):
+    self.startup_pedal(param=60417, speed=29, cluster_speed=31.5)
+    self.assertTrue(lib.safety_config_valid())
+    self.assertTrue(self.tx(counter=46))
+    self.assertFalse(lib.get_controls_allowed())
+    self.startup_pedal(param=58369, speed=29, cluster_speed=31.5)
+    self.assertFalse(self.tx(counter=46))  # old raw-wheel floor is unchanged
+
+  def test_cluster_profile_requires_speed_bounds_both_wheels_and_metric(self):
+    for args in (dict(speed=29, cluster_speed=29.875), dict(speed=160, cluster_speed=160.125),
+                 dict(speed=24.96875, cluster_speed=30), dict(speed=25, cluster_speed=30.125),
+                 dict(speed=29, speed_rr=24, cluster_speed=31.5),
+                 dict(speed=29, speed_fl=24, cluster_speed=31.5),
+                 dict(speed=29, cluster_speed=31.5, cluster_metric=False),
+                 dict(speed=0, cluster_speed=30), dict(speed=161, cluster_speed=160)):
+      self.startup_pedal(param=60417, **args)
+      self.assertFalse(self.tx(counter=46), args)
+    for args in (dict(speed=25, cluster_speed=30), dict(speed=160, cluster_speed=160),
+                 dict(speed=29, cluster_speed=31.375)):
+      self.startup_pedal(param=60417, **args)
+      self.assertTrue(self.tx(counter=46), args)
+
+  def test_cluster_profile_cannot_bypass_overrides_stale_rx_or_counter(self):
+    for guard in (dict(brake=True), dict(gas=True), dict(hold=True), dict(park=True),
+                  dict(drive=False), dict(main=True), dict(button=4)):
+      self.startup_pedal(param=60417, speed=29, cluster_speed=31.5, **guard)
+      self.assertFalse(self.tx(counter=46), guard)
+    self.startup_pedal(param=60417, speed=29, cluster_speed=31.5)
+    self.assertFalse(self.tx(counter=45))  # same latest-counter+1 rule
+    lib.set_timer(1041001)
+    self.assertFalse(self.tx(counter=46))  # stale inputs / expired one-shot
+
+  def test_cluster_profile_physical_main_mode_and_bounded_unknown_startup(self):
+    self.prepare(param=11265)
+    lib.set_timer(701000)
+    seed(counter=35, speed=29, cluster_speed=31.5)
+    self.assertTrue(self.tx(counter=36))
+    self.assertFalse(self.tx(counter=36))
+    self.startup_pedal(param=60417, speed=29, cluster_speed=31.5)
+    for i in range(6):
+      if i:
+        lib.set_timer(921000+i*20000)
+        seed(counter=45+i, speed=29, cluster_speed=31.5)
+      self.assertTrue(self.tx(counter=46+i))
+    lib.set_timer(1041000)
+    seed(counter=51, speed=29, cluster_speed=31.5)
+    self.assertFalse(self.tx(counter=52))
+
+  def test_cluster_profile_host_and_native_share_release_eligibility(self):
+    from types import SimpleNamespace as NS
+    from opendbc.car.hyundai.porter import porter_auto_set_speed_valid
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    init(60417)
+    pulse = PorterMainSet(initial_main=True, allow_startup_gas=True)
+    cp = NS(safetyConfigs=[NS(safetyParam=60417)])
+    cs = NS(vEgo=29/3.6, vEgoCluster=31.5/3.6, wheelSpeeds=NS(fl=29/3.6, rr=29/3.6))
+    output = []
+    for tick in range(300):
+      counter, gas = tick//2, 20<=tick<100
+      lib.set_timer(21000+tick*10000)
+      if tick % 2 == 0:
+        seed(counter=counter, speed=29, cluster_speed=31.5, gas=gas)
+      button = pulse.update(tick*.01, counter, main_pressed=False, manual_button=0, blocked=False,
+                            request=not gas and porter_auto_set_speed_valid(cp, cs),
+                            stock_enabled=False, configured=True, gas_pressed=gas)
+      if button is not None:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, speed=29, cluster_speed=31.5,
+                                                          counter=counter+1, button=button))), (tick,button))
+        output.append(button)
+    self.assertEqual(output, [2]*6+[0])
+    self.assertFalse(lib.get_controls_allowed())

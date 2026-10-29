@@ -1,5 +1,6 @@
 import unittest
 from opendbc.car.hyundai.porter_main_set import PorterMainSet
+from opendbc.car.hyundai.porter import porter_auto_set_speed_valid
 
 
 class TestPorterMainSet(unittest.TestCase):
@@ -13,7 +14,7 @@ class TestPorterMainSet(unittest.TestCase):
     block = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
                  ast.unparse(n.test) == 'candidate == CAR.HYUNDAI_PORTER_II_EV')
     code = compile(ast.Module(body=[block], type_ignores=[]), 'actual_porter_profile', 'exec')
-    for enabled, engage, expected in ((False,2,1025), (True,0,9217), (True,2,58369)):
+    for enabled, engage, expected in ((False,2,1025), (True,0,11265), (True,2,60417)):
       ret = NS(flags=0)
       exec(code, dict(candidate='porter', CAR=NS(HYUNDAI_PORTER_II_EV='porter'), ret=ret,
                       params=NS(get_bool=lambda key,e=enabled:e, get_int=lambda key,e=engage:e),
@@ -25,10 +26,11 @@ class TestPorterMainSet(unittest.TestCase):
     node = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
                 ast.unparse(n.targets[0]) == 'self.porter_main_set')
     code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_startup_init', 'exec')
-    for profile in (1025,9217,25601,58369):
+    for profile in (1025,9217,11265,25601,58369,60417):
       obj = NS()
       exec(code, dict(self=obj, CP=NS(safetyConfigs=[NS(safetyParam=profile)]), PorterMainSet=PorterMainSet))
-      self.assertEqual(obj.porter_main_set.allow_startup_gas, profile==58369)
+      self.assertEqual(obj.porter_main_set.allow_startup_gas, profile in (58369,60417))
+      self.assertEqual(obj.porter_main_set.main, profile in (25601,58369,60417))
 
   def test_startup_gas_is_one_attempt_per_fresh_pedal_cycle_without_main_proof(self):
     self.state = PorterMainSet(initial_main=True, allow_startup_gas=True)
@@ -391,9 +393,9 @@ class TestPorterMainSet(unittest.TestCase):
     code = compile(ast.Module(body=branch[index:index+2], type_ignores=[]), 'actual_main_set_diagnostics', 'exec')
     obj = NS(porter_main_set=self.state, CP=NS(safetyConfigs=[NS(safetyParam=58369)]), frame=100)
     cc = NS(cruiseControl=NS(resume=True))
-    cs = NS(out=NS(cruiseState=NS(enabled=False), vEgo=40/3.6, gasPressed=False))
+    cs = NS(out=NS(cruiseState=NS(enabled=False), vEgo=40/3.6, vEgoCluster=42/3.6, gasPressed=False))
     messages = []
-    env = dict(self=obj, CC=cc, CS=cs, CV=NS(MS_TO_KPH=3.6), fresh=True, manual=False,
+    env = dict(self=obj, CC=cc, CS=cs, porter_auto_set_speed_valid=porter_auto_set_speed_valid, CV=NS(MS_TO_KPH=3.6), fresh=True, manual=False,
                cloudlog=NS(info=lambda fmt, *args: messages.append(fmt % args)))
     self.arm()
     for t in range(3, 104):

@@ -101,7 +101,8 @@ class TestPorterMessagePath(unittest.TestCase):
     for arg in function.args.args:
       arg.annotation = None
     function.returns = None
-    env = {"CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "Buttons": NS(NONE=0), "DT_CTRL": .01,
+    env = {"porter_auto_set_speed_valid": module.porter_auto_set_speed_valid,
+           "CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "Buttons": NS(NONE=0), "DT_CTRL": .01,
            "CV": NS(MS_TO_KPH=3.6), "structs": NS(CarState=NS(GearShifter=NS(drive="drive"))),
            "hyundaican": NS(create_clu11_button=lambda packer, frame, clu, button, cp: button),
            "cloudlog": NS(info=lambda *args: None)}
@@ -120,7 +121,7 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs = NS(is_metric=True, cruise_buttons=[0], main_buttons=[0],
                  clu11={"CF_Clu_AliveCnt1": 0, "CF_Clu_CruiseSwMain": 0},
                  cp=NS(ts_nanos={"CLU11": {"counter": 1_000_000_000}}, _last_update_nanos=1_000_000_000),
-                 out=NS(vEgo=50/3.6, cruiseState=NS(enabled=True, available=True, speed=50/3.6), canValid=True,
+                 out=NS(vEgo=50/3.6, vEgoCluster=52/3.6, cruiseState=NS(enabled=True, available=True, speed=50/3.6), canValid=True,
                         accFaulted=False, gasPressed=False, standstill=False,
                         gearShifter="drive", brakePressed=False, brakeHoldActive=False, parkingBrake=False))
 
@@ -291,6 +292,26 @@ class TestPorterMessagePath(unittest.TestCase):
       self.assertEqual(self.tick(frame), [])
     self.cs.out.gasPressed = False
     self.assertEqual(self.tick(100), [2])
+
+  def test_log552_dashboard31_wheels29_set_reaches_real_controller_packer(self):
+    self.controller.porter_main_params.get_bool = lambda key: True
+    self.controller.CP.safetyConfigs = [NS(safetyParam=11265)]
+    self.cs.out.cruiseState.enabled = False
+    self.cs.out.vEgo = 29/3.6
+    self.cs.out.vEgoCluster = 31.5/3.6
+    self.cs.out.wheelSpeeds = NS(fl=29/3.6, rr=29/3.6)
+    self.cc.enabled, self.cc.latActive = False, True
+    self.cc.cruiseControl.resume = True
+    self.cs.main_buttons = [1]
+    self.cs.out.gasPressed = True
+    self.assertEqual(self.tick(0), [])
+    self.cs.main_buttons = [0]
+    for frame in range(1, 100):
+      self.assertEqual(self.tick(frame), [])
+    self.cs.out.gasPressed = False
+    self.assertEqual(self.tick(100), [2])
+    self.cs.out.wheelSpeeds.rr = 20/3.6
+    self.assertEqual(self.tick(101), [0])
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph
+from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph, porter_auto_set_speed_valid
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
@@ -111,7 +111,7 @@ class Controls:
 
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
     auto_set = (self.params.get_bool("PorterAutoSetMain") and
-                any(c.safetyParam in (9217, 25601, 58369) for c in getattr(self.CP, 'safetyConfigs', ())))
+                any(c.safetyParam in (9217, 11265, 25601, 58369, 60417) for c in getattr(self.CP, 'safetyConfigs', ())))
     # PCM disengagement clears enabled even while AlwaysLateral remains ready.
     # Lateral readiness does not authorize SET; physical MAIN is checked below.
     ready = CC.enabled or (auto_set and getattr(CC, 'latActive', False))
@@ -140,9 +140,9 @@ class Controls:
     if (eligible and auto_set and
         self.sm.all_checks(['longitudinalPlan', 'radarState']) and
         CS.cruiseState.available and not CS.cruiseState.enabled and
-        target is not None and 30 - 1e-5 <= target <= 160 and 30 <= CS.vEgo * CV.MS_TO_KPH <= 160 and
+        target is not None and 30 - 1e-5 <= target <= 160 and porter_auto_set_speed_valid(self.CP, CS) and
         not CC.cruiseControl.cancel):
-      # The controller and Panda independently require an observed physical MAIN.
+      # Controller and Panda independently check MAIN/pedal authority and speed.
       CC.cruiseControl.resume = True
     if previous != self.porter_low_speed_cancel.active:
       cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s", self.porter_low_speed_cancel.active, target)

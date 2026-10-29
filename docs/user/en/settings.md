@@ -477,7 +477,7 @@ ATC mode 4 optionally triggers the physical right indicator before a TBT right t
 
 Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Porter Only to request stock-cruise cancellation for a valid sub-30 km/h target held for 0.3s in SpeedFromPCM=0. This does not brake, stop or automatically re-engage. See [Porter button controls](buttons-presets.md#button-spam).
 
-Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and verify CRUISE standby; target and actual speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
+Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and verify CRUISE standby; target and dashboard speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
 
 
 With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby requests SET− at current speed on the next available sample without extra release-confirmation delay. All other authorization and revocation guards remain.
@@ -495,3 +495,5 @@ Porter automatic SET transmits only on a newly observed CLU11 sample, without a 
 Porter GAP is configured once through common TF1–TF4. Button deceleration and low-target cancellation share the planner’s applied following time. Duplicate Porter-only gap controls were removed; their legacy values are unused and common TF settings are preserved.
 
 Initial AutoEngage=2 standby can request one SET trial without MAIN confirmation, after observing released gas and a fresh press of at least 0.1s followed by release at 30 km/h or above. Failure requires a new pedal cycle; the initial indication alone cannot start cruise. Restart after updating to apply the new Panda profile.
+
+The new Porter automatic SET Panda profile uses dashboard speed of 30–160 km/h and cross-checks both wheel speeds. Dashboard 31 km/h with wheels at 29 km/h no longer fails solely on the former raw-wheel 30 km/h floor. Each wheel must be 25–160 km/h and within 5 km/h of the dashboard. Restart after updating; targets below 30 km/h still block SET.

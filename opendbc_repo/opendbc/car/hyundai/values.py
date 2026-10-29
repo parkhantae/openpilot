@@ -87,6 +87,7 @@ class HyundaiSafetyFlags(IntFlag):
   PORTER_MAIN_INITIAL_ON = 16384
   PORTER_MAIN_SET = 8192
   PORTER_CC = 1024
+  PORTER_CLUSTER_SET = 2048  # Classic Porter only; CAN-FD interprets this bit separately.
   CANFD_CLUSTER_DIRECT_TX = 2048
   CANFD_SPAS_BLINKERS = 4096
 

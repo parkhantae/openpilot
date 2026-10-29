@@ -92,6 +92,28 @@ static bool hyundai_porter_park = false;
 static bool hyundai_porter_fault = false;
 static bool hyundai_porter_enable_button_seen = false;
 static uint32_t hyundai_porter_enable_button_ts = 0U;
+static bool hyundai_porter_cluster_set = false;
+static bool hyundai_porter_cluster_metric = false;
+static uint32_t hyundai_porter_cluster_eighth_kph = 0U;
+static uint32_t hyundai_porter_front_left_speed = 0U;
+static uint32_t hyundai_porter_rear_right_speed = 0U;
+
+static bool hyundai_porter_set_speed_valid(void) {
+  uint32_t fl = hyundai_porter_front_left_speed;
+  uint32_t rr = hyundai_porter_rear_right_speed;
+  if (!hyundai_porter_cluster_set) {
+    return fl >= 960U && rr >= 960U && fl <= 5120U && rr <= 5120U;
+  }
+  // Cluster units are 1/8km/h; wheel units are 1/32km/h. Require dashboard
+  // 30..160km/h AND both wheels 25..160km/h within 5km/h of the dashboard.
+  uint32_t cluster = hyundai_porter_cluster_eighth_kph * 4U;
+  uint32_t fl_difference = cluster >= fl ? cluster - fl : fl - cluster;
+  uint32_t rr_difference = cluster >= rr ? cluster - rr : rr - cluster;
+  return hyundai_porter_cluster_metric && cluster >= 960U && cluster <= 5120U &&
+         fl >= 800U && rr >= 800U && fl <= 5120U && rr <= 5120U &&
+         fl_difference <= 160U && rr_difference <= 160U;
+}
+
 static const uint32_t HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT = 1000000U;
 
 static bool hyundai_porter_inputs_valid(void) {
@@ -185,6 +207,12 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
 
   if (hyundai_porter_cc && bus == 0) {
     uint32_t now = microsecond_timer_get();
+    if (hyundai_porter_main_set && addr == 0x4F1) {
+      hyundai_porter_cluster_metric = !GET_BIT(to_push, 17U);
+      hyundai_porter_cluster_eighth_kph = ((GET_BYTES(to_push, 1, 2) & 0x1FFU) * 4U) +
+                                         ((GET_BYTE(to_push, 0) >> 6U) & 3U);
+      hyundai_porter_speed_ok = hyundai_porter_set_speed_valid();
+    }
     if (addr == 0x372) {
       hyundai_porter_drive = ((GET_BYTE(to_push, 2) & 0xfU) == 5U);
     }
@@ -353,8 +381,9 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
       uint32_t rear_right_speed = GET_BYTES(to_push, 6, 2) & 0x3FFFU;
       vehicle_moving = (front_left_speed > HYUNDAI_STANDSTILL_THRSLD) || (rear_right_speed > HYUNDAI_STANDSTILL_THRSLD);
       if (hyundai_porter_main_set) {
-        hyundai_porter_speed_ok = front_left_speed >= 960U && rear_right_speed >= 960U &&
-                                 front_left_speed <= 5120U && rear_right_speed <= 5120U;
+        hyundai_porter_front_left_speed = front_left_speed;
+        hyundai_porter_rear_right_speed = rear_right_speed;
+        hyundai_porter_speed_ok = hyundai_porter_set_speed_valid();
       }
     }
 
@@ -715,6 +744,10 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_porter_main = hyundai_porter_main_prev = hyundai_porter_main_armed = false;
   hyundai_porter_main = hyundai_porter_main_set && GET_FLAG(param, 16384U);
   hyundai_porter_startup_gas = hyundai_porter_main && GET_FLAG(param, 32768U);
+  // Bit2048 is Porter-specific under classic Hyundai; CAN-FD has its own hook.
+  hyundai_porter_cluster_set = hyundai_porter_main_set && GET_FLAG(param, 2048U);
+  hyundai_porter_cluster_metric = false;
+  hyundai_porter_cluster_eighth_kph = hyundai_porter_front_left_speed = hyundai_porter_rear_right_speed = 0U;
   hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
   hyundai_porter_startup_ts = 0U;
   hyundai_porter_startup_grant_ts = 0U;
@@ -743,7 +776,7 @@ static safety_config hyundai_init(uint16_t param) {
       {.msg = {{0x507, 0, 4, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, {0}, {0}}},
     };
     // Never combine conventional cruise with direct longitudinal or camera SCC mode.
-    if (param != 1025U && param != 9217U && param != 25601U && param != 58369U) {
+    if (param != 1025U && param != 9217U && param != 11265U && param != 25601U && param != 58369U && param != 60417U) {
       safety_config invalid = {0};
       return invalid;
     }
