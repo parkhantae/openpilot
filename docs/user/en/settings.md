@@ -490,7 +490,7 @@ Porter automatic SET tolerates at most 0.1s of request blocking at gas release, 
 
 Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.
 
-Porter automatic SET alternates 0/10ms retry slots after missing feedback and remembers only a stock-ON-confirmed slot. Pulse and retry-rate limits remain unchanged. A confirmed startup slot is also handed to speed matching, which changes its next trial slot after each missed request.
+Porter automatic SET transmits only on a newly observed CLU11 sample, without a 10ms delayed slot. It checks actual stock ON within 0.5s and records missing responses; pulse bounds, retry spacing and safety guards remain. Engaged speed matching retains its independent timing and acknowledgement memory.
 
 Porter GAP is configured once through common TF1–TF4. Button deceleration and low-target cancellation share the planner’s applied following time. Duplicate Porter-only gap controls were removed; their legacy values are unused and common TF settings are preserved.
 

@@ -224,11 +224,6 @@ class PorterCruiseButtons:
     self.ack_timeout = 0.5
     self.retry_backoff = 3.0
 
-  def adopt_confirmed_slot(self, delay):
-    """Carry a stock-ON-confirmed startup slot into idle speed matching."""
-    if self.phase == "idle" and not self.pending_release and delay in (0., .01):
-      self.preferred_sample_delay = self.retry_sample_delay = delay
-
   def _interrupt(self, fresh):
     # A repeated/missing CLU11 sample cannot carry a new release frame. Keep
     # that obligation after aborting the pulse, including a release transition

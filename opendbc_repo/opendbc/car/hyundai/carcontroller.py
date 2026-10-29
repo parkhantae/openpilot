@@ -737,23 +737,24 @@ class CarController(CarControllerBase):
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
                     any(c.safetyParam in (9217, 25601, 58369) for c in self.CP.safetyConfigs)))
-      if self.porter_main_set.confirmed_slot is not None:
-        self.porter_buttons.adopt_confirmed_slot(self.porter_main_set.confirmed_slot)
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
       if cancel_status != getattr(self, "porter_cancel_status", None):
         self.porter_cancel_status = cancel_status
         cloudlog.info("PorterCancel: status=%s requests=%d stock=%s", *cancel_status, CS.out.cruiseState.enabled)
       main_status = (self.porter_main_set.main, self.porter_main_set.armed, self.porter_main_set.pressing,
-                     self.porter_main_set.main_known, self.porter_main_set.startup_grant)
+                     self.porter_main_set.main_known, self.porter_main_set.startup_grant,
+                     self.porter_main_set.requests, self.porter_main_set.acks, self.porter_main_set.timeouts,
+                     self.porter_main_set.response)
       if (any(c.safetyParam in (9217, 25601, 58369) for c in self.CP.safetyConfigs) and
           (main_status != getattr(self, "porter_main_status", None) or self.frame % 100 == 0)):
         self.porter_main_status = main_status
-        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s delay_ms=%.0f preferred_ms=%.0f "
-                      "startup=%s grant=%s pedal_ready=%s gas=%s fresh=%s manual=%s",
+        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s "
+                      "startup=%s grant=%s pedal_ready=%s gas=%s fresh=%s manual=%s "
+                      "req=%d ack=%d noack=%d response=%s awaiting=%s",
                       *main_status[:3], CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
-                      self.porter_main_set.main_known, self.porter_main_set.pulse_delay * 1000,
-                      self.porter_main_set.preferred_delay * 1000, self.porter_main_set.allow_startup_gas,
-                      self.porter_main_set.startup_grant, self.porter_main_set.startup_released, CS.out.gasPressed, fresh, manual)
+                      self.porter_main_set.main_known, self.porter_main_set.allow_startup_gas,
+                      self.porter_main_set.startup_grant, self.porter_main_set.startup_released, CS.out.gasPressed, fresh, manual,
+                      *main_status[5:], self.porter_main_set.awaiting_stock)
       if cancel_busy:
         button = cancel_button
       elif button is None:

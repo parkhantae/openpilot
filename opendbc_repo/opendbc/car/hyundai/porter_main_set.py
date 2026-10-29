@@ -25,13 +25,11 @@ class PorterMainSet:
     self.raw_previous_gas = False
     self.rearm_gas_since = None
     self.sent_key = None
-    self.sample_seen = 0.
-    self.preferred_delay = 0.
-    self.retry_delay = 0.
-    self.pulse_delay = 0.
     self.awaiting_stock = False
-    self.slot_wait_since = None
-    self.confirmed_slot = None
+    self.requests = 0
+    self.acks = 0
+    self.timeouts = 0
+    self.response = "idle"
     self.allow_startup_gas = allow_startup_gas
     self.startup_released = False
     self.startup_gas_since = None
@@ -40,13 +38,9 @@ class PorterMainSet:
     self.startup_grant_since = None
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False):
-    # A one-update event, emitted only by actual stock-ON feedback. Other
-    # button transmitters may adopt it without inferring success from TX.
-    self.confirmed_slot = None
     fresh = key is not None and key != self.last_key
     if fresh:
       self.last_key = key
-      self.sample_seen = now
     clock_ok = math.isfinite(now) and (self.last_time is None or 0 <= now - self.last_time <= .1 + 1e-9)
     self.last_time = now
     if not clock_ok:
@@ -61,16 +55,22 @@ class PorterMainSet:
 
     stock_rising = stock_enabled and not self.previous_stock
     self.previous_stock = stock_enabled
+    if self.awaiting_stock and clock_ok and now - self.started > .5 + 1e-9:
+      self.awaiting_stock = False
+      self.timeouts += 1
+      self.response = "no_response"
     if stock_rising:
-      if (self.awaiting_stock and clock_ok and configured and now - self.started <= .5 and
+      if (self.awaiting_stock and clock_ok and configured and now - self.started <= .5 + 1e-9 and
           not manual_button and not main_pressed and not blocked and not gas_pressed):
-        self.preferred_delay = self.pulse_delay
-        self.confirmed_slot = self.pulse_delay
+        self.acks += 1
+        self.response = "engaged"
+      elif self.awaiting_stock:
+        self.response = "interrupted"
       self.awaiting_stock = False
-      self.retry_delay = self.preferred_delay
     if manual_button or main_pressed or blocked or not configured or not clock_ok:
+      if self.awaiting_stock:
+        self.response = "interrupted"
       self.awaiting_stock = False
-      self.retry_delay = self.preferred_delay
     if configured and stock_rising and not main_pressed:
       # Stock engagement proves MAIN is on, but never restores revoked permission.
       self.main = True
@@ -139,11 +139,9 @@ class PorterMainSet:
       # 100ms observation window; never turn it into a delayed engagement queue.
       self.gas_release_since = None
     if not eligible or stock_enabled or not request or gas_pressed:
-      self.slot_wait_since = None
       self.since = None
       if self.pressing:
         self.pending_release = True
-        self.awaiting_stock = False
         self.startup_grant = False
       self.pressing = False
       if stock_enabled:
@@ -162,12 +160,13 @@ class PorterMainSet:
         self.pressing = False
         self.startup_grant = False
         self.pending_release = True
-        self.retry_delay = .01 - self.pulse_delay
         self.next_request = now + self.retry_wait
         if tx_fresh:
           self.pending_release = False
           return send(0)
-      elif tx_fresh and now - self.sample_seen >= self.pulse_delay - 1e-9:
+      elif fresh and tx_fresh:
+        # Off-cruise SET has a strict native latest-counter guard. Never reuse
+        # an older unsent sample on the next 10ms control tick.
         self.frames += 1
         return send(2)
       return None
@@ -179,16 +178,14 @@ class PorterMainSet:
     release_ready = (self.gas_release_since is not None and self.main_since is not None and
                      now - self.main_since >= .5 - 1e-9)
     if now >= self.next_request and (release_ready or now - self.since >= .5 - 1e-9):
-      delay = self.retry_delay
-      if not tx_fresh or now - self.sample_seen < delay - 1e-9:
-        self.slot_wait_since = now if self.slot_wait_since is None else self.slot_wait_since
-        if tx_fresh and now - self.slot_wait_since >= .1 - 1e-9:
-          delay = 0.
-        else:
-          return None
-      self.slot_wait_since = None
-      self.pulse_delay = delay
+      # A pedal release or retry deadline between RX updates must wait for
+      # the next sample, rather than sending its predecessor late. Normal
+      # engaged speed matching keeps its independent timing policy.
+      if not fresh or not tx_fresh:
+        return None
       self.awaiting_stock = True
+      self.requests += 1
+      self.response = "pending"
       self.gas_release_since = None
       self.pressing = True
       self.started = now

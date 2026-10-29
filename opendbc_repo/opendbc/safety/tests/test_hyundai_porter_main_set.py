@@ -301,7 +301,7 @@ class TestPorterMainSetSafety(unittest.TestCase):
     self.assertTrue(self.tx(counter=36))
     self.assertFalse(lib.get_controls_allowed())
 
-  def test_startup_timing_trial_and_feedback_learning_pass_native(self):
+  def test_fresh_rx_startup_retries_and_feedback_pass_native(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
     init(9217)
     pulse=PorterMainSet()
@@ -319,10 +319,10 @@ class TestPorterMainSetSafety(unittest.TestCase):
         self.assertTrue(lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=b,counter=counter+1))),(tick,b))
         if b==2 and not was:
           starts.append(tick)
-    self.assertEqual(starts,[52,163])
-    self.assertEqual(pulse.preferred_delay,.01)
+    self.assertEqual(starts,[52,164])
+    self.assertEqual(pulse.acks,1)
 
-  def test_startup_handoff_and_each_missed_speed_retry_pass_native(self):
+  def test_startup_keeps_speed_retry_timing_independent_under_native_guards(self):
     from opendbc.car.hyundai.porter import PorterCruiseButtons
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
     init(9217)
@@ -339,18 +339,16 @@ class TestPorterMainSetSafety(unittest.TestCase):
         requests.append((tick*.01, speed.request_sample_delay))
       main_button = startup.update(tick*.01, counter, main_pressed=tick<2, manual_button=0,
                                    blocked=False, request=not stock, stock_enabled=stock, configured=True)
-      if startup.confirmed_slot is not None:
-        speed.adopt_confirmed_slot(startup.confirmed_slot)
       if button is None:
         button = main_button
       if button is not None:
         self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter+1))),
                         (tick, button))
-    self.assertEqual([slot for _, slot in requests[:4]], [.01, 0., .01, 0.])
+    self.assertEqual([slot for _, slot in requests[:4]], [0., .01, 0., .01])
     self.assertGreaterEqual(requests[1][0]-requests[0][0], 1.)
     self.assertGreaterEqual(requests[2][0]-requests[1][0], 1.)
     self.assertGreaterEqual(requests[3][0]-requests[2][0], 3.5)
-    self.assertEqual(speed.preferred_sample_delay, .01)  # misses do not teach success
+    self.assertEqual(speed.preferred_sample_delay, 0.)  # startup and misses do not teach a speed ACK
 
   def test_immediate_release_after_brake_or_cancel_passes_native(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
@@ -398,3 +396,41 @@ class TestPorterMainSetSafety(unittest.TestCase):
         if button == 2 and not was:
           starts.append(tick)
     self.assertEqual(starts, [100, 200, 300, 600])
+
+  def test_off_set_transport_window_keeps_latest_counter_guard(self):
+    # CAN batches are published after physical RX; TX also takes transport time.
+    # These offsets are a regression scenario, not measured vehicle latencies.
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for extra_delay in (0., .01):
+      init(9217)
+      pulse = PorterMainSet()
+      next_rx = 0
+      rejected = []
+      sent_set = 0
+
+      def receive_until(now):
+        nonlocal next_rx
+        while next_rx * .02 - .006 <= now + 1e-9:
+          lib.set_timer(round((.021 + next_rx * .02 - .006) * 1e6))
+          seed(counter=next_rx, main=next_rx==0, speed=40)
+          next_rx += 1
+
+      for tick in range(180):
+        now = tick * .01
+        receive_until(now)
+        button = pulse.update(now, tick//2, main_pressed=tick<2, manual_button=0, blocked=False,
+                              request=True, stock_enabled=False, configured=True)
+        if button is not None:
+          delivery = now + .005 + extra_delay
+          receive_until(delivery)
+          lib.set_timer(round((.021 + delivery) * 1e6))
+          allowed = lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=button,counter=tick//2+1)))
+          if button == 2:
+            sent_set += 1
+            if not allowed:
+              rejected.append(tick)
+      self.assertGreater(sent_set, 6)
+      if extra_delay:
+        self.assertTrue(rejected)  # stale delayed packets remain forbidden
+      else:
+        self.assertEqual(rejected, [])

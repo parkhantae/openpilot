@@ -456,35 +456,6 @@ class TestPorterPulse(unittest.TestCase):
     self.assertEqual((self.p.requests, self.p.timeouts), (3, 3))
     self.assertEqual(self.step(5.53, target=40, current=34, key=276), 1)
 
-  def test_confirmed_startup_slot_is_used_without_changing_rearm_deadline(self):
-    self.step(0, enabled=False)
-    self.p.adopt_confirmed_slot(.01)
-    self.assertEqual(self.p.preferred_sample_delay, .01)
-    self.assertIsNone(self.step(.29, key=14))
-    self.assertIsNone(self.step(.30, key=15))
-    self.assertEqual(self.step(.31, key=15), 1)
-    self.assertEqual(self.p.request_sample_delay, .01)
-    # No ACK: next request changes to immediate, without erasing success.
-    for tick in range(32,82):
-      self.step(tick*.01, key=tick//2)
-    self.assertEqual(self.p.retry_sample_delay, 0.)
-    self.assertEqual(self.p.preferred_sample_delay, .01)
-    self.assertIsNone(self.step(.82, enabled=False))
-    self.assertEqual(self.p.retry_sample_delay, .01)
-
-  def test_slot_handoff_cannot_replace_an_active_pulse_or_pending_release(self):
-    self.step(0)
-    self.p.adopt_confirmed_slot(.01)
-    self.assertEqual(self.p.retry_sample_delay, 0.)
-    self.p.phase = 'idle'
-    self.p.pending_release = True
-    self.p.adopt_confirmed_slot(.01)
-    self.assertEqual(self.p.retry_sample_delay, 0.)
-    self.p.pending_release = False
-    for invalid in (None, -.01, .02, float('nan')):
-      self.p.adopt_confirmed_slot(invalid)
-      self.assertEqual(self.p.retry_sample_delay, 0.)
-
 
 if __name__ == "__main__":
   unittest.main()

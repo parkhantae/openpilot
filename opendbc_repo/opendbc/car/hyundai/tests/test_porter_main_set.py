@@ -252,7 +252,8 @@ class TestPorterMainSet(unittest.TestCase):
       self.tick(t, gas_pressed=True, request=False)
     for t in range(100, 105):
       self.assertIsNone(self.tick(t, request=False))
-    self.assertEqual(self.tick(105), 2)
+    self.assertIsNone(self.tick(105))  # recovery between RX updates
+    self.assertEqual(self.tick(106), 2)
 
   def test_request_loss_stops_immediate_release_set_and_preserves_quiet_period(self):
     self.arm()
@@ -310,64 +311,103 @@ class TestPorterMainSet(unittest.TestCase):
       self.tick(t, gas_pressed=True, request=False)
     self.assertEqual(self.tick(100), 2)
 
-  def test_unacknowledged_startup_tries_other_slot_and_learns_real_feedback(self):
+  def test_unanswered_set_waits_for_real_on_and_retries_on_new_rx_only(self):
     self.arm()
-    starts=[]
+    starts = []
     for t in range(3, 168):
-      was_pressing=self.state.pressing
-      b=self.tick(t)
-      if b==2 and not was_pressing:
+      was = self.state.pressing
+      button = self.tick(t)
+      if button == 2 and not was:
         starts.append(t)
-    self.assertEqual(starts, [52,163])
-    self.assertEqual(self.state.preferred_delay, 0.)
-    self.assertEqual(self.state.pulse_delay, .01)
-    self.assertEqual(self.tick(168,stock_enabled=True),0)
-    self.assertEqual(self.state.preferred_delay,.01)
-    self.assertEqual(self.state.confirmed_slot, .01)
+        self.assertEqual(t % 2, 0)
+    self.assertEqual(starts, [52, 164])
+    self.assertEqual(self.state.requests, 2)
+    self.assertEqual(self.state.timeouts, 1)
+    self.assertEqual(self.state.acks, 0)
+    self.assertEqual(self.tick(168, stock_enabled=True), 0)
+    self.assertEqual(self.state.acks, 1)
+    self.assertEqual(self.state.response, "engaged")
+    self.assertFalse(self.state.awaiting_stock)
     self.tick(169, stock_enabled=True)
-    self.assertIsNone(self.state.confirmed_slot)
-    self.tick(170,blocked=True)
-    self.assertEqual(self.state.retry_delay,.01)
+    self.assertEqual(self.state.acks, 1)
 
-  def test_physical_set_does_not_learn_automatic_slot(self):
+  def test_physical_set_brake_and_late_on_do_not_ack_automatic_request(self):
+    for change in (dict(manual_button=2, stock_enabled=True), dict(blocked=True, stock_enabled=True)):
+      self.setUp()
+      self.arm()
+      for t in range(3, 53):
+        self.tick(t)
+      self.tick(54, **change)
+      self.assertEqual(self.state.acks, 0)
+      self.assertFalse(self.state.awaiting_stock)
+    self.setUp()
     self.arm()
-    for t in range(3, 168):
+    for t in range(3, 106):
       self.tick(t)
-    self.tick(168,manual_button=2,stock_enabled=True)
-    self.assertEqual(self.state.preferred_delay,0.)
-    self.assertIsNone(self.state.confirmed_slot)
+    self.tick(106, stock_enabled=True)
+    self.assertEqual(self.state.acks, 0)
+    self.assertEqual(self.state.timeouts, 1)
 
-  def test_controller_hands_off_only_confirmed_auto_set_feedback(self):
+  def test_request_loss_releases_but_still_observes_in_flight_set_result(self):
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    self.assertEqual(self.tick(100), 2)
+    self.assertEqual(self.tick(102, request=False), 0)
+    self.assertEqual(self.state.acks, 0)
+    self.assertTrue(self.state.awaiting_stock)
+    self.tick(104, request=False, stock_enabled=True)
+    self.assertEqual(self.state.acks, 1)
+    self.assertEqual(self.state.response, "engaged")
+
+  def test_pedal_release_on_old_unsent_sample_waits_for_next_rx(self):
+    self.arm()
+    for t in range(3, 101):
+      self.tick(t, gas_pressed=True, request=False)
+    self.assertIsNone(self.tick(101))  # old but unsent RX sample
+    self.assertEqual(self.tick(102), 2)
+    self.assertIsNone(self.tick(103))
+    # A missing/stale period interrupts the pulse; it cannot flush an old SET.
+    self.assertEqual(self.tick(104, blocked=True), 0)
+    self.assertIsNone(self.tick(105))
+
+  def test_set_frames_never_reuse_samples_when_deadline_or_pedal_changes(self):
+    self.arm()
+    for t in range(3, 600):
+      button = self.tick(t, gas_pressed=90 <= t < 101)
+      if button == 2:
+        self.assertEqual(t % 2, 0)
+    self.assertGreaterEqual(self.state.timeouts, 2)
+
+  def test_actual_controller_diagnostics_format_response_counts(self):
     import ast
     from pathlib import Path
     from types import SimpleNamespace as NS
-    from opendbc.car.hyundai.porter import PorterCruiseButtons
     tree = ast.parse((Path(__file__).resolve().parents[1] / 'carcontroller.py').read_text())
-    handoff = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
-                   ast.unparse(n.test) == 'self.porter_main_set.confirmed_slot is not None')
-    code = compile(ast.Module(body=[handoff], type_ignores=[]), 'actual_controller_slot_handoff', 'exec')
-    obj = NS(porter_main_set=self.state, porter_buttons=PorterCruiseButtons())
+    method = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'create_button_messages')
+    branch = method.body[1].body
+    index = next(i for i, n in enumerate(branch) if isinstance(n, ast.Assign) and
+                 ast.unparse(n.targets[0]) == 'main_status')
+    code = compile(ast.Module(body=branch[index:index+2], type_ignores=[]), 'actual_main_set_diagnostics', 'exec')
+    obj = NS(porter_main_set=self.state, CP=NS(safetyConfigs=[NS(safetyParam=58369)]), frame=100)
+    cc = NS(cruiseControl=NS(resume=True))
+    cs = NS(out=NS(cruiseState=NS(enabled=False), vEgo=40/3.6, gasPressed=False))
+    messages = []
+    env = dict(self=obj, CC=cc, CS=cs, CV=NS(MS_TO_KPH=3.6), fresh=True, manual=False,
+               cloudlog=NS(info=lambda fmt, *args: messages.append(fmt % args)))
     self.arm()
-    for t in range(3, 168):
+    for t in range(3, 104):
       self.tick(t)
-    exec(code, {'self': obj})
-    self.assertEqual(obj.porter_buttons.retry_sample_delay, 0.)  # TX alone teaches nothing
-    self.tick(168, stock_enabled=True)
-    exec(code, {'self': obj})
-    self.assertEqual(obj.porter_buttons.retry_sample_delay, .01)
-    self.tick(169, stock_enabled=True)
-    obj.porter_buttons.retry_sample_delay = 0.
-    exec(code, {'self': obj})
-    self.assertEqual(obj.porter_buttons.retry_sample_delay, 0.)  # no repeated overwrite
+    exec(code, env)
+    self.assertIn('req=1 ack=0 noack=1 response=no_response awaiting=False', messages[-1])
 
-  def test_unavailable_delayed_slot_has_bounded_fallback(self):
+  def test_invalid_inputs_interrupt_pending_feedback_without_false_timeout(self):
     self.arm()
-    starts=[]
-    for t in range(3, 200):
-      was_pressing=self.state.pressing
-      b=self.state.update(t*.01,t,main_pressed=False,manual_button=0,blocked=False,
-                          request=True,stock_enabled=False,configured=True)
-      if b==2 and not was_pressing:
-        starts.append(t)
-    self.assertEqual(starts,[52,168])
-    self.assertEqual(self.state.pulse_delay,0.)
+    for t in range(3, 53):
+      self.tick(t)
+    self.tick(54, blocked=True)
+    self.assertEqual(self.state.response, "interrupted")
+    for t in range(55, 120):
+      self.tick(t)
+    self.assertEqual(self.state.acks, 0)
+    self.assertEqual(self.state.timeouts, 0)
