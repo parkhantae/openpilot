@@ -17,8 +17,11 @@ class PorterMainSet:
     self.next_request = 0.
     self.attempts = 0
     self.pending_release = False
+    self.previous_gas = False
+    self.gas_release_since = None
+    self.main_since = None
 
-  def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured):
+  def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False):
     fresh = key is not None and key != self.last_key
     if fresh:
       self.last_key = key
@@ -37,13 +40,21 @@ class PorterMainSet:
       if main_pressed and not self.previous_main:
         self.main = not self.main
         self.armed = self.main and configured
+        self.main_since = now if self.armed else None
       self.previous_main = main_pressed
       if manual_button == 4:
         self.armed = False
     if blocked:
       self.armed = False
     eligible = self.armed and configured and clock_ok and not blocked and not main_pressed and not manual_button
-    if not eligible or stock_enabled or not request:
+    if eligible and not stock_enabled and self.previous_gas and not gas_pressed:
+      self.gas_release_since = now
+    self.previous_gas = gas_pressed if eligible and not stock_enabled else False
+    if not eligible or stock_enabled or gas_pressed:
+      self.gas_release_since = None
+    elif not request:
+      self.gas_release_since = None
+    if not eligible or stock_enabled or not request or gas_pressed:
       self.since = None
       if self.pressing:
         self.pending_release = True
@@ -75,7 +86,10 @@ class PorterMainSet:
       return None
     if self.since is None:
       self.since = now
-    if fresh and now >= self.next_request and now - self.since >= .5 - 1e-9:
+    release_confirmed = (self.gas_release_since is not None and now - self.gas_release_since >= .1 - 1e-9 and
+                         self.main_since is not None and now - self.main_since >= .5 - 1e-9)
+    if fresh and now >= self.next_request and (release_confirmed or now - self.since >= .5 - 1e-9):
+      self.gas_release_since = None
       self.pressing = True
       self.started = now
       self.frames = 1

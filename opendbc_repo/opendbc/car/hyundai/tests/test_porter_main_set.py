@@ -111,3 +111,32 @@ class TestPorterMainSet(unittest.TestCase):
     obj.main_buttons = [0]
     exec(code, env)
     self.assertFalse(obj.main_enabled)
+
+  def test_gas_release_above_floor_uses_short_confirmation(self):
+    self.arm()
+    for t in range(3, 100):
+      self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
+    for t in range(100, 110):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.tick(110), 2)
+
+  def test_release_with_blocked_target_does_not_queue_fast_set(self):
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(100, 120):
+      self.assertIsNone(self.tick(t, request=False))
+    for t in range(120, 170):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.tick(170), 2)
+
+  def test_release_cannot_bypass_brake_or_missing_main(self):
+    for armed in (False, True):
+      self.setUp()
+      if armed:
+        self.arm()
+      for t in range(3, 100):
+        self.tick(t, gas_pressed=True, request=False)
+      self.tick(100, blocked=True)
+      for t in range(101, 180):
+        self.assertIsNone(self.tick(t))

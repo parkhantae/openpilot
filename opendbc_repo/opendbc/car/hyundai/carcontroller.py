@@ -733,7 +733,7 @@ class CarController(CarControllerBase):
                  CS.out.cruiseState.available and CS.is_metric and not CS.out.gasPressed and
                  CS.out.gearShifter == structs.CarState.GearShifter.drive and
                  30 <= CS.out.vEgo * CV.MS_TO_KPH <= 160),
-        stock_enabled=CS.out.cruiseState.enabled,
+        stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
                     any(c.safetyParam == 9217 for c in self.CP.safetyConfigs)))
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)

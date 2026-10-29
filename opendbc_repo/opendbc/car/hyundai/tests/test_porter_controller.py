@@ -275,6 +275,24 @@ class TestPorterMessagePath(unittest.TestCase):
     for frame in range(160, 200):
       self.assertTrue(all(b == 0 for b in self.tick(frame)))
 
+  def test_main_standby_gas_release_sets_at_current_speed(self):
+    self.controller.porter_main_params.get_bool = lambda key: True
+    self.controller.CP.safetyConfigs = [NS(safetyParam=9217)]
+    self.cs.out.cruiseState.enabled = False
+    self.cc.enabled = False
+    self.cc.latActive = True
+    self.cc.cruiseControl.resume = True
+    self.cs.main_buttons = [1]
+    self.cs.out.gasPressed = True
+    self.assertEqual(self.tick(0), [])
+    self.cs.main_buttons = [0]
+    for frame in range(1, 100):
+      self.assertEqual(self.tick(frame), [])
+    self.cs.out.gasPressed = False
+    for frame in range(100, 110):
+      self.assertEqual(self.tick(frame), [])
+    self.assertEqual(self.tick(110), [2])
+
 
 if __name__ == "__main__":
   unittest.main()
