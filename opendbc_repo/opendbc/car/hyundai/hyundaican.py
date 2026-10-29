@@ -132,6 +132,14 @@ def create_lkas11(packer, frame, CP, apply_torque, steer_req,
   return packer.make_can_msg("LKAS11", 0, values)
 
 
+def update_porter_clu11_parity(values, CP):
+  """Recompute Porter switch/counter parity after changing either field."""
+  if CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+    switches = (int(values["CF_Clu_CruiseSwState"]) & 7) | (int(values["CF_Clu_CruiseSwMain"]) << 3) | (int(values["CF_Clu_SldMainSW"]) << 4)
+    counter = int(values["CF_Clu_AliveCnt1"]) & 15
+    values["CF_Clu_ParityBit1"] = (switches.bit_count() + counter.bit_count()) & 1
+
+
 def create_clu11(packer, frame, clu11, button, CP):
   values = {s: clu11[s] for s in [
     "CF_Clu_CruiseSwState",
@@ -149,6 +157,7 @@ def create_clu11(packer, frame, clu11, button, CP):
   ]}
   values["CF_Clu_CruiseSwState"] = button
   values["CF_Clu_AliveCnt1"] = frame % 0x10
+  update_porter_clu11_parity(values, CP)
   # send buttons to camera on camera-scc based cars
   bus = 2 if CP.flags & HyundaiFlags.CAMERA_SCC else 0
   return packer.make_can_msg("CLU11", bus, values)
@@ -402,6 +411,7 @@ def create_clu11_button(packer, frame, clu11, button, CP):
   values["CF_Clu_CruiseSwState"] = button
   #values["CF_Clu_AliveCnt1"] = frame % 0x10
   values["CF_Clu_AliveCnt1"] = (values["CF_Clu_AliveCnt1"] + 1) % 0x10
+  update_porter_clu11_parity(values, CP)
   # send buttons to camera on camera-scc based cars
   bus = 2 if CP.flags & HyundaiFlags.CAMERA_SCC else 0
   return packer.make_can_msg("CLU11", bus, values)

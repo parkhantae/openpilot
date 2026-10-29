@@ -283,3 +283,5 @@ In initial `AutoEngage=2` standby without MAIN confirmation, first observe relea
 This trial does not decode absolute OEM MAIN state; verify CRUISE standby on the dash. A new Panda safety profile is required too, so restart after updating. Previous profiles do not permit this new grant. `PorterMainSet` diagnostics record MAIN confirmation, grant and pedal-observation state on changes and once per second.
 
 The new Panda profile evaluates the automatic SET speed range of 30–160 km/h using dashboard CLU11 speed. Front-left and rear-right wheel speeds must each be 25–160 km/h and within 5 km/h of the dashboard. Thus dashboard 31 km/h with wheels at 29 km/h can qualify; low speeds, unit mismatch, invalid or stale signals cannot. The below-30 target block remains. Restart after updating to apply the new Panda profile.
+
+Porter button transmission recomputes switch/counter parity after changing either field. Automatic SET, speed matching, CANCEL and release use the same format; Panda rejects frames with incorrect parity. This consistency check does not replace actual stock ON feedback.

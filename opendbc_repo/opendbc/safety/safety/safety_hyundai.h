@@ -492,6 +492,15 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
 
   if (hyundai_porter_cc && addr == 0x4f1) {
     int button = GET_BYTE(to_send, 0) & 7U;
+    // Porter CLU11 parity covers the switch bits and alive-counter nibble.
+    // Copying OEM parity after changing either produces an invalid packet.
+    uint32_t parity_bits = (GET_BYTE(to_send, 0) & 0x1FU) ^ (GET_BYTE(to_send, 3) >> 4U);
+    bool expected_parity = false;
+    for (int i = 0; i < 5; i++) {
+      expected_parity ^= ((parity_bits >> i) & 1U) != 0U;
+    }
+    bool parity_valid = GET_BIT(to_send, 5U) == expected_parity;
+    if (!parity_valid) return false;
     bool step = button == HYUNDAI_BTN_RESUME || button == HYUNDAI_BTN_SET;
     bool permitted = controls_allowed && cruise_engaged_prev && hyundai_porter_inputs_valid() &&
                      hyundai_porter_drive && !hyundai_porter_hold && !hyundai_porter_park &&

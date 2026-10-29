@@ -506,3 +506,27 @@ class TestPorterMainSetSafety(unittest.TestCase):
         output.append(button)
     self.assertEqual(output, [2]*6+[0])
     self.assertFalse(lib.get_controls_allowed())
+
+  def test_invalid_parity_cannot_consume_set_grant_or_authorize_controls(self):
+    self.startup_pedal(param=60417, speed=29, cluster_speed=31.5)
+    payload = bytearray(data(0x4f1, button=2, counter=46, speed=29, cluster_speed=31.5))
+    payload[0] ^= 0x20
+    self.assertFalse(lib.safety_tx_hook(packet(0x4f1, payload)))
+    self.assertFalse(lib.get_controls_allowed())
+    self.assertTrue(self.tx(counter=46))  # malformed TX did not consume RX/grant
+    self.assertFalse(lib.get_controls_allowed())
+    self.startup_pedal(param=60417, speed=29, cluster_speed=31.5)
+    self.assertFalse(lib.safety_tx_hook(packet(0x4f1, payload)))
+    lib.set_timer(941000)
+    seed(counter=46, speed=29, cluster_speed=31.5, target=31)
+    self.assertFalse(lib.get_controls_allowed())  # bad parity never creates SET proof
+
+  def test_bad_parity_is_rejected_for_speed_cancel_and_release_too(self):
+    from hyundai_porter_testlib import engage
+    engage()
+    for button in (0, 1, 2, 4):
+      valid = data(0x4f1, button=button, counter=3)
+      invalid = bytearray(valid)
+      invalid[0] ^= 0x20
+      self.assertFalse(lib.safety_tx_hook(packet(0x4f1, invalid)), button)
+      self.assertTrue(lib.safety_tx_hook(packet(0x4f1, valid)), button)

@@ -52,6 +52,7 @@ def data(address, target=0, button=0, brake=False, gas=False, drive=True, hold=F
         cluster = round((speed if cluster_speed is None else cluster_speed) * 8)
         value = (button | (int(main) << 3) | ((counter % 16) << 28) | ((cluster // 4) << 8) |
                  ((cluster % 4) << 6) | (int(not cluster_metric) << 17))
+        value |= (((value & 31).bit_count() + (counter % 16).bit_count()) & 1) << 5
     elif address == 0x372:
         value = (5 if drive else 0) << 16
     elif address == 0x507:
