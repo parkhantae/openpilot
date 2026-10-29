@@ -69,3 +69,45 @@ class TestPorterMainSet(unittest.TestCase):
     self.assertIsNone(self.tick(56, manual_button=4))
     self.assertEqual(self.tick(58), 0)
     self.assertFalse(self.state.armed)
+
+  def test_log544_manual_set_syncs_main_without_granting_authority(self):
+    self.tick(0, stock_enabled=True, request=False)
+    self.assertTrue(self.state.main)
+    self.assertFalse(self.state.armed)
+    self.tick(2, stock_enabled=True, main_pressed=True)
+    self.assertFalse(self.state.main)
+    self.tick(4, stock_enabled=True, main_pressed=True)
+    self.assertFalse(self.state.main)  # delayed OEM OFF must not undo MAIN OFF
+    self.tick(6, stock_enabled=False)
+    self.tick(8, main_pressed=True)
+    self.assertTrue(self.state.main)
+    self.assertTrue(self.state.armed)
+    self.tick(10, blocked=True)
+    self.tick(12, stock_enabled=True)
+    self.assertFalse(self.state.armed)  # feedback cannot undo brake/CANCEL revocation
+
+  def test_actual_carstate_stock_edge_sync_and_main_off(self):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    tree = ast.parse((Path(__file__).resolve().parents[1] / 'carstate.py').read_text())
+    update = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == 'CarState'
+                  for n in c.body if isinstance(n, ast.FunctionDef) and n.name == 'update')
+    block = next(n for n in ast.walk(update) if isinstance(n, ast.If) and
+                 any(isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and
+                     call.func.id == 'update_porter_state' for call in ast.walk(n)))
+    code = compile(ast.Module(body=block.body, type_ignores=[]), 'actual_porter_state_sync', 'exec')
+    obj = NS(CP=NS(safetyConfigs=[NS(safetyParam=9217)]), main_enabled=False,
+             main_buttons=[0], porter_main_stock_prev=False, is_metric=True)
+    ret = NS(gearShifter='drive', cruiseState=NS(enabled=True, available=True, speed=40/3.6))
+    env = dict(self=obj, ret=ret, cp=None, GearShifter=NS(drive='drive'), update_porter_state=lambda *args: None)
+    exec(code, env)
+    self.assertTrue(obj.main_enabled)
+    obj.main_enabled = False
+    obj.main_buttons = [1]
+    exec(code, env)  # MAIN OFF while stock ON feedback is still arriving
+    self.assertFalse(obj.main_enabled)
+    ret.cruiseState.enabled = False
+    obj.main_buttons = [0]
+    exec(code, env)
+    self.assertFalse(obj.main_enabled)

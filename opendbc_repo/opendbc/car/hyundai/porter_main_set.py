@@ -6,6 +6,7 @@ class PorterMainSet:
   def __init__(self):
     self.main = False
     self.previous_main = False
+    self.previous_stock = False
     self.armed = False
     self.last_time = None
     self.last_key = None
@@ -27,6 +28,11 @@ class PorterMainSet:
       self.armed = False
     if not configured:
       self.armed = self.main = False
+    stock_rising = stock_enabled and not self.previous_stock
+    self.previous_stock = stock_enabled
+    if configured and stock_rising and not main_pressed:
+      # Stock engagement proves MAIN is on, but never restores revoked permission.
+      self.main = True
     if fresh:
       if main_pressed and not self.previous_main:
         self.main = not self.main

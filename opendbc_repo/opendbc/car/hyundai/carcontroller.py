@@ -7,6 +7,7 @@ from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits, common_f
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
+from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
 from opendbc.car.hyundai.porter_main_set import PorterMainSet
 from opendbc.car.hyundai.porter import PorterCruiseButtons, porter_steer_request_frames
 from opendbc.car.hyundai.stopping import CanfdStopping
@@ -197,6 +198,7 @@ class CarController(CarControllerBase):
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
     self.porter_main_set = PorterMainSet()
+    self.porter_cancel_buttons = PorterCancelButtons()
     self.porter_main_params = Params()
 
     self.hyundai_jerk = HyundaiJerk()
@@ -700,11 +702,17 @@ class CarController(CarControllerBase):
                  CS.out.brakePressed or CS.out.brakeHoldActive or CS.out.parkingBrake or CS.out.standstill or
                  CS.out.gearShifter != structs.CarState.GearShifter.drive or CC.cruiseControl.resume or
                  self.speed_from_pcm == 1)
+      cancel_button = self.porter_cancel_buttons.update(
+        self.frame * DT_CTRL, (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
+        requested=CC.cruiseControl.cancel, stock_enabled=CS.out.cruiseState.enabled,
+        valid=fresh and CS.is_metric and CS.out.canValid, manual=manual,
+        preferred_delay=self.porter_buttons.preferred_sample_delay)
+      cancel_busy = self.porter_cancel_buttons.busy or cancel_button is not None
       button = self.porter_buttons.update(
         self.frame * DT_CTRL, CC.hudControl.setSpeed * CV.MS_TO_KPH, CS.out.cruiseState.speed * CV.MS_TO_KPH,
         (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
-        enabled=CC.enabled and CS.out.cruiseState.enabled, blocked=blocked, manual=manual,
-        cancel=CC.cruiseControl.cancel and CS.out.cruiseState.enabled,
+        enabled=CC.enabled and CS.out.cruiseState.enabled and not cancel_busy,
+        blocked=blocked or cancel_busy, manual=manual, cancel=False,
         press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL)
       porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
                        self.porter_buttons.acks, self.porter_buttons.timeouts)
@@ -720,20 +728,27 @@ class CarController(CarControllerBase):
         manual_button=CS.cruise_buttons[-1],
         blocked=(not fresh or not CS.out.canValid or CS.out.accFaulted or CS.out.brakePressed or
                  CS.out.brakeHoldActive or CS.out.parkingBrake or self.speed_from_pcm != 0),
-        request=(CC.enabled and CC.cruiseControl.resume and not CC.cruiseControl.cancel and
+        request=((CC.enabled or getattr(CC, "latActive", False)) and
+                 CC.cruiseControl.resume and not CC.cruiseControl.cancel and not cancel_busy and
                  CS.out.cruiseState.available and CS.is_metric and not CS.out.gasPressed and
                  CS.out.gearShifter == structs.CarState.GearShifter.drive and
                  30 <= CS.out.vEgo * CV.MS_TO_KPH <= 160),
         stock_enabled=CS.out.cruiseState.enabled,
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
                     any(c.safetyParam == 9217 for c in self.CP.safetyConfigs)))
+      cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
+      if cancel_status != getattr(self, "porter_cancel_status", None):
+        self.porter_cancel_status = cancel_status
+        cloudlog.info("PorterCancel: status=%s requests=%d stock=%s", *cancel_status, CS.out.cruiseState.enabled)
       main_status = (self.porter_main_set.main, self.porter_main_set.armed, self.porter_main_set.pressing)
       if (any(c.safetyParam == 9217 for c in self.CP.safetyConfigs) and
           main_status != getattr(self, "porter_main_status", None)):
         self.porter_main_status = main_status
         cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f",
                       *main_status, CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH)
-      if button is None:
+      if cancel_busy:
+        button = cancel_button
+      elif button is None:
         button = main_set
       if button is not None:
         can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, button, self.CP))

@@ -20,10 +20,13 @@ def porter_gap_time_s(params, gap_level):
   """Read the selected Porter-only gap live; invalid storage keeps its old default."""
   index = min(4, max(1, int(gap_level or 2))) - 1
   try:
-    value = params.get_int(f"PorterGap{index + 1}")
+    key = f"PorterGap{index + 1}"
+    if hasattr(params, "get") and params.get(key) is None:
+      return PORTER_GAP_TIME_S[index]
+    value = params.get_int(key)
   except (TypeError, ValueError):
-    value = 0
-  return value * 0.01 if 100 <= value <= 300 else PORTER_GAP_TIME_S[index]
+    return PORTER_GAP_TIME_S[index]
+  return value * 0.01 if 0 <= value <= 300 else PORTER_GAP_TIME_S[index]
 
 
 def porter_steer_request_frames(configured_frames):
@@ -56,7 +59,7 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
 
   gap_index = min(len(PORTER_GAP_TIME_S), max(1, int(gap_level or 2))) - 1
   time_s = PORTER_GAP_TIME_S[gap_index]
-  if gap_time_s is not None and math.isfinite(gap_time_s) and 1.0 <= gap_time_s <= 3.0:
+  if gap_time_s is not None and math.isfinite(gap_time_s) and 0.0 <= gap_time_s <= 3.0:
     time_s = gap_time_s
   desired_distance = max(7.0, 5.0 + ego_speed * time_s)
   projected_distance = lead_distance + min(0.0, lead_relative_speed) * PORTER_LEAD_REACTION_S

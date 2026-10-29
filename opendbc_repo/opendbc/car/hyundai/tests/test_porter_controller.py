@@ -110,7 +110,8 @@ class TestPorterMessagePath(unittest.TestCase):
 
   def setUp(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
-    self.controller = NS(porter_main_set=PorterMainSet(), porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
+    from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
+    self.controller = NS(porter_cancel_buttons=PorterCancelButtons(), porter_main_set=PorterMainSet(), porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
                          porter_buttons=self.buttons_class(), speed_from_pcm=0,
                          button_spam1=8, button_spam2=30)
     self.cc = NS(enabled=True, cruiseControl=NS(cancel=False, resume=False),
@@ -239,6 +240,8 @@ class TestPorterMessagePath(unittest.TestCase):
     self.assertEqual(self.tick(20), [2])
 
   def test_main_auto_set_reaches_packer_and_stops_on_brake(self):
+    self.cc.enabled = False
+    self.cc.latActive = True
     self.controller.porter_main_params.get_bool = lambda key: True
     self.controller.CP.safetyConfigs = [NS(safetyParam=9217)]
     self.cs.out.cruiseState.enabled = False
@@ -256,6 +259,21 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.out.brakePressed = False
     for frame in range(61, 200):
       self.assertEqual(self.tick(frame), [])
+
+  def test_cancel_owns_bus_until_off_and_blocks_speed_and_auto_set(self):
+    self.cc.cruiseControl.cancel = True
+    self.cc.cruiseControl.resume = True
+    outputs = []
+    for frame in range(160):
+      outputs.extend(self.tick(frame))
+    self.assertTrue(outputs)
+    self.assertTrue(all(b in (0, 4) for b in outputs))
+    self.assertGreater(self.controller.porter_cancel_buttons.requests, 1)
+    self.cs.out.cruiseState.enabled = False
+    self.cc.cruiseControl.cancel = False
+    self.cc.cruiseControl.resume = False
+    for frame in range(160, 200):
+      self.assertTrue(all(b == 0 for b in self.tick(frame)))
 
 
 if __name__ == "__main__":

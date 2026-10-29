@@ -478,3 +478,5 @@ ATC mode 4 optionally triggers the physical right indicator before a TBT right t
 Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Porter Only to request stock-cruise cancellation for a valid sub-30 km/h target held for 0.3s in SpeedFromPCM=0. This does not brake, stop or automatically re-engage. See [Porter button controls](buttons-presets.md#button-spam).
 
 Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and physically authorize through MAIN; target and actual speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
+
+Porter GAP 1–4 accepts 0–300, including sub-100 values in actual button decisions. Automatic SET can use engagement or active lateral control as readiness, while separately requiring physical MAIN authorization.

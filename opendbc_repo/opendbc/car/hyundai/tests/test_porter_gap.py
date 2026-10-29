@@ -8,7 +8,7 @@ from opendbc.car.hyundai.porter_cancel import porter_cancel_target
 class TestPorterGap(unittest.TestCase):
   def test_defaults_and_invalid_storage(self):
     for i, default in enumerate(PORTER_GAP_TIME_S, 1):
-      for value in (0, 99, 301, 'bad'):
+      for value in (-1, 301, 'bad'):
         def read(key, i=i, value=value):
           self.assertEqual(key, f'PorterGap{i}')
           return int(value)
@@ -40,3 +40,13 @@ class TestPorterGap(unittest.TestCase):
         for relative in (-5, -1, 0, 1):
           args = (70, 15, distance, relative, level)
           self.assertEqual(porter_lead_target_kph(*args), porter_lead_target_kph(*args, gap_time_s=time_s))
+
+  def test_sub_one_second_and_zero_are_applied(self):
+    for value in (0, 1, 50, 99, 100):
+      params = SimpleNamespace(get_int=lambda key, v=value: v)
+      self.assertEqual(porter_gap_time_s(params, 1), value / 100)
+    # At 36 km/h projected range 12m: 0.5s keeps target; 1s constrains.
+    self.assertEqual(porter_lead_target_kph(60, 10, 20, -1, 1, gap_time_s=.5), 60)
+    self.assertAlmostEqual(porter_lead_target_kph(60, 10, 20, -1, 1, gap_time_s=1), 32.4)
+    # Zero retains the existing 7m distance floor.
+    self.assertAlmostEqual(porter_lead_target_kph(60, 10, 10, -1, 1, gap_time_s=0), 32.4)

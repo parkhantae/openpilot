@@ -161,3 +161,20 @@ class TestPorterCancelPublish(unittest.TestCase):
         self.sm.invalid.add('longitudinalPlan')
       self.run_frames(planner=29 if invalid == 'low_target' else 40)
       self.assertFalse(self.cc.cruiseControl.resume, invalid)
+
+  def test_log544_off_pcm_with_lateral_ready_can_request_set(self):
+    self.values.update(PorterAutoSetMain=True, PorterAutoCancelBelow30=True)
+    self.obj.CP.safetyConfigs = [NS(safetyParam=9217)]
+    self.cs.cruiseState.enabled = False
+    self.cs.cruiseState.available = True
+    self.cs.vEgo = 32 / 3.6
+    self.cc.enabled = False
+    self.cc.latActive = True
+    self.cc.cruiseControl.resume = False
+    self.run_frames(planner=34)
+    self.assertTrue(self.cc.cruiseControl.resume)
+    self.assertFalse(self.cc.cruiseControl.cancel)
+    self.cc.latActive = False
+    self.cc.cruiseControl.resume = False
+    self.run_frames(planner=34, start=40)
+    self.assertFalse(self.cc.cruiseControl.resume)

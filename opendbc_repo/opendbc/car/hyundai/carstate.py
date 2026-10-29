@@ -243,6 +243,7 @@ class CarState(CarStateBase):
     self.main_enabled = True if self.op_params.get_int("AutoEngage") == 2 else False
     if CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV and self.op_params.get_bool("PorterAutoSetMain"):
       self.main_enabled = False
+    self.porter_main_stock_prev = False
     self.manual_main_off_latched = False
     self.gear_shifter = GearShifter.drive # Gear_init for Nexo ?? unknown 21.02.23.LSW
 
@@ -700,6 +701,11 @@ class CarState(CarStateBase):
       if ret.gearShifter != GearShifter.drive:
         ret.cruiseState.enabled = False
         ret.cruiseState.speed = 0.0
+      if (any(c.safetyParam == 9217 for c in self.CP.safetyConfigs) and
+          ret.cruiseState.enabled and not self.porter_main_stock_prev and self.main_buttons[-1] == 0):
+        self.main_enabled = True
+        ret.cruiseState.available = True
+      self.porter_main_stock_prev = ret.cruiseState.enabled
 
     ret.vehicleGps = self.vehicle_gps.update(cp, ret.vEgoRaw, ret.gearShifter == GearShifter.reverse)
     return ret

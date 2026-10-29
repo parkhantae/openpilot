@@ -186,7 +186,13 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
       if (hyundai_porter_main_set) hyundai_porter_limiter = GET_BIT(to_push, 13U);
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
       bool engaged = target >= 30 && target <= 160;
-      if (hyundai_porter_main_set && engaged) hyundai_porter_set_active = false;
+      if (hyundai_porter_main_set && engaged) {
+        hyundai_porter_set_active = false;
+        // Synchronize parity once on actual engagement; never rearm on feedback.
+        if (!cruise_engaged_prev && !hyundai_porter_main_prev && hyundai_porter_inputs_valid() &&
+            hyundai_porter_drive && !hyundai_porter_hold && !hyundai_porter_park &&
+            !hyundai_porter_fault && !brake_pressed) hyundai_porter_main = true;
+      }
       bool recent_enable_button = hyundai_porter_enable_button_seen &&
                                   get_ts_elapsed(now, hyundai_porter_enable_button_ts) <= HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT;
       if (engaged && !cruise_engaged_prev &&

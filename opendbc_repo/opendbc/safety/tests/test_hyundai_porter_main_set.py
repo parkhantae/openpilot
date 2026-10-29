@@ -86,3 +86,51 @@ class TestPorterMainSetSafety(unittest.TestCase):
     lib.set_timer(41000)
     seed(counter=2, speed=40)
     self.assertFalse(self.tx())
+
+  def test_log544_manual_engagement_syncs_main_parity(self):
+    init(9217)
+    lib.set_timer(21000)
+    seed(counter=1, button=2, speed=40)
+    lib.set_timer(41000)
+    seed(counter=2, target=40, speed=40)
+    lib.set_timer(61000)
+    seed(counter=3, target=40, main=True, speed=40)  # MAIN OFF, feedback still ON
+    lib.set_timer(81000)
+    seed(counter=4, speed=40)
+    self.assertFalse(self.tx(counter=5))
+    lib.set_timer(101000)
+    seed(counter=5, main=True, speed=40)  # MAIN ON again
+    for counter in range(6, 34):
+      lib.set_timer(101000 + (counter - 5) * 20000)
+      seed(counter=counter, speed=40)
+    self.assertTrue(self.tx(counter=34))
+
+  def test_feedback_does_not_rearm_after_cancel(self):
+    self.prepare()
+    lib.set_timer(701000)
+    seed(counter=3, speed=40, button=4)
+    lib.set_timer(721000)
+    seed(counter=4, speed=40, target=40)
+    lib.set_timer(741000)
+    seed(counter=5, speed=40)
+    self.assertFalse(self.tx(counter=6))
+
+  def test_bounded_cancel_release_uses_existing_native_permission(self):
+    from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
+    from hyundai_porter_testlib import engage
+    engage()
+    pulse = PorterCancelButtons()
+    emitted = []
+    for tick in range(150):
+      lib.set_timer(13000 + tick * 10000)
+      counter = tick // 2 + 3
+      if tick % 2 == 0:
+        seed(counter=counter, target=42, speed=40)
+      button = pulse.update(tick * .01, counter, requested=True, stock_enabled=True, preferred_delay=.01)
+      if button is not None:
+        emitted.append(button)
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter+1))))
+    self.assertIn(4, emitted)
+    self.assertIn(0, emitted)
+    self.assertNotIn(1, emitted)
+    self.assertNotIn(2, emitted)
