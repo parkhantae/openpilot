@@ -63,6 +63,10 @@ static bool hyundai_porter_main_prev = false;
 static bool hyundai_porter_main_armed = false;
 static bool hyundai_porter_speed_ok = false;
 static bool hyundai_porter_limiter = false;
+static bool hyundai_porter_rearm_gas = false;
+static bool hyundai_porter_rearm_manual = false;
+static bool hyundai_porter_raw_gas_prev = false;
+static uint32_t hyundai_porter_rearm_ts = 0U;
 static bool hyundai_porter_set_active = false;
 static bool hyundai_porter_set_seen = false;
 static uint32_t hyundai_porter_set_start = 0U;
@@ -184,6 +188,24 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     }
     if (addr == 0x371) {
       if (hyundai_porter_main_set) hyundai_porter_limiter = GET_BIT(to_push, 13U);
+      if (hyundai_porter_main_set) {
+        bool raw_gas = (((GET_BYTE(to_push, 4) & 0x7FU) << 1) | GET_BYTE(to_push, 3) >> 7) != 0U;
+        bool rearm_ready = hyundai_porter_main && !hyundai_porter_rearm_manual && !cruise_engaged_prev &&
+                           hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
+                           !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed && !hyundai_porter_limiter;
+        if (!rearm_ready) hyundai_porter_rearm_gas = false;
+        if (rearm_ready && !hyundai_porter_main_armed) {
+          if (raw_gas && !hyundai_porter_raw_gas_prev) {
+            hyundai_porter_rearm_gas = true;
+            hyundai_porter_rearm_ts = now;
+          } else if (!raw_gas && hyundai_porter_raw_gas_prev) {
+            if (hyundai_porter_rearm_gas && hyundai_porter_speed_ok &&
+                get_ts_elapsed(now, hyundai_porter_rearm_ts) >= 100000U) hyundai_porter_main_armed = true;
+            hyundai_porter_rearm_gas = false;
+          }
+        }
+        hyundai_porter_raw_gas_prev = raw_gas;
+      }
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
       bool engaged = target >= 30 && target <= 160;
       if (hyundai_porter_main_set && engaged) {
@@ -222,9 +244,11 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
         }
       }
       if (hyundai_porter_main_set) {
+        hyundai_porter_rearm_manual = main_button || button != HYUNDAI_BTN_NONE;
         hyundai_porter_clu_ts = now;
         hyundai_porter_clu_counter = GET_BYTE(to_push, 3) >> 4;
         if (main_button && !hyundai_porter_main_prev) {
+          hyundai_porter_rearm_gas = false;
           hyundai_porter_set_active = false;
           hyundai_porter_main = !hyundai_porter_main;
           hyundai_porter_main_armed = hyundai_porter_main;
@@ -233,6 +257,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
         hyundai_porter_main_prev = main_button;
         if (button == HYUNDAI_BTN_CANCEL) {
           hyundai_porter_main_armed = false;
+          hyundai_porter_rearm_gas = false;
           hyundai_porter_set_active = false;
         }
       }
@@ -313,6 +338,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     if (hyundai_porter_main_set && (brake_pressed || hyundai_porter_hold || hyundai_porter_park ||
                                    hyundai_porter_fault || !hyundai_porter_inputs_valid())) {
       hyundai_porter_main_armed = false;
+      hyundai_porter_rearm_gas = false;
       hyundai_porter_set_active = false;
     }
     generic_rx_checks(stock_ecu_detected);
@@ -338,6 +364,7 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
   if (hyundai_porter_main_set && (brake_pressed || hyundai_porter_hold || hyundai_porter_park ||
                                  hyundai_porter_fault || !hyundai_porter_inputs_valid())) {
     hyundai_porter_main_armed = false;
+    hyundai_porter_rearm_gas = false;
     hyundai_porter_set_active = false;
   }
 
@@ -643,6 +670,8 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_porter_speed_ok = hyundai_porter_set_active = hyundai_porter_set_seen = false;
   hyundai_porter_set_start = hyundai_porter_set_wait = hyundai_porter_clu_ts = hyundai_porter_set_rx_ts = 0U;
   hyundai_porter_limiter = false;
+  hyundai_porter_rearm_gas = hyundai_porter_raw_gas_prev = hyundai_porter_rearm_manual = false;
+  hyundai_porter_rearm_ts = 0U;
   hyundai_porter_main_ts = 0U;
   hyundai_porter_clu_counter = hyundai_porter_set_frames = hyundai_porter_set_attempts = 0;
   hyundai_porter_drive = false;

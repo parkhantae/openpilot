@@ -5,7 +5,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="f4cb3c39dcc379570a210aa24d7874f53e91cd7e7e8ead444d1ac23d5db669a8" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="5a579daaaa28f50f3e4234d3a597f8d4b40431eeca2c2de52cde12d3397fa06d" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -16,7 +16,7 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+ON 변경 후 재시작하고 MAIN을 직접 켜세요. 브레이크·CANCEL·MAIN OFF·신호 단절은 허가를 해제하며 MAIN OFF→ON으로 다시 허용합니다.
++ON 변경 후 재시작하고 MAIN을 직접 켜세요. 브레이크·CANCEL 뒤에는 MAIN 대기를 유지하고 엑셀을 새로 밟아 30km/h 이상에서 놓으면 다시 허용합니다. MAIN OFF에서는 시작하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
@@ -34,7 +34,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="f4cb3c39dcc379570a210aa24d7874f53e91cd7e7e8ead444d1ac23d5db669a8" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="5a579daaaa28f50f3e4234d3a597f8d4b40431eeca2c2de52cde12d3397fa06d" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -45,7 +45,7 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+After turning ON, restart and physically operate MAIN. Brake, CANCEL, MAIN OFF or observation gaps revoke authorization; cycle MAIN OFF then ON to rearm.
++After turning ON, restart and physically operate MAIN. After brake or CANCEL, retain MAIN standby and rearm only on a fresh gas press/release at 30 km/h or above. MAIN OFF prevents automatic starts.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->

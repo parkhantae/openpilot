@@ -140,3 +140,36 @@ class TestPorterMainSet(unittest.TestCase):
       self.tick(100, blocked=True)
       for t in range(101, 180):
         self.assertIsNone(self.tick(t))
+
+  def test_new_gas_after_brake_or_cancel_rearms_without_main_cycle(self):
+    for override in (dict(blocked=True), dict(manual_button=4)):
+      self.setUp()
+      self.arm()
+      self.tick(4, **override)
+      for t in range(5, 100):
+        self.assertIsNone(self.tick(t))
+      for t in range(100, 130):
+        self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
+      for t in range(130, 140):
+        self.assertIsNone(self.tick(t))
+      self.assertEqual(self.tick(140), 2)
+
+  def test_gas_held_through_brake_is_not_new_authorization(self):
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    self.tick(100, gas_pressed=True, blocked=True)
+    for t in range(101, 130):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(130, 200):
+      self.assertIsNone(self.tick(t))
+    self.assertFalse(self.state.armed)
+
+  def test_main_off_never_rearms_from_gas(self):
+    self.arm()
+    self.tick(4, main_pressed=True)
+    for t in range(5, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(100, 180):
+      self.assertIsNone(self.tick(t))
+    self.assertFalse(self.state.main)

@@ -20,6 +20,8 @@ class PorterMainSet:
     self.previous_gas = False
     self.gas_release_since = None
     self.main_since = None
+    self.raw_previous_gas = False
+    self.rearm_gas_since = None
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False):
     fresh = key is not None and key != self.last_key
@@ -36,6 +38,8 @@ class PorterMainSet:
     if configured and stock_rising and not main_pressed:
       # Stock engagement proves MAIN is on, but never restores revoked permission.
       self.main = True
+      if self.main_since is None:
+        self.main_since = now
     if fresh:
       if main_pressed and not self.previous_main:
         self.main = not self.main
@@ -46,6 +50,19 @@ class PorterMainSet:
         self.armed = False
     if blocked:
       self.armed = False
+    rearm_ready = (configured and self.main and clock_ok and not blocked and not main_pressed and
+                   not manual_button and not stock_enabled)
+    if not rearm_ready:
+      self.rearm_gas_since = None
+    elif not self.armed:
+      if gas_pressed and not self.raw_previous_gas:
+        self.rearm_gas_since = now
+      elif not gas_pressed and self.raw_previous_gas:
+        if self.rearm_gas_since is not None and now - self.rearm_gas_since >= .1 - 1e-9 and request:
+          self.armed = True
+          self.previous_gas = True
+        self.rearm_gas_since = None
+    self.raw_previous_gas = gas_pressed
     eligible = self.armed and configured and clock_ok and not blocked and not main_pressed and not manual_button
     if eligible and not stock_enabled and self.previous_gas and not gas_pressed:
       self.gas_release_since = now

@@ -134,3 +134,25 @@ class TestPorterMainSetSafety(unittest.TestCase):
     self.assertIn(0, emitted)
     self.assertNotIn(1, emitted)
     self.assertNotIn(2, emitted)
+
+  def test_new_acceleration_release_rearms_after_override_only_with_main(self):
+    for override, expected in ((dict(brake=True), True), (dict(button=4), True), (dict(main=True), False)):
+      self.prepare()
+      lib.set_timer(701000)
+      seed(counter=3, speed=40, **override)
+      lib.set_timer(721000)
+      seed(counter=4, speed=40)
+      self.assertFalse(self.tx(counter=5))
+      for i in range(5, 16):
+        lib.set_timer(721000+(i-4)*20000)
+        seed(counter=i, speed=40, gas=i<15)
+      self.assertEqual(self.tx(counter=16), expected)
+
+  def test_gas_held_through_override_does_not_rearm(self):
+    self.prepare()
+    lib.set_timer(701000)
+    seed(counter=3, speed=40, gas=True, brake=True)
+    for i in range(4, 16):
+      lib.set_timer(701000+(i-3)*20000)
+      seed(counter=i, speed=40, gas=i<15)
+    self.assertFalse(self.tx(counter=16))
