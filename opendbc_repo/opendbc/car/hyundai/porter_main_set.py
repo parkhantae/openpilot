@@ -3,8 +3,9 @@ import math
 
 
 class PorterMainSet:
-  def __init__(self):
-    self.main = False
+  def __init__(self, initial_main=False):
+    self.main = bool(initial_main)
+    self.main_known = False
     self.previous_main = False
     self.previous_stock = False
     self.armed = False
@@ -38,10 +39,12 @@ class PorterMainSet:
     if configured and stock_rising and not main_pressed:
       # Stock engagement proves MAIN is on, but never restores revoked permission.
       self.main = True
+      self.main_known = True
       if self.main_since is None:
         self.main_since = now
     if fresh:
       if main_pressed and not self.previous_main:
+        self.main_known = True
         self.main = not self.main
         self.armed = self.main and configured
         self.main_since = now if self.armed else None
@@ -50,7 +53,7 @@ class PorterMainSet:
         self.armed = False
     if blocked:
       self.armed = False
-    rearm_ready = (configured and self.main and clock_ok and not blocked and not main_pressed and
+    rearm_ready = (configured and self.main and self.main_known and clock_ok and not blocked and not main_pressed and
                    not manual_button and not stock_enabled)
     if not rearm_ready:
       self.rearm_gas_since = None

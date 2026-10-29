@@ -178,7 +178,7 @@ def update_porter_state(ret, cp, main_enabled, is_metric):
 def supports_porter_button_cruise(CP):
   return (CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
           CP.pcmCruise and not CP.openpilotLongitudinalControl and
-          any(str(config.safetyModel) == "hyundai" and config.safetyParam in (1025, 9217) for config in CP.safetyConfigs))
+          any(str(config.safetyModel) == "hyundai" and config.safetyParam in (1025, 9217, 25601) for config in CP.safetyConfigs))
 
 
 class PorterCruiseButtons:

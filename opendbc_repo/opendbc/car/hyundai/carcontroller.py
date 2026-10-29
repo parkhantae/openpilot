@@ -197,7 +197,7 @@ class CarController(CarControllerBase):
     self.car_fingerprint = CP.carFingerprint
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
-    self.porter_main_set = PorterMainSet()
+    self.porter_main_set = PorterMainSet(initial_main=any(c.safetyParam == 25601 for c in CP.safetyConfigs))
     self.porter_cancel_buttons = PorterCancelButtons()
     self.porter_main_params = Params()
 
@@ -735,17 +735,18 @@ class CarController(CarControllerBase):
                  30 <= CS.out.vEgo * CV.MS_TO_KPH <= 160),
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
-                    any(c.safetyParam == 9217 for c in self.CP.safetyConfigs)))
+                    any(c.safetyParam in (9217, 25601) for c in self.CP.safetyConfigs)))
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
       if cancel_status != getattr(self, "porter_cancel_status", None):
         self.porter_cancel_status = cancel_status
         cloudlog.info("PorterCancel: status=%s requests=%d stock=%s", *cancel_status, CS.out.cruiseState.enabled)
       main_status = (self.porter_main_set.main, self.porter_main_set.armed, self.porter_main_set.pressing)
-      if (any(c.safetyParam == 9217 for c in self.CP.safetyConfigs) and
+      if (any(c.safetyParam in (9217, 25601) for c in self.CP.safetyConfigs) and
           main_status != getattr(self, "porter_main_status", None)):
         self.porter_main_status = main_status
-        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f",
-                      *main_status, CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH)
+        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s",
+                      *main_status, CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
+                      self.porter_main_set.main_known)
       if cancel_busy:
         button = cancel_button
       elif button is None:

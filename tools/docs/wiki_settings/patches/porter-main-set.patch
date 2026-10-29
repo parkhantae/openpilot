@@ -5,7 +5,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="de982a2044127d7dc9d8f7b2f975753b6b0146a5efea5cb05af9329f52a9afe4" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="472a201dbee65dabc83ace67a14d8800dbc3ef96e753f4129909447d2745f4e9" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -16,7 +16,7 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+ON 변경 후 재시작하고 MAIN을 직접 켜세요. 브레이크·CANCEL 뒤에는 MAIN 대기를 유지하고 엑셀을 새로 밟아 30km/h 이상에서 놓으면 다시 허용합니다. MAIN OFF에서는 시작하지 않습니다.
++ON 변경 후 재시작하고 MAIN을 직접 켜세요. 초기 MAIN 추적은 AutoEngage와 맞추지만 초기값만으로 SET을 허가하지 않습니다. 브레이크·CANCEL 뒤에는 MAIN 대기를 유지하고 엑셀을 새로 밟아 30km/h 이상에서 놓으면 다시 허용합니다. MAIN OFF에서는 시작하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
@@ -34,7 +34,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="de982a2044127d7dc9d8f7b2f975753b6b0146a5efea5cb05af9329f52a9afe4" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="472a201dbee65dabc83ace67a14d8800dbc3ef96e753f4129909447d2745f4e9" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -45,7 +45,7 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+After turning ON, restart and physically operate MAIN. After brake or CANCEL, retain MAIN standby and rearm only on a fresh gas press/release at 30 km/h or above. MAIN OFF prevents automatic starts.
++After turning ON, restart and physically operate MAIN. Initial MAIN parity follows AutoEngage but never authorizes SET by itself. After brake or CANCEL, retain MAIN standby and rearm only on a fresh gas press/release at 30 km/h or above. MAIN OFF prevents automatic starts.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->

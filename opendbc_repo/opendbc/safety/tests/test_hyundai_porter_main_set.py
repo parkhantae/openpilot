@@ -175,3 +175,26 @@ class TestPorterMainSetSafety(unittest.TestCase):
     lib.set_timer(741000)
     seed(counter=8, speed=40)
     self.assertFalse(self.tx(counter=9))
+
+  def test_initial_on_seed_never_authorizes_transmission_or_pedal_rearm(self):
+    init(25601)
+    for counter in range(1, 40):
+      lib.set_timer(1000+counter*20000)
+      seed(counter=counter, speed=40, gas=counter<25)
+      self.assertFalse(self.tx(counter=counter+1))
+    self.assertFalse(lib.get_controls_allowed())
+
+  def test_initial_on_two_main_presses_preserve_correct_native_parity(self):
+    init(25601)
+    lib.set_timer(21000)
+    seed(counter=1, main=True, speed=40)
+    lib.set_timer(41000)
+    seed(counter=2, speed=40)
+    self.assertFalse(self.tx())
+    lib.set_timer(61000)
+    seed(counter=3, main=True, speed=40)
+    for counter in range(4, 36):
+      lib.set_timer(61000+(counter-3)*20000)
+      seed(counter=counter, speed=40)
+    self.assertTrue(self.tx(counter=36))
+    self.assertFalse(lib.get_controls_allowed())

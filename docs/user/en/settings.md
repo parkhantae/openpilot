@@ -488,3 +488,5 @@ With MAIN and automatic SET ON, a fresh gas press/release at 30 km/h or above ca
 Porter automatic SET startup pulses allow at most six frames/120ms and release immediately on stock ON feedback. Existing speed-step and automatic-cancel bounds are unchanged.
 
 Porter automatic SET tolerates at most 0.1s of request blocking at gas release, then requires another continuous 0.1s of valid conditions.
+
+Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.

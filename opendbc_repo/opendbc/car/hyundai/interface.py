@@ -229,6 +229,8 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.hyundai, HyundaiSafetyFlags.PORTER_CC.value)]
       if params.get_bool("PorterAutoSetMain"):
         ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_SET.value
+        if params.get_int("AutoEngage") == 2:
+          ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_INITIAL_ON.value
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot

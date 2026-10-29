@@ -202,3 +202,23 @@ class TestPorterMainSet(unittest.TestCase):
     self.assertIsNone(self.tick(111, request=False))
     for t in range(112, 150):
       self.assertIsNone(self.tick(t))
+
+  def test_initial_on_parity_does_not_authorize_without_physical_input(self):
+    self.state = PorterMainSet(initial_main=True)
+    for t in range(200):
+      self.assertIsNone(self.tick(t, gas_pressed=t<100, request=t>=100))
+    self.assertFalse(self.state.armed)
+    self.assertFalse(self.state.main_known)
+
+  def test_log54a_two_main_presses_end_in_authorized_standby(self):
+    self.state = PorterMainSet(initial_main=True)
+    self.tick(0, main_pressed=True, request=False)
+    self.assertFalse(self.state.main)
+    self.tick(2, request=False)
+    self.tick(4, main_pressed=True, request=False)
+    self.assertTrue(self.state.main)
+    for t in range(5, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(100, 110):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.tick(110), 2)
