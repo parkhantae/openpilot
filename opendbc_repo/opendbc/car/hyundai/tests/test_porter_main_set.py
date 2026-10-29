@@ -181,3 +181,24 @@ class TestPorterMainSet(unittest.TestCase):
     self.assertEqual(self.tick(60, stock_enabled=True), 0)
     for t in range(61, 90):
       self.assertIsNone(self.tick(t, stock_enabled=True))
+
+  def test_log547_brief_lead_cap_at_release_preserves_fast_confirmation(self):
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(100, 105):
+      self.assertIsNone(self.tick(t, request=False))
+    for t in range(105, 116):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.tick(116), 2)
+
+  def test_request_chatter_restarts_continuous_confirmation(self):
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(100, 110):
+      self.assertIsNone(self.tick(t, request=t>=104))
+    self.assertIsNone(self.tick(110, request=False))
+    self.assertIsNone(self.tick(111, request=False))
+    for t in range(112, 150):
+      self.assertIsNone(self.tick(t))

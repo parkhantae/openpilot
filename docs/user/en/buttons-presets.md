@@ -266,3 +266,5 @@ In MAIN-authorized standby, accelerate to at least 30 km/h and release gas: with
 After brake or CANCEL, rearming requires a fresh gas press held for at least 0.1s and a valid release with target/actual speeds of at least 30 km/h. Existing 0.1s release confirmation and bounded SET pulses then apply. Gas held through the override, or condition recovery without a new pedal action, does not restart cruise. MAIN OFF, setting OFF, invalid inputs and active brake/hold/parking guards still block.
 
 Initial cruise-engagement SET now allows up to six frames/120ms instead of three frames/60ms. Stock ON feedback immediately releases the remaining press. Ordinary speed-step and CANCEL limits and retry intervals are unchanged. This adjustment follows observed successful manual SET durations, without guaranteeing ECU acceptance.
+
+If a lead/planner constraint briefly blocks the request at gas release, retain the release observation for at most 0.1s of blocking. Recovery within that window requires a fresh continuous 0.1s of valid conditions before SET. Longer blocking discards the observation; actual/target speed floors and brake/invalid-input guards are never bypassed.

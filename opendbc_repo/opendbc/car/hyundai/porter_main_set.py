@@ -69,7 +69,9 @@ class PorterMainSet:
     self.previous_gas = gas_pressed if eligible and not stock_enabled else False
     if not eligible or stock_enabled or gas_pressed:
       self.gas_release_since = None
-    elif not request:
+    elif not request and self.gas_release_since is not None and now - self.gas_release_since > .1 + 1e-9:
+      # A brief lead/plan transition may straddle pedal release. Keep only a
+      # 100ms observation window; never turn it into a delayed engagement queue.
       self.gas_release_since = None
     if not eligible or stock_enabled or not request or gas_pressed:
       self.since = None
@@ -104,7 +106,7 @@ class PorterMainSet:
     if self.since is None:
       self.since = now
     release_confirmed = (self.gas_release_since is not None and now - self.gas_release_since >= .1 - 1e-9 and
-                         self.main_since is not None and now - self.main_since >= .5 - 1e-9)
+                         now - self.since >= .1 - 1e-9 and self.main_since is not None and now - self.main_since >= .5 - 1e-9)
     if fresh and now >= self.next_request and (release_confirmed or now - self.since >= .5 - 1e-9):
       self.gas_release_since = None
       self.pressing = True

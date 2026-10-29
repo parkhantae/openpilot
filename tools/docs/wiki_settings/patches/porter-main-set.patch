@@ -5,12 +5,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="82a4b7582388bd90ec04f8e990a9c6c892d950d0d695ab605790117ec2644b9a" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="de982a2044127d7dc9d8f7b2f975753b6b0146a5efea5cb05af9329f52a9afe4" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+실제 MAIN 허가와 인게이지 또는 조향 제어 활성 상태에서 목표·실제 속도가 모두 30km/h 이상이면 0.5초 확인 후 SET−를 요청합니다. 대기 중 가속 후 엑셀 해제는 0.1초 확인 후 현재 속도로 SET−를 요청합니다. 순정 크루즈가 켜진 피드백은 MAIN 추적만 동기화하며 해제된 허가를 복구하지 않습니다.
++실제 MAIN 허가와 인게이지 또는 조향 제어 활성 상태에서 목표·실제 속도가 모두 30km/h 이상이면 0.5초 확인 후 SET−를 요청합니다. 대기 중 엑셀 해제는 0.1초 확인 후 SET−를 요청하며 해제 순간의 요청 차단은 최대 0.1초만 보존합니다. 회복 후에는 유효 조건을 다시 0.1초 확인합니다. 순정 크루즈가 켜진 피드백은 MAIN 추적만 동기화하며 해제된 허가를 복구하지 않습니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -34,12 +34,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="82a4b7582388bd90ec04f8e990a9c6c892d950d0d695ab605790117ec2644b9a" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="de982a2044127d7dc9d8f7b2f975753b6b0146a5efea5cb05af9329f52a9afe4" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Physical MAIN authorization plus engagement or active lateral control and target/actual speeds of at least 30 km/h must persist for 0.5 seconds before SET−. Gas release after standby acceleration uses a 0.1s confirmation and SET− at current speed. Actual stock engagement synchronizes MAIN tracking without restoring revoked authorization.
++Physical MAIN authorization plus engagement or active lateral control and target/actual speeds of at least 30 km/h must persist for 0.5 seconds before SET−. Gas release uses 0.1s confirmation. A request gap at release is retained for at most 0.1s and recovery requires another continuous 0.1s of valid conditions. Actual stock engagement synchronizes MAIN tracking without restoring revoked authorization.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
