@@ -1,24 +1,61 @@
 import unittest
 from types import SimpleNamespace
 
-from opendbc.car.hyundai.porter import PORTER_GAP_TIME_S, PorterLeadTracker, porter_gap_time_s, porter_lead_target_kph
+from opendbc.car.hyundai.porter import PORTER_GAP_TIME_S, PORTER_PLANNER_GAP_TIME_S, PorterLeadTracker, porter_gap_time_s, porter_lead_target_kph
 from opendbc.car.hyundai.porter_cancel import porter_cancel_target
 
 
 class TestPorterGap(unittest.TestCase):
+  def test_applied_planner_time_overrides_legacy_and_base_settings(self):
+    params = SimpleNamespace(get_int=lambda key: {'TFollowGap1': 45, 'PorterGap1': 200}[key])
+    self.assertEqual(porter_gap_time_s(params, 1), .45)
+    for applied in (.3, .579, 1.788, 3.5):
+      self.assertEqual(porter_gap_time_s(params, 1, applied), applied)
+    for invalid in (0, -.1, float('nan'), float('inf'), 31):
+      self.assertEqual(porter_gap_time_s(params, 1, invalid), .45)
+    self.assertEqual(porter_lead_target_kph(60, 10, 38, 0, 1, gap_time_s=3.5), 36)
+
+  def test_actual_speed_path_uses_fresh_applied_tf_and_stale_base_fallback(self):
+    import ast
+    from pathlib import Path
+    from opendbc.car.hyundai.porter import porter_navi_target_kph
+    NS = SimpleNamespace
+    tree = ast.parse((Path(__file__).resolve().parents[5] / 'openpilot/selfdrive/controls/controlsd.py').read_text())
+    node = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                'self.CP.carFingerprint == \'HYUNDAI_PORTER_II_EV\'' in ast.unparse(n.test) and
+                'lead_target_kph =' in ast.unparse(n))
+    code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_lead_gap', 'exec')
+    for applied, fresh, expected in ((1., True, 60), (2., True, 30), (2., False, 60)):
+      class SM(dict):
+        frame = 0
+
+        def all_checks(self, services, is_fresh=fresh):
+          return is_fresh
+      sm = SM(radarState=NS(leadOne=NS(status=True, dRel=48, vRel=-3)),
+              selfdriveState=NS(personality=NS(raw=0)))
+      obj = NS(CP=NS(carFingerprint='HYUNDAI_PORTER_II_EV'), sm=sm,
+               params=NS(get_int=lambda key: 100), porter_lead_tracker=PorterLeadTracker())
+      hud = NS(setSpeed=60/3.6)
+      env = dict(self=obj, CC=NS(enabled=True), CS=NS(cruiseState=NS(enabled=True, speed=60/3.6), vEgo=10),
+                 speed_from_pcm=0, lp=NS(tFollow=applied), hudControl=hud, desired_kph=60, DT_CTRL=.01,
+                 CV=NS(MS_TO_KPH=3.6, KPH_TO_MS=1/3.6), porter_navi_target_kph=porter_navi_target_kph,
+                 porter_gap_time_s=porter_gap_time_s)
+      exec(code, env)
+      self.assertAlmostEqual(hud.setSpeed*3.6, expected)
+
   def test_defaults_and_invalid_storage(self):
-    for i, default in enumerate(PORTER_GAP_TIME_S, 1):
-      for value in (-1, 301, 'bad'):
+    for i, default in enumerate(PORTER_PLANNER_GAP_TIME_S, 1):
+      for value in (0, 39, 301, 'bad'):
         def read(key, i=i, value=value):
-          self.assertEqual(key, f'PorterGap{i}')
+          self.assertEqual(key, f'TFollowGap{i}')
           return int(value)
         self.assertEqual(porter_gap_time_s(SimpleNamespace(get_int=read), i), default)
 
   def test_live_selected_gap(self):
-    values = dict(PorterGap1=100, PorterGap2=130, PorterGap3=160, PorterGap4=200)
+    values = dict(TFollowGap1=100, TFollowGap2=130, TFollowGap3=160, TFollowGap4=200)
     params = SimpleNamespace(get_int=lambda key: values[key])
     self.assertEqual(porter_gap_time_s(params, 2), 1.3)
-    values['PorterGap2'] = 250
+    values['TFollowGap2'] = 250
     self.assertEqual(porter_gap_time_s(params, 2), 2.5)
     self.assertEqual(porter_gap_time_s(params, 1), 1.)
 
@@ -41,8 +78,8 @@ class TestPorterGap(unittest.TestCase):
           args = (70, 15, distance, relative, level)
           self.assertEqual(porter_lead_target_kph(*args), porter_lead_target_kph(*args, gap_time_s=time_s))
 
-  def test_sub_one_second_and_zero_are_applied(self):
-    for value in (0, 1, 50, 99, 100):
+  def test_sub_one_second_shared_setting_and_distance_floor(self):
+    for value in (40, 50, 99, 100):
       params = SimpleNamespace(get_int=lambda key, v=value: v)
       self.assertEqual(porter_gap_time_s(params, 1), value / 100)
     # At 36 km/h projected range 12m: 0.5s keeps target; 1s constrains.

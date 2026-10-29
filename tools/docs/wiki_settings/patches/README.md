@@ -91,12 +91,14 @@ Wiki directory; regenerate to preserve the reviewed manual content. Validate
 before publishing. This branch-specific patch is not a live Wiki publication
 and must not be generated from a catalog that lacks this setting.
 
-## Porter GAP times
+## Porter shared GAP times
 
-`porter-gap-times.patch` supplies reviewed Korean/English manual regions for
-`PorterGap1`–`PorterGap4` on c3-pht-porter. Generate pages from this branch and
-apply the patch to the staged Wiki as above, then regenerate and validate.
-These branch-specific settings are not published to the upstream live Wiki.
+`porter-gap-times.patch` supplies branch-specific Korean/English manual regions
+for common `TFollowGap1`–`TFollowGap4`, which now also drive Porter button and
+low-target cancellation decisions through the applied planner time. Duplicate
+`PorterGap1`–`PorterGap4` controls and their former Wiki pages are retired; legacy
+stored values are unused. Generate from c3-pht-porter, apply in staging and validate.
+This patch is not published to the upstream live Wiki.
 
 ## Porter MAIN standby SET
 

@@ -1,232 +1,232 @@
---- a/KO-포터-GAP-1-간격-×0.01초.md
-+++ b/KO-포터-GAP-1-간격-×0.01초.md
+--- a/KO-TF(1)-차량간격시간1x0.01s(110).md
++++ b/KO-TF(1)-차량간격시간1x0.01s(110).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap1 -->
+ <!-- CARROT:AUTO:END TFollowGap1 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap1 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap1 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="681e7e1becc8c4ad9a510ca1a73eeaadc280c4f5c3d8b35142e4dea8591312ac" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="41cef2694ada9a420b24595193766ac4c44cb8ea48a3b141fa8a4fc74c6abffc" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+선택한 GAP 단계의 포터 앞차 버튼 감속 판단 시간을 바꿉니다. 100 미만 값도 버튼 목표와 선택적 저속 취소의 앞차 판단에 함께 반영됩니다.
++선택한 GAP 단계의 공통 기본 추종시간입니다. 플래너의 속도·주행·감속 보정이 반영된 실제 추종시간은 포터 버튼 감속과 선택적 저속 자동 취소에도 함께 적용됩니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+100은 1초, 50은 0.5초입니다. 각 단계는 독립적이며 변경 즉시 반영합니다.
++공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+0은 시간 항만 없애며 최소 판단 거리 7m는 유지합니다. 플래너 TF와 별개이고 실제 유지 거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap1 -->
+ <!-- CARROT:MANUAL:END TFollowGap1 -->
  
- <!-- CARROT:SETTING:END PorterGap1 -->
---- a/KO-포터-GAP-2-간격-×0.01초.md
-+++ b/KO-포터-GAP-2-간격-×0.01초.md
+ <!-- CARROT:SETTING:END TFollowGap1 -->
+--- a/KO-TF(2)-차량간격시간2x0.01s(120).md
++++ b/KO-TF(2)-차량간격시간2x0.01s(120).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap2 -->
+ <!-- CARROT:AUTO:END TFollowGap2 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap2 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap2 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="5122c623502a24b916c8493b4b40f40daa4fd902eb6ce4ef90f1970756456128" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="369a8c4dcb1f482b633073041bbf7ffa01e8e64d3659fe0c113e87394b246a27" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+선택한 GAP 단계의 포터 앞차 버튼 감속 판단 시간을 바꿉니다. 100 미만 값도 버튼 목표와 선택적 저속 취소의 앞차 판단에 함께 반영됩니다.
++선택한 GAP 단계의 공통 기본 추종시간입니다. 플래너의 속도·주행·감속 보정이 반영된 실제 추종시간은 포터 버튼 감속과 선택적 저속 자동 취소에도 함께 적용됩니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+100은 1초, 50은 0.5초입니다. 각 단계는 독립적이며 변경 즉시 반영합니다.
++공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+0은 시간 항만 없애며 최소 판단 거리 7m는 유지합니다. 플래너 TF와 별개이고 실제 유지 거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap2 -->
+ <!-- CARROT:MANUAL:END TFollowGap2 -->
  
- <!-- CARROT:SETTING:END PorterGap2 -->
---- a/KO-포터-GAP-3-간격-×0.01초.md
-+++ b/KO-포터-GAP-3-간격-×0.01초.md
+ <!-- CARROT:SETTING:END TFollowGap2 -->
+--- a/KO-TF(3)-차량간격시간3x0.01s(140).md
++++ b/KO-TF(3)-차량간격시간3x0.01s(140).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap3 -->
+ <!-- CARROT:AUTO:END TFollowGap3 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap3 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap3 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="1cafe032b5fbd49df11d0c46523515ec0665a4acfc182a80f6f11abc2e52c836" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="fa178ab50656a7c7ced1d1b8c67179ecb2fd7c2e21cb73b62eef667c3328be8f" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+선택한 GAP 단계의 포터 앞차 버튼 감속 판단 시간을 바꿉니다. 100 미만 값도 버튼 목표와 선택적 저속 취소의 앞차 판단에 함께 반영됩니다.
++선택한 GAP 단계의 공통 기본 추종시간입니다. 플래너의 속도·주행·감속 보정이 반영된 실제 추종시간은 포터 버튼 감속과 선택적 저속 자동 취소에도 함께 적용됩니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+100은 1초, 50은 0.5초입니다. 각 단계는 독립적이며 변경 즉시 반영합니다.
++공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+0은 시간 항만 없애며 최소 판단 거리 7m는 유지합니다. 플래너 TF와 별개이고 실제 유지 거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap3 -->
+ <!-- CARROT:MANUAL:END TFollowGap3 -->
  
- <!-- CARROT:SETTING:END PorterGap3 -->
---- a/KO-포터-GAP-4-간격-×0.01초.md
-+++ b/KO-포터-GAP-4-간격-×0.01초.md
+ <!-- CARROT:SETTING:END TFollowGap3 -->
+--- a/KO-TF(4)-차량간격시간4x0.01s(160).md
++++ b/KO-TF(4)-차량간격시간4x0.01s(160).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap4 -->
+ <!-- CARROT:AUTO:END TFollowGap4 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap4 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap4 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="0957957aa39ad70947e7e326c4569805a16b548492fe5e6f99de08177609de87" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="08cee177e8e29670383b7c2011d898d790651c51b43c99b16700c43ba31b1137" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+선택한 GAP 단계의 포터 앞차 버튼 감속 판단 시간을 바꿉니다. 100 미만 값도 버튼 목표와 선택적 저속 취소의 앞차 판단에 함께 반영됩니다.
++선택한 GAP 단계의 공통 기본 추종시간입니다. 플래너의 속도·주행·감속 보정이 반영된 실제 추종시간은 포터 버튼 감속과 선택적 저속 자동 취소에도 함께 적용됩니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+100은 1초, 50은 0.5초입니다. 각 단계는 독립적이며 변경 즉시 반영합니다.
++공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+0은 시간 항만 없애며 최소 판단 거리 7m는 유지합니다. 플래너 TF와 별개이고 실제 유지 거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap4 -->
+ <!-- CARROT:MANUAL:END TFollowGap4 -->
  
- <!-- CARROT:SETTING:END PorterGap4 -->
---- a/EN-Porter-GAP-1-time-×0.01s.md
-+++ b/EN-Porter-GAP-1-time-×0.01s.md
+ <!-- CARROT:SETTING:END TFollowGap4 -->
+--- a/EN-TF(1)-TimeFollow1x0.01s(110).md
++++ b/EN-TF(1)-TimeFollow1x0.01s(110).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap1 -->
+ <!-- CARROT:AUTO:END TFollowGap1 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap1 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap1 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="681e7e1becc8c4ad9a510ca1a73eeaadc280c4f5c3d8b35142e4dea8591312ac" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="41cef2694ada9a420b24595193766ac4c44cb8ea48a3b141fa8a4fc74c6abffc" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Changes the selected Porter gap level’s lead-button deceleration threshold. Sub-100 values affect both the button target and the optional low-target cancellation lead check.
++Common base following time for the selected GAP level. The planner’s applied time, including speed, driving-mode and braking adjustments, also drives Porter button deceleration and optional low-target cancellation.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+100 means one second and 50 means 0.5 seconds. Levels are independent and changes apply immediately.
++Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+0 removes only the time term, retaining the 7m minimum distance threshold. Separate from planner TF; does not guarantee actual following distance, braking or stopping.
++Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap1 -->
+ <!-- CARROT:MANUAL:END TFollowGap1 -->
  
- <!-- CARROT:SETTING:END PorterGap1 -->
---- a/EN-Porter-GAP-2-time-×0.01s.md
-+++ b/EN-Porter-GAP-2-time-×0.01s.md
+ <!-- CARROT:SETTING:END TFollowGap1 -->
+--- a/EN-TF(2)-TimeFollow2x0.01s(120).md
++++ b/EN-TF(2)-TimeFollow2x0.01s(120).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap2 -->
+ <!-- CARROT:AUTO:END TFollowGap2 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap2 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap2 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="5122c623502a24b916c8493b4b40f40daa4fd902eb6ce4ef90f1970756456128" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="369a8c4dcb1f482b633073041bbf7ffa01e8e64d3659fe0c113e87394b246a27" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Changes the selected Porter gap level’s lead-button deceleration threshold. Sub-100 values affect both the button target and the optional low-target cancellation lead check.
++Common base following time for the selected GAP level. The planner’s applied time, including speed, driving-mode and braking adjustments, also drives Porter button deceleration and optional low-target cancellation.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+100 means one second and 50 means 0.5 seconds. Levels are independent and changes apply immediately.
++Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+0 removes only the time term, retaining the 7m minimum distance threshold. Separate from planner TF; does not guarantee actual following distance, braking or stopping.
++Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap2 -->
+ <!-- CARROT:MANUAL:END TFollowGap2 -->
  
- <!-- CARROT:SETTING:END PorterGap2 -->
---- a/EN-Porter-GAP-3-time-×0.01s.md
-+++ b/EN-Porter-GAP-3-time-×0.01s.md
+ <!-- CARROT:SETTING:END TFollowGap2 -->
+--- a/EN-TF(3)-TimeFollow3x0.01s(140).md
++++ b/EN-TF(3)-TimeFollow3x0.01s(140).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap3 -->
+ <!-- CARROT:AUTO:END TFollowGap3 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap3 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap3 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="1cafe032b5fbd49df11d0c46523515ec0665a4acfc182a80f6f11abc2e52c836" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="fa178ab50656a7c7ced1d1b8c67179ecb2fd7c2e21cb73b62eef667c3328be8f" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Changes the selected Porter gap level’s lead-button deceleration threshold. Sub-100 values affect both the button target and the optional low-target cancellation lead check.
++Common base following time for the selected GAP level. The planner’s applied time, including speed, driving-mode and braking adjustments, also drives Porter button deceleration and optional low-target cancellation.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+100 means one second and 50 means 0.5 seconds. Levels are independent and changes apply immediately.
++Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+0 removes only the time term, retaining the 7m minimum distance threshold. Separate from planner TF; does not guarantee actual following distance, braking or stopping.
++Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap3 -->
+ <!-- CARROT:MANUAL:END TFollowGap3 -->
  
- <!-- CARROT:SETTING:END PorterGap3 -->
---- a/EN-Porter-GAP-4-time-×0.01s.md
-+++ b/EN-Porter-GAP-4-time-×0.01s.md
+ <!-- CARROT:SETTING:END TFollowGap3 -->
+--- a/EN-TF(4)-TimeFollow4x0.01s(160).md
++++ b/EN-TF(4)-TimeFollow4x0.01s(160).md
 @@ -27,7 +27,25 @@
- <!-- CARROT:AUTO:END PorterGap4 -->
+ <!-- CARROT:AUTO:END TFollowGap4 -->
  
- <!-- CARROT:MANUAL:BEGIN PorterGap4 -->
+ <!-- CARROT:MANUAL:BEGIN TFollowGap4 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="0957957aa39ad70947e7e326c4569805a16b548492fe5e6f99de08177609de87" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="08cee177e8e29670383b7c2011d898d790651c51b43c99b16700c43ba31b1137" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Changes the selected Porter gap level’s lead-button deceleration threshold. Sub-100 values affect both the button target and the optional low-target cancellation lead check.
++Common base following time for the selected GAP level. The planner’s applied time, including speed, driving-mode and braking adjustments, also drives Porter button deceleration and optional low-target cancellation.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+100 means one second and 50 means 0.5 seconds. Levels are independent and changes apply immediately.
++Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+0 removes only the time term, retaining the 7m minimum distance threshold. Separate from planner TF; does not guarantee actual following distance, braking or stopping.
++Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterGap4 -->
+ <!-- CARROT:MANUAL:END TFollowGap4 -->
  
- <!-- CARROT:SETTING:END PorterGap4 -->
+ <!-- CARROT:SETTING:END TFollowGap4 -->

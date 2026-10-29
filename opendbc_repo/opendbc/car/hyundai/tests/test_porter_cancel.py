@@ -84,7 +84,7 @@ class TestPorterCancelPublish(unittest.TestCase):
 
       def all_checks(self, services):
         return all(service not in self.invalid for service in services)
-    self.sm = SM(radarState=NS(leadOne=NS(status=False, dRel=0, vRel=0)),
+    self.sm = SM(longitudinalPlan=NS(tFollow=0), radarState=NS(leadOne=NS(status=False, dRel=0, vRel=0)),
                  selfdriveState=NS(personality=NS(raw=1)))
     self.sm.invalid = set()
     self.values = dict(PorterAutoCancelBelow30=False, SpeedFromPCM=0)
@@ -139,6 +139,21 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.cs.vEgo = 2
     self.run_frames(planner=50)
     self.assertFalse(self.cc.cruiseControl.cancel)
+
+  def test_applied_planner_gap_drives_cancellation_with_the_speed_path(self):
+    for applied, fresh, expected in ((1., True, False), (2., True, True), (2., False, False)):
+      self.setUp()
+      self.values.update(PorterAutoCancelBelow30=True, TFollowGap1=100, PorterGap1=300)
+      self.sm['selfdriveState'].personality.raw = 0
+      self.sm['longitudinalPlan'].tFollow = applied
+      self.sm['radarState'].leadOne = NS(status=True, dRel=48, vRel=-3)
+      self.cs.vEgo = 10
+      self.cs.vCruiseCluster = 60
+      self.cc.cruiseControl.resume = False
+      if not fresh:
+        self.sm.invalid.add('longitudinalPlan')
+      self.run_frames(planner=60)
+      self.assertEqual(self.cc.cruiseControl.cancel, expected)
 
   def test_auto_set_requires_option_config_target_actual_speed_and_freshness(self):
     self.values['PorterAutoSetMain'] = True

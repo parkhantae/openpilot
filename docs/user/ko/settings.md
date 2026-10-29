@@ -265,7 +265,7 @@ VW MEB(ID.4 포함)에도 수동 조향비와 학습 비율이 적용됩니다. 
 | 레이더 | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC 레이더, 전방 트랙 좌우 보정, 코너 레이더와 당근레이더 처리·컷인 감도 |
 | 운전자 모니터링 | `DriverMonitoringEnabled`(검색 전용), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | 운전자 모니터링과 일부 차량 경고음 처리 |
 | 차량 보조 | `MaxAngleFrames`, `SpeedFromPCM` | 최대 조향각 관련 프레임과 순정 SCC 속도 제어 방식 |
-| 포터 전용 | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGap1`~`PorterGap4` | 30km/h 미만 자동 취소와 GAP 단계별 버튼 감속 판단 시간 |
+| 포터 전용 | `PorterAutoCancelBelow30`, `PorterAutoSetMain` | 30km/h 미만 자동 취소와 MAIN 대기 자동 SET |
 | 기기 하드웨어 | `HardwareC3xLite` | 스피커가 없는 C3X Lite의 알림음과 프로세스 구성 |
 
 포터2 EV의 `MaxAngleFrames`는 저장값이 89보다 작아도 실제 제어에서는 최소 89프레임을 적용합니다. 큰 조향각에서 조향 요청 비트를 잠시 끊는 간격을 Panda 안전 검사의 최소 정상 요청 간격에 맞추기 위한 제한입니다. 다른 차종의 설정값은 변경하지 않습니다.
@@ -509,7 +509,6 @@ ATC 4번은 차선변경 가능 속도이면서 TBT 우회전까지 250m 이내�
 
 포터 전용 `PorterAutoSetMain`은 기본 OFF인 MAIN 대기 자동 SET 기능입니다. ON 후 재시작하고 실제 MAIN으로 허용해야 하며 목표·실제 속도 모두 30km/h 이상에서만 요청합니다. [동작·해제 조건](buttons-presets.md#포터-main-대기-자동-set)을 확인하세요.
 
-포터 GAP 1~4는 0~300 범위로 설정하며 100 미만 값도 실제 버튼 판단에 반영합니다. 자동 SET은 인게이지 또는 조향 제어 활성 상태에서 실제 MAIN 허가를 별도로 확인합니다.
 
 `PorterAutoSetMain` ON에서는 MAIN 대기 중 30km/h 이상 가속 후 엑셀 해제를 확인하면 추가 대기 없이 다음 송신 가능한 주기에 현재 속도로 SET−를 요청합니다. 나머지 허가·해제 조건은 유지합니다.
 
@@ -522,3 +521,5 @@ MAIN ON과 자동 SET ON에서는 브레이크·CANCEL 뒤에도 엑셀을 새�
 포터 자동 SET의 초기 MAIN 추적은 AutoEngage 설정과 맞추되 실제 입력 확인을 별도로 요구합니다. 초기 ON 값만으로 자동 시작하지 않으며 업데이트 후 재시작해야 합니다.
 
 포터 오토 SET은 무응답 후 0/10ms 송신 슬롯을 교대하며 실제 ON 응답으로 확인한 슬롯만 기억합니다. 누름·재시도 빈도 제한은 그대로입니다. 자동 SET 성공 슬롯은 가감속에도 전달하며 가감속 무응답마다 다음 송신 슬롯을 바꿉니다.
+
+포터 GAP은 공통 TF1~TF4 한 곳에서 조절합니다. 버튼 감속과 저속 자동 취소가 플래너의 실제 추종시간을 함께 사용하며, 중복된 포터 전용 간격 입력칸은 제거했습니다. 기존 포터 전용 저장값은 적용하지 않고 공통 TF 설정은 그대로 유지합니다.

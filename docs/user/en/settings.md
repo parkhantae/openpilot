@@ -261,7 +261,7 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | Radar | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC radar, front-track orientation, corner radar, and Carrot Radar processing and cut-in sensitivity |
 | Driver monitoring | `DriverMonitoringEnabled` (search only), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | Driver monitoring and selected vehicle alerts |
 | Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
-| Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGap1`–`PorterGap4` | Below-30 cancellation and per-gap lead-button deceleration times |
+| Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain` | Below-30 cancellation and automatic SET from MAIN standby |
 | Device hardware | `HardwareC3xLite` | Speakerless C3X Lite audio and process configuration |
 
 For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.
@@ -479,7 +479,6 @@ Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Porter O
 
 Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and physically authorize through MAIN; target and actual speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
 
-Porter GAP 1–4 accepts 0–300, including sub-100 values in actual button decisions. Automatic SET can use engagement or active lateral control as readiness, while separately requiring physical MAIN authorization.
 
 With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby requests SET− at current speed on the next available sample without extra release-confirmation delay. All other authorization and revocation guards remain.
 
@@ -492,3 +491,5 @@ Porter automatic SET tolerates at most 0.1s of request blocking at gas release, 
 Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.
 
 Porter automatic SET alternates 0/10ms retry slots after missing feedback and remembers only a stock-ON-confirmed slot. Pulse and retry-rate limits remain unchanged. A confirmed startup slot is also handed to speed matching, which changes its next trial slot after each missed request.
+
+Porter GAP is configured once through common TF1–TF4. Button deceleration and low-target cancellation share the planner’s applied following time. Duplicate Porter-only gap controls were removed; their legacy values are unused and common TF settings are preserved.

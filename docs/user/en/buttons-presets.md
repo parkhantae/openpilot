@@ -169,7 +169,7 @@ Carrot Web > Settings > Vehicle & Hardware > Porter Only includes **Porter: canc
 
 This uses target speed, not vehicle speed or lead distance alone. Cancellation is a request to release stock cruise, not a brake/stop command. No automatic re-engagement is added. This opt-in function still needs vehicle response validation.
 
-Use `PorterGap1`–`PorterGap4` in Porter Only to configure each gap level’s lead-button deceleration threshold. Defaults are 100/130/160/200 (1.0/1.3/1.6/2.0 seconds), range 0–300, step 5 (0.05s). Higher values constrain the target at a greater distance. Changes immediately affect both the button target and the lead check for optional below-30 cancellation. The distance threshold is max(7m, 5m + ego speed × configured time); this does not guarantee actual following distance or braking. Web TF1–TF4 remain separate planner settings. The level-count setting does not apply to stock longitudinal control.
+Configure following time once through TF1–TF4 (`TFollowGap1`–`TFollowGap4`). Porter button deceleration and optional low-target cancellation share the planner’s applied following time, including speed, driving-mode and braking adjustments. Without a fresh valid planner time, use the selected common TF base setting. Legacy Porter-only values are neither read nor copied into common TF settings. The 7m distance floor and existing button/cancel bounds remain; actual following distance or braking is not guaranteed.
 
 The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. Steering-wheel button emulation cannot change the stock ECU floor, so the Carrot target, stock set-speed state, button transmission, and panda permission checks use the same 30 km/h minimum. Vehicle speed can fall below 30 km/h while coasting, but stock cruise cannot be set to or hold 29 km/h or less.
 
@@ -259,7 +259,6 @@ Stock cruise OFF may clear engagement while lateral control remains active. In t
 
 Cancellation uses at most three frames/60ms of CANCEL followed by explicit release. Without confirmed OFF, wait 0.5 seconds after release and retry; after three requests wait three seconds. Start with the acknowledged transmission slot, then alternate 0/10ms on missing feedback. Cancellation excludes SET/RES and driver buttons take priority. TX echo alone is not success. Vehicle acceptance of this correction’s CANCEL/SET remains unvalidated.
 
-Porter GAP values 0–99 are stored and applied too. 50 means 0.5s; 0 removes only the time term, retaining the existing 7m minimum distance threshold. Levels remain independent without automatic sorting.
 
 In MAIN-authorized standby, accelerate to at least 30 km/h and release gas: with valid target/actual speed conditions, request SET− on the next available CAN sample without an extra release-confirmation dwell. The minimum 0.5s since MAIN authorization and existing retry intervals remain. Stock SET engages at the actual speed when accepted, so it cannot lock the exact pedal-release instant’s speed. Existing target-speed matching continues afterward. Brake, CANCEL, invalid inputs and sub-30 targets are not bypassed.
 
@@ -274,3 +273,5 @@ Enabling automatic SET no longer forces MAIN tracking to start OFF. With AutoEng
 After a completed automatic SET/release without stock ON, alternate subsequent attempts between 0/10ms RX-relative slots. Remember only a slot confirmed by stock ON within 0.5s of its request for the same controller session; driver SET/MAIN or invalid observations do not teach a slot. If the delayed slot stays unavailable for 0.1s, fall back to immediate timing. The six-frame/120ms pulse limit, retry spacing and brake/MAIN guards remain. The stock-ON-confirmed startup slot is also handed once to idle speed matching. Each missed speed request changes the next trial slot while retaining the existing quiet periods. This timing trial does not guarantee ECU acceptance in either slot.
 
 The retry quiet period is reserved from the first SET frame even if a pedal or target change interrupts the pulse: at least one second before a new attempt, or three seconds after the third attempt. Repeated pedal releases cannot bypass this limit.
+
+On Porter, hold CANCEL to cycle the GAP level. The stock cruise cancel still occurs; a short press remains cancel. The hold threshold follows `CruiseButtonLongDelay`.

@@ -122,12 +122,15 @@ class Controls:
     target = None
     if eligible:
       lead = self.sm['radarState'].leadOne
+      # Use the same applied planner TF as button speed matching below.
       target = porter_cancel_target(
         planner_kph if self.sm.all_checks(['longitudinalPlan']) else None, CS.vCruiseCluster,
         carrot_man.desiredSpeed if carrot_man is not None else None,
         CS.vEgo, lead.dRel, lead.vRel, self.sm['selfdriveState'].personality.raw + 1,
         lead_visible=self.sm.all_checks(['radarState']) and lead.status,
-        gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1))
+        gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
+                                    getattr(self.sm['longitudinalPlan'], 'tFollow', None)
+                                    if self.sm.all_checks(['longitudinalPlan']) else None))
     previous = self.porter_low_speed_cancel.active
     if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, target,
                                            eligible=eligible and CC.enabled and self.params.get_bool("PorterAutoCancelBelow30"),
@@ -416,7 +419,8 @@ class Controls:
           self.sm.frame * DT_CTRL, hudControl.setSpeed * CV.MS_TO_KPH,
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
           self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status,
-          gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1))
+          gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
+                                      getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None))
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
