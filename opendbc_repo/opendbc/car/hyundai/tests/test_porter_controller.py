@@ -109,7 +109,8 @@ class TestPorterMessagePath(unittest.TestCase):
     cls.function = staticmethod(env["create_button_messages"])
 
   def setUp(self):
-    self.controller = NS(CP=NS(carFingerprint="porter"), frame=0, packer=None,
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    self.controller = NS(porter_main_set=PorterMainSet(), porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
                          porter_buttons=self.buttons_class(), speed_from_pcm=0,
                          button_spam1=8, button_spam2=30)
     self.cc = NS(enabled=True, cruiseControl=NS(cancel=False, resume=False),
@@ -117,7 +118,7 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs = NS(is_metric=True, cruise_buttons=[0], main_buttons=[0],
                  clu11={"CF_Clu_AliveCnt1": 0, "CF_Clu_CruiseSwMain": 0},
                  cp=NS(ts_nanos={"CLU11": {"counter": 1_000_000_000}}, _last_update_nanos=1_000_000_000),
-                 out=NS(cruiseState=NS(enabled=True, speed=50/3.6), canValid=True,
+                 out=NS(vEgo=50/3.6, cruiseState=NS(enabled=True, available=True, speed=50/3.6), canValid=True,
                         accFaulted=False, gasPressed=False, standstill=False,
                         gearShifter="drive", brakePressed=False, brakeHoldActive=False, parkingBrake=False))
 
@@ -236,6 +237,25 @@ class TestPorterMessagePath(unittest.TestCase):
     self.assertEqual(self.controller.porter_buttons.requests, 0)
     self.cc.hudControl.setSpeed = 49 / 3.6
     self.assertEqual(self.tick(20), [2])
+
+  def test_main_auto_set_reaches_packer_and_stops_on_brake(self):
+    self.controller.porter_main_params.get_bool = lambda key: True
+    self.controller.CP.safetyConfigs = [NS(safetyParam=9217)]
+    self.cs.out.cruiseState.enabled = False
+    self.cs.out.cruiseState.speed = 0
+    self.cc.cruiseControl.resume = True
+    self.cs.main_buttons = [1]
+    self.assertEqual(self.tick(0), [])
+    self.cs.main_buttons = [0]
+    outputs = []
+    for frame in range(1, 60):
+      outputs.extend((frame, value) for value in self.tick(frame))
+    self.assertEqual(outputs[:4], [(51, 2), (52, 2), (53, 2), (54, 0)])
+    self.cs.out.brakePressed = True
+    self.tick(60)
+    self.cs.out.brakePressed = False
+    for frame in range(61, 200):
+      self.assertEqual(self.tick(frame), [])
 
 
 if __name__ == "__main__":

@@ -244,3 +244,12 @@ Remember that SET/- in custom mode 3 does not walk backward through the preset t
 - Initial Params values: `openpilot/common/params_keys.h`
 
 [Back to Understanding Settings](settings.md)
+
+
+### Porter automatic SET from MAIN standby
+
+Settings > Vehicle & Hardware > Porter Only includes **Porter: automatic SET from MAIN standby** (`PorterAutoSetMain`), default OFF. After turning ON, restart to apply the dedicated Panda configuration, then physically operate MAIN. The synthetic startup ON value from `AutoEngage=2` is not authorization. Turning OFF immediately inhibits new requests but does not cancel already engaged stock cruise.
+
+Engagement, `SpeedFromPCM=0`, target and actual speeds of 30–160 km/h, and valid planner/radar signals are required. After 0.5 seconds of continuous conditions, request a short SET−, never RES+. While stock cruise is OFF, pulses are limited to three frames/60ms, at least one second apart, with a three-second wait after three attempts. Gas inhibits requests and restarts confirmation. Observation gaps, brake, hold, parking brake, CANCEL, MAIN OFF or setting OFF revoke authorization. Clear the blocking condition and cycle MAIN OFF then ON to rearm.
+
+With below-30 automatic cancellation enabled too, that cancellation retains MAIN authorization so the same conditions can restart through SET−. Actual speed below 30 km/h prevents restart; the driver must accelerate. No direct braking, stopping, guaranteed following distance or launch from standstill is provided. SET starts stock cruise at the current driving speed; existing button control subsequently matches the target. Vehicle acceptance of this automatic SET path has not been validated.

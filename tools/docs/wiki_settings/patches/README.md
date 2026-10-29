@@ -97,3 +97,9 @@ and must not be generated from a catalog that lacks this setting.
 `PorterGap1`–`PorterGap4` on c3-pht-porter. Generate pages from this branch and
 apply the patch to the staged Wiki as above, then regenerate and validate.
 These branch-specific settings are not published to the upstream live Wiki.
+
+## Porter MAIN standby SET
+
+`porter-main-set.patch` supplies reviewed Korean/English manual regions for
+`PorterAutoSetMain` on c3-pht-porter. Apply to staged pages generated from this
+branch, regenerate, and validate as above. No live upstream Wiki publication.

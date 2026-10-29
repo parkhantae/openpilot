@@ -110,7 +110,7 @@ Carrot Web 설정 화면에서는 다음 기능을 사용할 수 있습니다.
 | 대분류 | 항목 수 | 중분류 |
 |---|---:|---|
 | 주행 제어 | 124 | 시작·오토, 버튼·프리셋, 차량 조향, 속도·감속, 크루즈·차간 |
-| 차량·하드웨어 | 17 | 현대·기아, CANFD·HDA, 레이더, 운전자 모니터링, 차량 보조, 포터 전용, 기기 하드웨어 |
+| 차량·하드웨어 | 26 | 현대·기아, CANFD·HDA, 레이더, 운전자 모니터링, 차량 보조, 포터 전용, 기기 하드웨어 |
 | 화면 표시 | 34 | 정보 표시, 경로 표시, 밝기·주행화면, 외부 HUD |
 | 시스템 | 12 | 녹화·전원, 네트워크·지도, 사운드, 소프트웨어 |
 
@@ -265,7 +265,7 @@ VW MEB(ID.4 포함)에도 수동 조향비와 학습 비율이 적용됩니다. 
 | 레이더 | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC 레이더, 전방 트랙 좌우 보정, 코너 레이더와 당근레이더 처리·컷인 감도 |
 | 운전자 모니터링 | `DriverMonitoringEnabled`(검색 전용), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | 운전자 모니터링과 일부 차량 경고음 처리 |
 | 차량 보조 | `MaxAngleFrames`, `SpeedFromPCM` | 최대 조향각 관련 프레임과 순정 SCC 속도 제어 방식 |
-| 포터 전용 | `PorterAutoCancelBelow30`, `PorterGap1`~`PorterGap4` | 30km/h 미만 자동 취소와 GAP 단계별 버튼 감속 판단 시간 |
+| 포터 전용 | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGap1`~`PorterGap4` | 30km/h 미만 자동 취소와 GAP 단계별 버튼 감속 판단 시간 |
 | 기기 하드웨어 | `HardwareC3xLite` | 스피커가 없는 C3X Lite의 알림음과 프로세스 구성 |
 
 포터2 EV의 `MaxAngleFrames`는 저장값이 89보다 작아도 실제 제어에서는 최소 89프레임을 적용합니다. 큰 조향각에서 조향 요청 비트를 잠시 끊는 간격을 Panda 안전 검사의 최소 정상 요청 간격에 맞추기 위한 제한입니다. 다른 차종의 설정값은 변경하지 않습니다.
@@ -506,3 +506,5 @@ USB-CAN은 최초 점멸만 요청하고 기존 차량 깜박이 유지 기능�
 ATC 4번은 차선변경 가능 속도이면서 TBT 우회전까지 250m 이내인 구간에서 턴 시작 전까지 우측 실물 깜박이를 켜는 선택 기능입니다. 지원 USB2CAN 깜박이 구성과 우측 차선·BSD·신선한 후방 거리 조건이 필요하며, 기존 수동·블루투스 차선변경 동작은 유지됩니다. 자세한 내용은 [차선변경](lane-change.md)을 참고하세요.
 
 포터2 EV: `PorterAutoCancelBelow30`는 기본 OFF입니다. 포터 전용에서 켜면 SpeedFromPCM=0의 유효한 30km/h 미만 목표가 0.3초 유지될 때 순정 크루즈 취소를 요청합니다. 제동·정차·자동 재시작 기능이 아닙니다. [포터 버튼 제어](buttons-presets.md#button-spam)를 참고하세요.
+
+포터 전용 `PorterAutoSetMain`은 기본 OFF인 MAIN 대기 자동 SET 기능입니다. ON 후 재시작하고 실제 MAIN으로 허용해야 하며 목표·실제 속도 모두 30km/h 이상에서만 요청합니다. [동작·해제 조건](buttons-presets.md#포터-main-대기-자동-set)을 확인하세요.

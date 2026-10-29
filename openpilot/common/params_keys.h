@@ -388,6 +388,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"CustomSteerDeltaUpLC", {PERSISTENT, INT, "0"}},
     {"CustomSteerDeltaDownLC", {PERSISTENT, INT, "0"}},
 
+    {"PorterAutoSetMain", {PERSISTENT, BOOL, "0"}},
     {"PorterAutoCancelBelow30", {PERSISTENT, BOOL, "0"}},
     {"PorterGap1", {PERSISTENT, INT, "100"}},
     {"PorterGap2", {PERSISTENT, INT, "130"}},

@@ -227,6 +227,8 @@ class CarInterface(CarInterfaceBase):
       ret.radarUnavailable = True
       ret.flags &= ~HyundaiFlags.CAMERA_SCC.value
       ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.hyundai, HyundaiSafetyFlags.PORTER_CC.value)]
+      if params.get_bool("PorterAutoSetMain"):
+        ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_SET.value
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot

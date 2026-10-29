@@ -112,7 +112,7 @@ class Controls:
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
     eligible = (self.CP.brand == "hyundai" and self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
                 self.CP.pcmCruise and not self.CP.openpilotLongitudinalControl and
-                self.params.get_bool("PorterAutoCancelBelow30") and self.params.get_int("SpeedFromPCM") == 0 and
+                self.params.get_int("SpeedFromPCM") == 0 and
                 CC.enabled and CS.canValid and not CS.accFaulted and self.sm.all_checks(['carState']))
     target = None
     if eligible:
@@ -125,9 +125,18 @@ class Controls:
         gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1))
     previous = self.porter_low_speed_cancel.active
     if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, target,
-                                           eligible=eligible, cruise_enabled=CS.cruiseState.enabled):
+                                           eligible=eligible and self.params.get_bool("PorterAutoCancelBelow30"),
+                                           cruise_enabled=CS.cruiseState.enabled):
       CC.cruiseControl.cancel = True
       CC.cruiseControl.resume = False
+    if (eligible and self.params.get_bool("PorterAutoSetMain") and
+        any(c.safetyParam == 9217 for c in getattr(self.CP, 'safetyConfigs', ())) and
+        self.sm.all_checks(['longitudinalPlan', 'radarState']) and
+        CS.cruiseState.available and not CS.cruiseState.enabled and
+        target is not None and 30 - 1e-5 <= target <= 160 and 30 <= CS.vEgo * CV.MS_TO_KPH <= 160 and
+        not CC.cruiseControl.cancel):
+      # The controller and Panda independently require an observed physical MAIN.
+      CC.cruiseControl.resume = True
     if previous != self.porter_low_speed_cancel.active:
       cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s", self.porter_low_speed_cancel.active, target)
 

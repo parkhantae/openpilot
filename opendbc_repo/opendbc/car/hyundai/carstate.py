@@ -241,6 +241,8 @@ class CarState(CarStateBase):
     self.op_params.put_bool("HyundaiCameraSccHint", False)
 
     self.main_enabled = True if self.op_params.get_int("AutoEngage") == 2 else False
+    if CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV and self.op_params.get_bool("PorterAutoSetMain"):
+      self.main_enabled = False
     self.manual_main_off_latched = False
     self.gear_shifter = GearShifter.drive # Gear_init for Nexo ?? unknown 21.02.23.LSW
 

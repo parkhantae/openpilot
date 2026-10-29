@@ -74,7 +74,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     fn = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == 'Controls'
               for n in c.body if isinstance(n, ast.FunctionDef) and n.name == 'update_porter_cancel')
     env = dict(porter_gap_time_s=porter_gap_time_s, PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
-               DT_CTRL=.01, cloudlog=NS(info=lambda *args: None))
+               DT_CTRL=.01, CV=NS(MS_TO_KPH=3.6), cloudlog=NS(info=lambda *args: None))
     exec(compile(ast.Module(body=[fn], type_ignores=[]), 'actual_porter_cancel_adapter', 'exec'), env)
     cls.function = staticmethod(env['update_porter_cancel'])
 
@@ -90,7 +90,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.values = dict(PorterAutoCancelBelow30=False, SpeedFromPCM=0)
     self.obj = NS(CP=NS(brand='hyundai', carFingerprint='HYUNDAI_PORTER_II_EV',
                        pcmCruise=True, openpilotLongitudinalControl=False),
-                  params=NS(get_bool=lambda k: self.values[k], get_int=lambda k: self.values.get(k, 0)),
+                  params=NS(get_bool=lambda k: self.values.get(k, False), get_int=lambda k: self.values.get(k, 0)),
                   sm=self.sm, porter_low_speed_cancel=PorterLowSpeedCancel())
     self.cs = NS(canValid=True, accFaulted=False, vCruiseCluster=50, vEgo=10,
                  cruiseState=NS(enabled=True))
@@ -139,3 +139,25 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.cs.vEgo = 2
     self.run_frames(planner=50)
     self.assertFalse(self.cc.cruiseControl.cancel)
+
+  def test_auto_set_requires_option_config_target_actual_speed_and_freshness(self):
+    self.values['PorterAutoSetMain'] = True
+    self.obj.CP.safetyConfigs = [NS(safetyParam=9217)]
+    self.cs.cruiseState.enabled = False
+    self.cs.cruiseState.available = True
+    self.cs.vEgo = 40 / 3.6
+    self.cc.cruiseControl.resume = False
+    self.run_frames(planner=40)
+    self.assertTrue(self.cc.cruiseControl.resume)
+    for invalid in ('low_target', 'low_speed', 'stale', 'old_panda', 'off'):
+      self.setUp()
+      self.values['PorterAutoSetMain'] = invalid != 'off'
+      self.obj.CP.safetyConfigs = [NS(safetyParam=1025 if invalid == 'old_panda' else 9217)]
+      self.cs.cruiseState.enabled = False
+      self.cs.cruiseState.available = True
+      self.cs.vEgo = (29 if invalid == 'low_speed' else 40) / 3.6
+      self.cc.cruiseControl.resume = False
+      if invalid == 'stale':
+        self.sm.invalid.add('longitudinalPlan')
+      self.run_frames(planner=29 if invalid == 'low_target' else 40)
+      self.assertFalse(self.cc.cruiseControl.resume, invalid)

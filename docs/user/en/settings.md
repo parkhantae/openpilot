@@ -261,7 +261,7 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | Radar | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC radar, front-track orientation, corner radar, and Carrot Radar processing and cut-in sensitivity |
 | Driver monitoring | `DriverMonitoringEnabled` (search only), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | Driver monitoring and selected vehicle alerts |
 | Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
-| Porter Only | `PorterAutoCancelBelow30`, `PorterGap1`–`PorterGap4` | Below-30 cancellation and per-gap lead-button deceleration times |
+| Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGap1`–`PorterGap4` | Below-30 cancellation and per-gap lead-button deceleration times |
 | Device hardware | `HardwareC3xLite` | Speakerless C3X Lite audio and process configuration |
 
 For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.
@@ -476,3 +476,5 @@ A hold-start request without confirmed lamp activation expires after four second
 ATC mode 4 optionally triggers the physical right indicator before a TBT right turn, at an eligible lane-change speed and within 250 m, until turning starts. It requires the supported USB2CAN indicator setup, right lane, BSD and fresh rear-gap checks; existing manual/Bluetooth lane-change behavior is unchanged. See [lane changes](lane-change.md).
 
 Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Porter Only to request stock-cruise cancellation for a valid sub-30 km/h target held for 0.3s in SpeedFromPCM=0. This does not brake, stop or automatically re-engage. See [Porter button controls](buttons-presets.md#button-spam).
+
+Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and physically authorize through MAIN; target and actual speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).

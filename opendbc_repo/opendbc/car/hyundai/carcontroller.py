@@ -7,6 +7,7 @@ from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits, common_f
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
+from opendbc.car.hyundai.porter_main_set import PorterMainSet
 from opendbc.car.hyundai.porter import PorterCruiseButtons, porter_steer_request_frames
 from opendbc.car.hyundai.stopping import CanfdStopping
 from opendbc.car.hyundai.steering_handover import SteeringHandover
@@ -195,6 +196,8 @@ class CarController(CarControllerBase):
     self.car_fingerprint = CP.carFingerprint
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
+    self.porter_main_set = PorterMainSet()
+    self.porter_main_params = Params()
 
     self.hyundai_jerk = HyundaiJerk()
     self.speedCameraHapticEndFrame = 0
@@ -711,6 +714,27 @@ class CarController(CarControllerBase):
                       *porter_status, CC.hudControl.setSpeed * CV.MS_TO_KPH,
                       CS.out.cruiseState.speed * CV.MS_TO_KPH, blocked, fresh,
                       self.porter_buttons.retry_sample_delay * 1000)
+      main_set = self.porter_main_set.update(
+        self.frame * DT_CTRL, (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
+        main_pressed=CS.main_buttons[-1] != 0 or CS.clu11["CF_Clu_CruiseSwMain"] != 0,
+        manual_button=CS.cruise_buttons[-1],
+        blocked=(not fresh or not CS.out.canValid or CS.out.accFaulted or CS.out.brakePressed or
+                 CS.out.brakeHoldActive or CS.out.parkingBrake or self.speed_from_pcm != 0),
+        request=(CC.enabled and CC.cruiseControl.resume and not CC.cruiseControl.cancel and
+                 CS.out.cruiseState.available and CS.is_metric and not CS.out.gasPressed and
+                 CS.out.gearShifter == structs.CarState.GearShifter.drive and
+                 30 <= CS.out.vEgo * CV.MS_TO_KPH <= 160),
+        stock_enabled=CS.out.cruiseState.enabled,
+        configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
+                    any(c.safetyParam == 9217 for c in self.CP.safetyConfigs)))
+      main_status = (self.porter_main_set.main, self.porter_main_set.armed, self.porter_main_set.pressing)
+      if (any(c.safetyParam == 9217 for c in self.CP.safetyConfigs) and
+          main_status != getattr(self, "porter_main_status", None)):
+        self.porter_main_status = main_status
+        cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f",
+                      *main_status, CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH)
+      if button is None:
+        button = main_set
       if button is not None:
         can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, button, self.CP))
       return can_sends

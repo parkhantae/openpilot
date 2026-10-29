@@ -40,16 +40,16 @@ def packet(address, payload, bus=0):
     return result
 
 
-def data(address, target=0, button=0, brake=False, gas=False, drive=True, hold=False, park=False, counter=0):
+def data(address, target=0, button=0, brake=False, gas=False, drive=True, hold=False, park=False, counter=0, speed=0, main=False):
     value = 0
     if address == 0x371:
         value = (target << 23) | (int(gas) << 31)
     elif address == 0x394:
         value = (counter % 8 << 13) | (int(brake) * 2 << 45) | (int(park) << 53) | (int(brake) << 55)
     elif address == 0x386:
-        value = ((counter % 16 & 3) << 14) | ((counter % 16 >> 2) << 30)
+        value = ((counter % 16 & 3) << 14) | ((counter % 16 >> 2) << 30) | int(speed * 32) | (int(speed * 32) << 48)
     elif address == 0x4f1:
-        value = button | ((counter % 16) << 28)
+        value = button | (int(main) << 3) | ((counter % 16) << 28)
     elif address == 0x372:
         value = (5 if drive else 0) << 16
     elif address == 0x507:
@@ -74,8 +74,8 @@ def seed(target=0, counter=0, **kwargs):
         assert rx(address, target=target, counter=counter, **kwargs), hex(address)
 
 
-def init():
-    assert lib.set_safety_hooks(8, 1025) == 0
+def init(param=1025):
+    assert lib.set_safety_hooks(8, param) == 0
     lib.init_tests()
     lib.set_timer(1000)
     seed()

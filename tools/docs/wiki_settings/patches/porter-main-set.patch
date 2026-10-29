@@ -1,0 +1,56 @@
+--- a/KO-포터-MAIN-대기-중-자동-SET.md
++++ b/KO-포터-MAIN-대기-중-자동-SET.md
+@@ -26,7 +26,24 @@
+ <!-- CARROT:AUTO:END PorterAutoSetMain -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b74c6715524da1e0c203c67a90775a90ceee3f6496db978f58ada17ccb0ee14" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++실제 MAIN 입력 후 인게이지가 유지되고 목표·실제 속도가 모두 30km/h 이상이면 0.5초 확인 후 SET−를 요청합니다. 기존 저속 자동 취소 후에도 같은 조건이 적용됩니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++ON 변경 후 재시작하고 MAIN을 직접 켜세요. 브레이크·CANCEL·MAIN OFF·신호 단절은 허가를 해제하며 MAIN OFF→ON으로 다시 허용합니다. OFF는 새 요청을 막고 이미 켜진 크루즈는 취소하지 않습니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++실제 속도가 30km/h 미만이면 운전자가 가속해야 합니다. 직접 제동·정지 상태 출발을 제공하지 않으며 새 경로의 순정 차량 수락 여부는 검증되지 않았습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterAutoSetMain -->
+ 
+ <!-- CARROT:SETTING:END PorterAutoSetMain -->
+--- a/EN-Porter-automatic-SET-from-MAIN-standby.md
++++ b/EN-Porter-automatic-SET-from-MAIN-standby.md
+@@ -26,7 +26,24 @@
+ <!-- CARROT:AUTO:END PorterAutoSetMain -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b74c6715524da1e0c203c67a90775a90ceee3f6496db978f58ada17ccb0ee14" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++After physical MAIN authorization, engagement and target/actual speeds of at least 30 km/h must persist for 0.5 seconds before a SET− request. The same conditions apply after optional low-target cancellation.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++After turning ON, restart and operate MAIN physically. Brake, CANCEL, MAIN OFF or observation gaps revoke authorization; cycle MAIN OFF then ON to rearm. OFF inhibits new requests without cancelling already engaged cruise.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Below 30 km/h actual speed, the driver must accelerate. No direct braking or launch from standstill; stock-vehicle acceptance of the new path remains unvalidated.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterAutoSetMain -->
+ 
+ <!-- CARROT:SETTING:END PorterAutoSetMain -->
