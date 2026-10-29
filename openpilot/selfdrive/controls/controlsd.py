@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import PorterLeadTracker, pcm_cruise_min_kph, porter_navi_target_kph
+from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
@@ -121,7 +121,8 @@ class Controls:
         planner_kph if self.sm.all_checks(['longitudinalPlan']) else None, CS.vCruiseCluster,
         carrot_man.desiredSpeed if carrot_man is not None else None,
         CS.vEgo, lead.dRel, lead.vRel, self.sm['selfdriveState'].personality.raw + 1,
-        lead_visible=self.sm.all_checks(['radarState']) and lead.status)
+        lead_visible=self.sm.all_checks(['radarState']) and lead.status,
+        gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1))
     previous = self.porter_low_speed_cancel.active
     if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, target,
                                            eligible=eligible, cruise_enabled=CS.cruiseState.enabled):
@@ -401,7 +402,8 @@ class Controls:
         lead_target_kph = self.porter_lead_tracker.update(
           self.sm.frame * DT_CTRL, hudControl.setSpeed * CV.MS_TO_KPH,
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
-          self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status)
+          self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status,
+          gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1))
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)

@@ -16,6 +16,16 @@ PORTER_BUTTON_ACCEL_CONFIRM_S = 0.5
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 
 
+def porter_gap_time_s(params, gap_level):
+  """Read the selected Porter-only gap live; invalid storage keeps its old default."""
+  index = min(4, max(1, int(gap_level or 2))) - 1
+  try:
+    value = params.get_int(f"PorterGap{index + 1}")
+  except (TypeError, ValueError):
+    value = 0
+  return value * 0.01 if 100 <= value <= 300 else PORTER_GAP_TIME_S[index]
+
+
 def porter_steer_request_frames(configured_frames):
   # Hyundai's native safety requires 89 matching requests before another
   # nonzero-torque request-bit cut. A lower user setting resets safety's
@@ -36,7 +46,7 @@ def porter_navi_target_kph(planner_target_kph, navi_target_kph):
   return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
 
 
-def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True):
+def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None):
   """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
   values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
   if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
@@ -45,7 +55,10 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
     return target_kph
 
   gap_index = min(len(PORTER_GAP_TIME_S), max(1, int(gap_level or 2))) - 1
-  desired_distance = max(7.0, 5.0 + ego_speed * PORTER_GAP_TIME_S[gap_index])
+  time_s = PORTER_GAP_TIME_S[gap_index]
+  if gap_time_s is not None and math.isfinite(gap_time_s) and 1.0 <= gap_time_s <= 3.0:
+    time_s = gap_time_s
+  desired_distance = max(7.0, 5.0 + ego_speed * time_s)
   projected_distance = lead_distance + min(0.0, lead_relative_speed) * PORTER_LEAD_REACTION_S
   if projected_distance >= desired_distance:
     return target_kph
@@ -68,7 +81,7 @@ class PorterLeadTracker:
     self.decel_cap_time = None
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
-             lead_relative_speed, gap_level, *, lead_visible=True):
+             lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None):
     if (self.last_update is not None and
         (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):
       self.decel_cap = self.decel_cap_time = None
@@ -106,7 +119,7 @@ class PorterLeadTracker:
     # a transient RES+ request from restoring the memorized cruise speed.
     effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
     lead_target_kph = porter_lead_target_kph(
-      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True)
+      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True, gap_time_s=gap_time_s)
     if opening_confirmed:
       self.decel_cap = self.decel_cap_time = None
     elif lead_target_kph < min(target_kph, stock_target_kph):

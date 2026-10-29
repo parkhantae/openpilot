@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
 
+from opendbc.car.hyundai.porter import porter_gap_time_s
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 
 
@@ -72,7 +73,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     tree = ast.parse((root / 'openpilot/selfdrive/controls/controlsd.py').read_text())
     fn = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == 'Controls'
               for n in c.body if isinstance(n, ast.FunctionDef) and n.name == 'update_porter_cancel')
-    env = dict(PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
+    env = dict(porter_gap_time_s=porter_gap_time_s, PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
                DT_CTRL=.01, cloudlog=NS(info=lambda *args: None))
     exec(compile(ast.Module(body=[fn], type_ignores=[]), 'actual_porter_cancel_adapter', 'exec'), env)
     cls.function = staticmethod(env['update_porter_cancel'])
@@ -89,7 +90,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.values = dict(PorterAutoCancelBelow30=False, SpeedFromPCM=0)
     self.obj = NS(CP=NS(brand='hyundai', carFingerprint='HYUNDAI_PORTER_II_EV',
                        pcmCruise=True, openpilotLongitudinalControl=False),
-                  params=NS(get_bool=lambda k: self.values[k], get_int=lambda k: self.values[k]),
+                  params=NS(get_bool=lambda k: self.values[k], get_int=lambda k: self.values.get(k, 0)),
                   sm=self.sm, porter_low_speed_cancel=PorterLowSpeedCancel())
     self.cs = NS(canValid=True, accFaulted=False, vCruiseCluster=50, vEgo=10,
                  cruiseState=NS(enabled=True))

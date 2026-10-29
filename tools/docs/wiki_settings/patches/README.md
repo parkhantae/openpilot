@@ -90,3 +90,10 @@ catalog, then use `git apply --check` and `git apply` on this patch in the stage
 Wiki directory; regenerate to preserve the reviewed manual content. Validate
 before publishing. This branch-specific patch is not a live Wiki publication
 and must not be generated from a catalog that lacks this setting.
+
+## Porter GAP times
+
+`porter-gap-times.patch` supplies reviewed Korean/English manual regions for
+`PorterGap1`–`PorterGap4` on c3-pht-porter. Generate pages from this branch and
+apply the patch to the staged Wiki as above, then regenerate and validate.
+These branch-specific settings are not published to the upstream live Wiki.

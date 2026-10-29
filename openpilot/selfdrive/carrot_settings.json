@@ -466,7 +466,11 @@
           "en": "Porter Only",
           "zh": "波特专用",
           "params": [
-            "PorterAutoCancelBelow30"
+            "PorterAutoCancelBelow30",
+            "PorterGap1",
+            "PorterGap2",
+            "PorterGap3",
+            "PorterGap4"
           ]
         },
         {
@@ -1951,6 +1955,70 @@
       "max": 1,
       "default": 0,
       "unit": 1
+    },
+    {
+      "group": "포터 전용",
+      "name": "PorterGap1",
+      "title": "포터 GAP 1 간격 ×0.01초",
+      "descr": "포터 GAP 1단계의 앞차 버튼 감속 판단 시간입니다. 100=1초. 클수록 더 먼 거리에서 제한합니다. 플래너 TF와 별개이며 실제 차간거리 보장이 아닙니다. 변경 즉시 반영합니다.",
+      "egroup": "Porter Only",
+      "etitle": "Porter GAP 1 time ×0.01s",
+      "edescr": "Porter gap 1 lead-button deceleration threshold. 100=1 second. Higher values constrain earlier at a greater distance. Separate from planner TF; not a guaranteed following distance. Applies immediately.",
+      "cgroup": "波特专用",
+      "ctitle": "波特 GAP 1 时间 ×0.01秒",
+      "cdescr": "100=1秒。值越大越早限制按钮目标。独立于规划器TF，不保证实际跟车距离。立即生效。",
+      "min": 100,
+      "max": 300,
+      "default": 100,
+      "unit": 5
+    },
+    {
+      "group": "포터 전용",
+      "name": "PorterGap2",
+      "title": "포터 GAP 2 간격 ×0.01초",
+      "descr": "포터 GAP 2단계의 앞차 버튼 감속 판단 시간입니다. 100=1초. 클수록 더 먼 거리에서 제한합니다. 플래너 TF와 별개이며 실제 차간거리 보장이 아닙니다. 변경 즉시 반영합니다.",
+      "egroup": "Porter Only",
+      "etitle": "Porter GAP 2 time ×0.01s",
+      "edescr": "Porter gap 2 lead-button deceleration threshold. 100=1 second. Higher values constrain earlier at a greater distance. Separate from planner TF; not a guaranteed following distance. Applies immediately.",
+      "cgroup": "波特专用",
+      "ctitle": "波特 GAP 2 时间 ×0.01秒",
+      "cdescr": "100=1秒。值越大越早限制按钮目标。独立于规划器TF，不保证实际跟车距离。立即生效。",
+      "min": 100,
+      "max": 300,
+      "default": 130,
+      "unit": 5
+    },
+    {
+      "group": "포터 전용",
+      "name": "PorterGap3",
+      "title": "포터 GAP 3 간격 ×0.01초",
+      "descr": "포터 GAP 3단계의 앞차 버튼 감속 판단 시간입니다. 100=1초. 클수록 더 먼 거리에서 제한합니다. 플래너 TF와 별개이며 실제 차간거리 보장이 아닙니다. 변경 즉시 반영합니다.",
+      "egroup": "Porter Only",
+      "etitle": "Porter GAP 3 time ×0.01s",
+      "edescr": "Porter gap 3 lead-button deceleration threshold. 100=1 second. Higher values constrain earlier at a greater distance. Separate from planner TF; not a guaranteed following distance. Applies immediately.",
+      "cgroup": "波特专用",
+      "ctitle": "波特 GAP 3 时间 ×0.01秒",
+      "cdescr": "100=1秒。值越大越早限制按钮目标。独立于规划器TF，不保证实际跟车距离。立即生效。",
+      "min": 100,
+      "max": 300,
+      "default": 160,
+      "unit": 5
+    },
+    {
+      "group": "포터 전용",
+      "name": "PorterGap4",
+      "title": "포터 GAP 4 간격 ×0.01초",
+      "descr": "포터 GAP 4단계의 앞차 버튼 감속 판단 시간입니다. 100=1초. 클수록 더 먼 거리에서 제한합니다. 플래너 TF와 별개이며 실제 차간거리 보장이 아닙니다. 변경 즉시 반영합니다.",
+      "egroup": "Porter Only",
+      "etitle": "Porter GAP 4 time ×0.01s",
+      "edescr": "Porter gap 4 lead-button deceleration threshold. 100=1 second. Higher values constrain earlier at a greater distance. Separate from planner TF; not a guaranteed following distance. Applies immediately.",
+      "cgroup": "波特专用",
+      "ctitle": "波特 GAP 4 时间 ×0.01秒",
+      "cdescr": "100=1秒。值越大越早限制按钮目标。独立于规划器TF，不保证实际跟车距离。立即生效。",
+      "min": 100,
+      "max": 300,
+      "default": 200,
+      "unit": 5
     },
     {
       "group": "시작",

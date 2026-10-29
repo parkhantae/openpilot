@@ -1,0 +1,224 @@
+--- a/KO-포터-GAP-1-간격-×0.01초.md
++++ b/KO-포터-GAP-1-간격-×0.01초.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap1 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap1 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b19411b9386b2e768ca687f0bd7cb14445623ecf78b08847f09bbe748e40399" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++선택한 GAP 단계에서 포터 전용 앞차 버튼 감속 판단 시간을 바꿉니다. 큰 값일수록 더 먼 거리에서 목표를 제한하며, 선택적 30km/h 미만 취소의 앞차 판단도 같은 값을 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++100은 1초이며 변경 즉시 반영합니다. 각 단계는 독립적이므로 단계가 올라갈수록 큰 값으로 설정하세요.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++플래너 TF 설정과 별개입니다. 판단 거리 기준은 max(7m, 5m+차속×시간)이며 실제 유지 거리나 제동·정차를 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap1 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap1 -->
+--- a/KO-포터-GAP-2-간격-×0.01초.md
++++ b/KO-포터-GAP-2-간격-×0.01초.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap2 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap2 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="24eff68a1fbaccf0f42919daba77a639cc8af05bcbc130352faaa1e7bc755a4d" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++선택한 GAP 단계에서 포터 전용 앞차 버튼 감속 판단 시간을 바꿉니다. 큰 값일수록 더 먼 거리에서 목표를 제한하며, 선택적 30km/h 미만 취소의 앞차 판단도 같은 값을 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++100은 1초이며 변경 즉시 반영합니다. 각 단계는 독립적이므로 단계가 올라갈수록 큰 값으로 설정하세요.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++플래너 TF 설정과 별개입니다. 판단 거리 기준은 max(7m, 5m+차속×시간)이며 실제 유지 거리나 제동·정차를 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap2 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap2 -->
+--- a/KO-포터-GAP-3-간격-×0.01초.md
++++ b/KO-포터-GAP-3-간격-×0.01초.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap3 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap3 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6045621c78b657f1c654540e63e3776ac54771eac25bbb298833c1e8cbc1ce28" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++선택한 GAP 단계에서 포터 전용 앞차 버튼 감속 판단 시간을 바꿉니다. 큰 값일수록 더 먼 거리에서 목표를 제한하며, 선택적 30km/h 미만 취소의 앞차 판단도 같은 값을 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++100은 1초이며 변경 즉시 반영합니다. 각 단계는 독립적이므로 단계가 올라갈수록 큰 값으로 설정하세요.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++플래너 TF 설정과 별개입니다. 판단 거리 기준은 max(7m, 5m+차속×시간)이며 실제 유지 거리나 제동·정차를 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap3 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap3 -->
+--- a/KO-포터-GAP-4-간격-×0.01초.md
++++ b/KO-포터-GAP-4-간격-×0.01초.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap4 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap4 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="0007db9933abbd2fedd72617581576561394689648dfa0148cf36d28dde950cf" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++선택한 GAP 단계에서 포터 전용 앞차 버튼 감속 판단 시간을 바꿉니다. 큰 값일수록 더 먼 거리에서 목표를 제한하며, 선택적 30km/h 미만 취소의 앞차 판단도 같은 값을 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++100은 1초이며 변경 즉시 반영합니다. 각 단계는 독립적이므로 단계가 올라갈수록 큰 값으로 설정하세요.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++플래너 TF 설정과 별개입니다. 판단 거리 기준은 max(7m, 5m+차속×시간)이며 실제 유지 거리나 제동·정차를 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap4 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap4 -->
+--- a/EN-Porter-GAP-1-time-×0.01s.md
++++ b/EN-Porter-GAP-1-time-×0.01s.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap1 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap1 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b19411b9386b2e768ca687f0bd7cb14445623ecf78b08847f09bbe748e40399" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Changes the Porter lead-button deceleration threshold at the selected GAP level. Higher values constrain at greater distance; optional below-30 cancellation uses the same lead threshold.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++100 means one second; changes apply immediately. Levels are independent, so configure increasing values for higher levels.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Separate from planner TF. The distance threshold is max(7m, 5m + ego speed × time); this does not guarantee actual following distance, braking or stopping.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap1 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap1 -->
+--- a/EN-Porter-GAP-2-time-×0.01s.md
++++ b/EN-Porter-GAP-2-time-×0.01s.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap2 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap2 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="24eff68a1fbaccf0f42919daba77a639cc8af05bcbc130352faaa1e7bc755a4d" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Changes the Porter lead-button deceleration threshold at the selected GAP level. Higher values constrain at greater distance; optional below-30 cancellation uses the same lead threshold.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++100 means one second; changes apply immediately. Levels are independent, so configure increasing values for higher levels.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Separate from planner TF. The distance threshold is max(7m, 5m + ego speed × time); this does not guarantee actual following distance, braking or stopping.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap2 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap2 -->
+--- a/EN-Porter-GAP-3-time-×0.01s.md
++++ b/EN-Porter-GAP-3-time-×0.01s.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap3 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap3 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6045621c78b657f1c654540e63e3776ac54771eac25bbb298833c1e8cbc1ce28" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Changes the Porter lead-button deceleration threshold at the selected GAP level. Higher values constrain at greater distance; optional below-30 cancellation uses the same lead threshold.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++100 means one second; changes apply immediately. Levels are independent, so configure increasing values for higher levels.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Separate from planner TF. The distance threshold is max(7m, 5m + ego speed × time); this does not guarantee actual following distance, braking or stopping.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap3 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap3 -->
+--- a/EN-Porter-GAP-4-time-×0.01s.md
++++ b/EN-Porter-GAP-4-time-×0.01s.md
+@@ -27,7 +27,24 @@
+ <!-- CARROT:AUTO:END PorterGap4 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap4 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="0007db9933abbd2fedd72617581576561394689648dfa0148cf36d28dde950cf" reviewed-at="2026-10-29T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Changes the Porter lead-button deceleration threshold at the selected GAP level. Higher values constrain at greater distance; optional below-30 cancellation uses the same lead threshold.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++100 means one second; changes apply immediately. Levels are independent, so configure increasing values for higher levels.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Separate from planner TF. The distance threshold is max(7m, 5m + ego speed × time); this does not guarantee actual following distance, braking or stopping.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap4 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap4 -->

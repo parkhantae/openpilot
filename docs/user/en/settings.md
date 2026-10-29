@@ -261,7 +261,7 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | Radar | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC radar, front-track orientation, corner radar, and Carrot Radar processing and cut-in sensitivity |
 | Driver monitoring | `DriverMonitoringEnabled` (search only), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | Driver monitoring and selected vehicle alerts |
 | Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
-| Porter Only | `PorterAutoCancelBelow30` | Toggle stock-cruise cancellation for Porter II EV targets below 30 km/h |
+| Porter Only | `PorterAutoCancelBelow30`, `PorterGap1`–`PorterGap4` | Below-30 cancellation and per-gap lead-button deceleration times |
 | Device hardware | `HardwareC3xLite` | Speakerless C3X Lite audio and process configuration |
 
 For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.

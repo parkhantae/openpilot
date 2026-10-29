@@ -169,7 +169,7 @@ Carrot Web > Settings > Vehicle & Hardware > Porter Only includes **Porter: canc
 
 This uses target speed, not vehicle speed or lead distance alone. Cancellation is a request to release stock cruise, not a brake/stop command. No automatic re-engagement is added. This opt-in function still needs vehicle response validation.
 
-Porter note: Web TF1–TF4 values affect the planner, but the dedicated Porter lead-button constraint separately uses fixed 1.0/1.3/1.6/2.0-second values. The gap-cycle level-count setting is ignored on stock-longitudinal vehicles, which cycle their configured maximum levels. These settings therefore do not fully retune the dedicated Porter button path.
+Use `PorterGap1`–`PorterGap4` in Porter Only to configure each gap level’s lead-button deceleration threshold. Defaults are 100/130/160/200 (1.0/1.3/1.6/2.0 seconds), range 100–300, step 5 (0.05s). Higher values constrain the target at a greater distance. Changes immediately affect both the button target and the lead check for optional below-30 cancellation. The distance threshold is max(7m, 5m + ego speed × configured time); this does not guarantee actual following distance or braking. Web TF1–TF4 remain separate planner settings. The level-count setting does not apply to stock longitudinal control.
 
 The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. Steering-wheel button emulation cannot change the stock ECU floor, so the Carrot target, stock set-speed state, button transmission, and panda permission checks use the same 30 km/h minimum. Vehicle speed can fall below 30 km/h while coasting, but stock cruise cannot be set to or hold 29 km/h or less.
 
