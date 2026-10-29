@@ -5,7 +5,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="5a579daaaa28f50f3e4234d3a597f8d4b40431eeca2c2de52cde12d3397fa06d" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="82a4b7582388bd90ec04f8e990a9c6c892d950d0d695ab605790117ec2644b9a" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -22,7 +22,7 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+실제 속도가 30km/h 미만이면 운전자가 가속해야 합니다. 직접 제동·정지 상태 출발을 제공하지 않으며 순정 차량의 수락 여부는 실차 검증이 필요합니다.
++실제 속도가 30km/h 미만이면 운전자가 가속해야 합니다. 최초 SET은 최대 6프레임/120ms이며 순정 ON 확인 시 해제합니다. 직접 제동·정지 출발이 아니며 실차 수락 여부는 미검증입니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END PorterAutoSetMain -->
  
@@ -34,7 +34,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="5a579daaaa28f50f3e4234d3a597f8d4b40431eeca2c2de52cde12d3397fa06d" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="82a4b7582388bd90ec04f8e990a9c6c892d950d0d695ab605790117ec2644b9a" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -51,7 +51,7 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Below 30 km/h actual speed, the driver must accelerate. No direct braking or standstill launch; stock-vehicle acceptance requires vehicle validation.
++Below 30 km/h actual speed, the driver must accelerate. Startup SET is bounded to six frames/120ms and releases on stock ON. No direct braking or standstill launch; vehicle acceptance remains unvalidated.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END PorterAutoSetMain -->
  

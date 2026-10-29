@@ -253,7 +253,7 @@ class TestPorterMessagePath(unittest.TestCase):
     outputs = []
     for frame in range(1, 60):
       outputs.extend((frame, value) for value in self.tick(frame))
-    self.assertEqual(outputs[:4], [(51, 2), (52, 2), (53, 2), (54, 0)])
+    self.assertEqual(outputs[:7], [(51, 2), (52, 2), (53, 2), (54, 2), (55, 2), (56, 2), (57, 0)])
     self.cs.out.brakePressed = True
     self.tick(60)
     self.cs.out.brakePressed = False

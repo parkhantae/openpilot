@@ -88,7 +88,7 @@ class PorterMainSet:
         return 0
       return None
     if self.pressing:
-      if now - self.started >= .06 - 1e-9 or self.frames >= 3:
+      if now - self.started >= .12 - 1e-9 or self.frames >= 6:
         self.pressing = False
         self.pending_release = True
         self.next_request = now + (3. if self.attempts >= 3 else 1.)

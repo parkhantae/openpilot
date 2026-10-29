@@ -453,8 +453,8 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
         hyundai_porter_set_wait = hyundai_porter_set_attempts >= 3 ? 3000000U : 1000000U;
         if (hyundai_porter_set_attempts >= 3) hyundai_porter_set_attempts = 0;
       }
-      if (hyundai_porter_set_active && fresh_sample && hyundai_porter_set_frames < 3 &&
-          get_ts_elapsed(now, hyundai_porter_set_start) < 60000U) {
+      if (hyundai_porter_set_active && fresh_sample && hyundai_porter_set_frames < 6 &&
+          get_ts_elapsed(now, hyundai_porter_set_start) < 120000U) {
         main_set = true;
         hyundai_porter_set_frames += 1;
         hyundai_porter_set_rx_ts = hyundai_porter_clu_ts;

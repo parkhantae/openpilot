@@ -25,10 +25,10 @@ class TestPorterMainSet(unittest.TestCase):
 
   def test_set_only_confirmation_pulse_release_and_retry_limit(self):
     self.arm()
-    output = [(t, b) for t in range(3, 160) if (b := self.tick(t)) is not None]
-    self.assertEqual(output[:4], [(52, 2), (54, 2), (56, 2), (58, 0)])
+    output = [(t, b) for t in range(3, 180) if (b := self.tick(t)) is not None]
+    self.assertEqual(output[:7], [(52, 2), (54, 2), (56, 2), (58, 2), (60, 2), (62, 2), (64, 0)])
     self.assertTrue(all(b in (0, 2) for _, b in output))
-    self.assertGreaterEqual(output[4][0] - output[0][0], 100)
+    self.assertGreaterEqual(output[7][0] - output[0][0], 100)
 
   def test_cancel_brake_main_off_and_live_off_disarm(self):
     for guard in (dict(manual_button=4), dict(blocked=True), dict(main_pressed=True), dict(configured=False)):
@@ -173,3 +173,11 @@ class TestPorterMainSet(unittest.TestCase):
     for t in range(100, 180):
       self.assertIsNone(self.tick(t))
     self.assertFalse(self.state.main)
+
+  def test_engagement_feedback_ends_extended_set_immediately(self):
+    self.arm()
+    sent = [self.tick(t) for t in range(3, 60)]
+    self.assertEqual(sent.count(2), 4)
+    self.assertEqual(self.tick(60, stock_enabled=True), 0)
+    for t in range(61, 90):
+      self.assertIsNone(self.tick(t, stock_enabled=True))

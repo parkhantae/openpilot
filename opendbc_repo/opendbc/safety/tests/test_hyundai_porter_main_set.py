@@ -31,15 +31,15 @@ class TestPorterMainSetSafety(unittest.TestCase):
   def test_bounded_pulse_and_retry(self):
     self.prepare()
     self.assertTrue(self.tx())
-    for i in (3, 4):
+    for i in range(3, 8):
       lib.set_timer(681000 + (i - 2) * 20000)
       seed(counter=i, speed=40)
       self.assertTrue(self.tx(counter=i + 1))
-    lib.set_timer(741000)
-    seed(counter=5, speed=40)
-    self.assertFalse(self.tx(counter=6))
+    lib.set_timer(801000)
+    seed(counter=8, speed=40)
+    self.assertFalse(self.tx(counter=9))
     self.assertTrue(self.tx(button=0))
-    self.assertFalse(self.tx(counter=6))
+    self.assertFalse(self.tx(counter=9))
 
   def test_overrides_and_state_guards(self):
     for changes in (dict(brake=True), dict(park=True), dict(hold=True), dict(drive=False), dict(gas=True),
@@ -111,9 +111,9 @@ class TestPorterMainSetSafety(unittest.TestCase):
     seed(counter=3, speed=40, button=4)
     lib.set_timer(721000)
     seed(counter=4, speed=40, target=40)
-    lib.set_timer(741000)
-    seed(counter=5, speed=40)
-    self.assertFalse(self.tx(counter=6))
+    lib.set_timer(801000)
+    seed(counter=8, speed=40)
+    self.assertFalse(self.tx(counter=9))
 
   def test_bounded_cancel_release_uses_existing_native_permission(self):
     from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
@@ -156,3 +156,22 @@ class TestPorterMainSetSafety(unittest.TestCase):
       lib.set_timer(701000+(i-3)*20000)
       seed(counter=i, speed=40, gas=i<15)
     self.assertFalse(self.tx(counter=16))
+
+  def test_startup_set_duration_bound_independent_of_frame_count(self):
+    self.prepare()
+    self.assertTrue(self.tx())
+    for i in range(3, 9):
+      lib.set_timer(681000+(i-2)*20000)
+      seed(counter=i, speed=40)
+    self.assertFalse(self.tx(counter=9))  # 120ms elapsed, only one frame sent
+
+  def test_seventh_startup_set_frame_is_blocked_before_time_limit(self):
+    self.prepare()
+    self.assertTrue(self.tx())
+    for i in range(3, 8):
+      lib.set_timer(681000+(i-2)*10000)
+      seed(counter=i, speed=40)
+      self.assertTrue(self.tx(counter=i+1))
+    lib.set_timer(741000)
+    seed(counter=8, speed=40)
+    self.assertFalse(self.tx(counter=9))
