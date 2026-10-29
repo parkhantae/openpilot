@@ -481,13 +481,13 @@ Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default
 
 Porter GAP 1–4 accepts 0–300, including sub-100 values in actual button decisions. Automatic SET can use engagement or active lateral control as readiness, while separately requiring physical MAIN authorization.
 
-With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby uses a 0.1s confirmation before SET− at current speed. All other authorization and revocation guards remain.
+With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby requests SET− at current speed on the next available sample without extra release-confirmation delay. All other authorization and revocation guards remain.
 
 With MAIN and automatic SET ON, a fresh gas press/release at 30 km/h or above can rearm after brake or CANCEL. MAIN OFF prevents automatic starts.
 
 Porter automatic SET startup pulses allow at most six frames/120ms and release immediately on stock ON feedback. Existing speed-step and automatic-cancel bounds are unchanged.
 
-Porter automatic SET tolerates at most 0.1s of request blocking at gas release, then requires another continuous 0.1s of valid conditions.
+Porter automatic SET tolerates at most 0.1s of request blocking at gas release, then requests SET on the next available sample without an extra confirmation delay.
 
 Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.
 

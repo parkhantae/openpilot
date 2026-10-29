@@ -5,12 +5,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="89ff2a0d67a241a047e4640319c61494093c48eda2a711f57063e3f95a546ea1" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="67857a2c1c05095e84258d4d10e641957df5220faa48db12e7df6954971e4e3e" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+실제 MAIN 허가와 인게이지 또는 조향 제어 활성 상태에서 목표·실제 속도가 모두 30km/h 이상이면 0.5초 확인 후 SET−를 요청합니다. 대기 중 엑셀 해제는 0.1초 확인 후 SET−를 요청하며 해제 순간의 요청 차단은 최대 0.1초만 보존합니다. 회복 후에는 유효 조건을 다시 0.1초 확인합니다. 순정 크루즈가 켜진 피드백은 MAIN 추적만 동기화하며 해제된 허가를 복구하지 않습니다.
++실제 MAIN 허가와 인게이지 또는 조향 제어 활성 상태에서 목표·실제 속도가 모두 30km/h 이상이면 0.5초 확인 후 SET−를 요청합니다. 대기 중 유효한 엑셀 해제는 추가 확인 대기 없이 다음 송신 가능한 주기에 SET−를 요청하며 해제 순간의 요청 차단은 최대 0.1초만 보존합니다. 회복 후에는 추가 확인 대기 없이 요청합니다. 순정 크루즈가 켜진 피드백은 MAIN 추적만 동기화하며 해제된 허가를 복구하지 않습니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -34,12 +34,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="89ff2a0d67a241a047e4640319c61494093c48eda2a711f57063e3f95a546ea1" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="67857a2c1c05095e84258d4d10e641957df5220faa48db12e7df6954971e4e3e" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Physical MAIN authorization plus engagement or active lateral control and target/actual speeds of at least 30 km/h must persist for 0.5 seconds before SET−. Gas release uses 0.1s confirmation. A request gap at release is retained for at most 0.1s and recovery requires another continuous 0.1s of valid conditions. Actual stock engagement synchronizes MAIN tracking without restoring revoked authorization.
++Physical MAIN authorization plus engagement or active lateral control and target/actual speeds of at least 30 km/h must persist for 0.5 seconds before SET−. A valid gas release requests SET on the next available sample without an extra confirmation dwell. A request gap at release is retained for at most 0.1s and recovery requests SET without an extra confirmation dwell. Actual stock engagement synchronizes MAIN tracking without restoring revoked authorization.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->

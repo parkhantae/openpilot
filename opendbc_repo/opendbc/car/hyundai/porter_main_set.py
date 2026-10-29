@@ -17,6 +17,7 @@ class PorterMainSet:
     self.frames = 0
     self.next_request = 0.
     self.attempts = 0
+    self.retry_wait = 1.
     self.pending_release = False
     self.previous_gas = False
     self.gas_release_since = None
@@ -127,9 +128,7 @@ class PorterMainSet:
         self.pressing = False
         self.pending_release = True
         self.retry_delay = .01 - self.pulse_delay
-        self.next_request = now + (3. if self.attempts >= 3 else 1.)
-        if self.attempts >= 3:
-          self.attempts = 0
+        self.next_request = now + self.retry_wait
         if tx_fresh:
           self.pending_release = False
           return send(0)
@@ -139,9 +138,12 @@ class PorterMainSet:
       return None
     if self.since is None:
       self.since = now
-    release_confirmed = (self.gas_release_since is not None and now - self.gas_release_since >= .1 - 1e-9 and
-                         now - self.since >= .1 - 1e-9 and self.main_since is not None and now - self.main_since >= .5 - 1e-9)
-    if now >= self.next_request and (release_confirmed or now - self.since >= .5 - 1e-9):
+    # Gas release is the driver's immediate SET cue. Do not add a 100ms
+    # confirmation dwell once all request/override guards are already valid.
+    # Native MAIN settling, retry quiet periods and fresh-sample timing remain.
+    release_ready = (self.gas_release_since is not None and self.main_since is not None and
+                     now - self.main_since >= .5 - 1e-9)
+    if now >= self.next_request and (release_ready or now - self.since >= .5 - 1e-9):
       delay = self.retry_delay
       if not tx_fresh or now - self.sample_seen < delay - 1e-9:
         self.slot_wait_since = now if self.slot_wait_since is None else self.slot_wait_since
@@ -157,5 +159,11 @@ class PorterMainSet:
       self.started = now
       self.frames = 1
       self.attempts += 1
+      self.retry_wait = 3. if self.attempts >= 3 else 1.
+      if self.attempts >= 3:
+        self.attempts = 0
+      # Reserve the retry quiet period at the first SET, including attempts
+      # interrupted by a new pedal/target change before normal pulse completion.
+      self.next_request = now + self.retry_wait
       return send(2)
     return None

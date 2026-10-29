@@ -249,3 +249,50 @@ class TestPorterMainSetSafety(unittest.TestCase):
     self.assertGreaterEqual(requests[2][0]-requests[1][0], 1.)
     self.assertGreaterEqual(requests[3][0]-requests[2][0], 3.5)
     self.assertEqual(speed.preferred_sample_delay, .01)  # misses do not teach success
+
+  def test_immediate_release_after_brake_or_cancel_passes_native(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for override in ('brake', 'cancel'):
+      init(9217)
+      pulse = PorterMainSet()
+      starts = []
+      for tick in range(280):
+        counter, stock = tick//2, 105 <= tick < 200
+        gas = tick < 100 or 230 <= tick < 260
+        brake = override == 'brake' and 200 <= tick < 220
+        manual = 4 if override == 'cancel' and 200 <= tick < 220 else 0
+        lib.set_timer(21000+tick*10000)
+        if tick % 2 == 0:
+          seed(counter=counter, main=tick==0, target=40 if stock else 0, speed=40,
+               gas=gas, brake=brake, button=manual)
+        was = pulse.pressing
+        button = pulse.update(tick*.01, counter, main_pressed=tick<2, manual_button=manual,
+                              blocked=brake, request=not gas, stock_enabled=stock,
+                              configured=True, gas_pressed=gas)
+        if button is not None:
+          self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter+1))),
+                          (override, tick, button))
+          if button == 2 and not was:
+            starts.append(tick)
+      self.assertEqual(starts, [100, 260])  # both release edges, no confirmation dwell
+
+  def test_interrupted_immediate_release_attempts_keep_native_retry_backoff(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    init(9217)
+    pulse = PorterMainSet()
+    starts = []
+    for tick in range(601):
+      counter = tick//2
+      gas = tick < 100 or tick % 100 in (2, 3)
+      lib.set_timer(21000+tick*10000)
+      if tick % 2 == 0:
+        seed(counter=counter, main=tick==0, speed=40, gas=gas)
+      was = pulse.pressing
+      button = pulse.update(tick*.01, counter, main_pressed=tick<2, manual_button=0, blocked=False,
+                            request=not gas, stock_enabled=False, configured=True, gas_pressed=gas)
+      if button is not None:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter+1))),
+                        (tick, button))
+        if button == 2 and not was:
+          starts.append(tick)
+    self.assertEqual(starts, [100, 200, 300, 600])

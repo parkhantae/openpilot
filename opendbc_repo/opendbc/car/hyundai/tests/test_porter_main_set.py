@@ -112,13 +112,11 @@ class TestPorterMainSet(unittest.TestCase):
     exec(code, env)
     self.assertFalse(obj.main_enabled)
 
-  def test_gas_release_above_floor_uses_short_confirmation(self):
+  def test_gas_release_above_floor_requests_set_without_confirmation_dwell(self):
     self.arm()
     for t in range(3, 100):
       self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
-    for t in range(100, 110):
-      self.assertIsNone(self.tick(t))
-    self.assertEqual(self.tick(110), 2)
+    self.assertEqual(self.tick(100), 2)
 
   def test_release_with_blocked_target_does_not_queue_fast_set(self):
     self.arm()
@@ -150,9 +148,7 @@ class TestPorterMainSet(unittest.TestCase):
         self.assertIsNone(self.tick(t))
       for t in range(100, 130):
         self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
-      for t in range(130, 140):
-        self.assertIsNone(self.tick(t))
-      self.assertEqual(self.tick(140), 2)
+      self.assertEqual(self.tick(130), 2)
 
   def test_gas_held_through_brake_is_not_new_authorization(self):
     self.arm()
@@ -182,26 +178,51 @@ class TestPorterMainSet(unittest.TestCase):
     for t in range(61, 90):
       self.assertIsNone(self.tick(t, stock_enabled=True))
 
-  def test_log547_brief_lead_cap_at_release_preserves_fast_confirmation(self):
+  def test_log547_release_requests_set_as_soon_as_brief_lead_cap_clears(self):
     self.arm()
     for t in range(3, 100):
       self.tick(t, gas_pressed=True, request=False)
     for t in range(100, 105):
       self.assertIsNone(self.tick(t, request=False))
-    for t in range(105, 115):
-      self.assertIsNone(self.tick(t))
-    self.assertEqual(self.tick(115), 2)
+    self.assertEqual(self.tick(105), 2)
 
-  def test_request_chatter_restarts_continuous_confirmation(self):
+  def test_request_loss_stops_immediate_release_set_and_preserves_quiet_period(self):
     self.arm()
     for t in range(3, 100):
       self.tick(t, gas_pressed=True, request=False)
-    for t in range(100, 110):
-      self.assertIsNone(self.tick(t, request=t>=104))
-    self.assertIsNone(self.tick(110, request=False))
-    self.assertIsNone(self.tick(111, request=False))
-    for t in range(112, 150):
+    self.assertEqual(self.tick(100), 2)
+    self.assertEqual(self.tick(102, request=False), 0)
+    for t in range(103, 153):
       self.assertIsNone(self.tick(t))
+
+  def test_release_waits_for_unsent_sample_and_keeps_native_main_settling(self):
+    self.arm()
+    for t in range(3, 40):
+      self.tick(t, gas_pressed=True, request=False)
+    for t in range(40, 50):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.tick(50), 2)  # MAIN still requires 500ms
+    self.state = PorterMainSet()
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    self.state.sent_key = 50
+    self.assertIsNone(self.tick(100))
+    self.assertIsNone(self.tick(101))
+    self.assertEqual(self.tick(102), 2)
+
+  def test_repeated_release_cannot_bypass_retry_limits_after_interrupted_pulses(self):
+    self.arm()
+    starts = []
+    for t in range(3, 601):
+      # A new pedal tap after every 20ms interrupts each attempted SET. Even
+      # those incomplete pulses must consume the native one-/three-second gap.
+      gas = t < 100 or t % 100 in (2, 3)
+      was = self.state.pressing
+      button = self.tick(t, gas_pressed=gas, request=not gas)
+      if button == 2 and not was:
+        starts.append(t)
+    self.assertEqual(starts, [100, 200, 300, 600])
 
   def test_initial_on_parity_does_not_authorize_without_physical_input(self):
     self.state = PorterMainSet(initial_main=True)
@@ -219,9 +240,7 @@ class TestPorterMainSet(unittest.TestCase):
     self.assertTrue(self.state.main)
     for t in range(5, 100):
       self.tick(t, gas_pressed=True, request=False)
-    for t in range(100, 110):
-      self.assertIsNone(self.tick(t))
-    self.assertEqual(self.tick(110), 2)
+    self.assertEqual(self.tick(100), 2)
 
   def test_unacknowledged_startup_tries_other_slot_and_learns_real_feedback(self):
     self.arm()

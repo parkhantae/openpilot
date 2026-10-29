@@ -111,7 +111,8 @@ class TestPorterMessagePath(unittest.TestCase):
   def setUp(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
     from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
-    self.controller = NS(porter_cancel_buttons=PorterCancelButtons(), porter_main_set=PorterMainSet(), porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
+    self.controller = NS(porter_cancel_buttons=PorterCancelButtons(), porter_main_set=PorterMainSet(),
+                         porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
                          porter_buttons=self.buttons_class(), speed_from_pcm=0,
                          button_spam1=8, button_spam2=30)
     self.cc = NS(enabled=True, cruiseControl=NS(cancel=False, resume=False),
@@ -289,9 +290,7 @@ class TestPorterMessagePath(unittest.TestCase):
     for frame in range(1, 100):
       self.assertEqual(self.tick(frame), [])
     self.cs.out.gasPressed = False
-    for frame in range(100, 110):
-      self.assertEqual(self.tick(frame), [])
-    self.assertEqual(self.tick(110), [2])
+    self.assertEqual(self.tick(100), [2])
 
 
 if __name__ == "__main__":
