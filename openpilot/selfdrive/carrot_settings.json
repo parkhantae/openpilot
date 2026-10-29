@@ -457,7 +457,15 @@
           "zh": "车辆辅助",
           "params": [
             "MaxAngleFrames",
-            "SpeedFromPCM",
+            "SpeedFromPCM"
+          ]
+        },
+        {
+          "id": "VEH_PORTER",
+          "ko": "포터 전용",
+          "en": "Porter Only",
+          "zh": "波特专用",
+          "params": [
             "PorterAutoCancelBelow30"
           ]
         },
