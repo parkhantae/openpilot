@@ -76,10 +76,13 @@ def hud_module(monkeypatch):
     usbgpu_loading=False,
     usbgpu_active=False,
     usbgpu_startup_failed=False,
+    started=False,
+    CP=None,
   )
   gui_app = SimpleNamespace(
     font=lambda weight: ("font", weight),
     texture=lambda path: ("texture", path),
+    mouse_events=[],
   )
 
   stubs = {
@@ -96,6 +99,7 @@ def hud_module(monkeypatch):
     ),
     "openpilot.selfdrive.ui.ui_state": SimpleNamespace(
       ui_state=fake_ui_state,
+      device=SimpleNamespace(awake=True),
       UIStatus=SimpleNamespace(ENGAGED=1, DISENGAGED=2, OVERRIDE=3),
     ),
     "openpilot.system.ui.lib.application": SimpleNamespace(
@@ -126,6 +130,7 @@ class FakeParams:
     self.values = values
     self.failures = dict(failures or {})
     self.calls = []
+    self.writes = []
 
   def get_int(self, key):
     self.calls.append(key)
@@ -133,6 +138,10 @@ class FakeParams:
       self.failures[key] -= 1
       raise RuntimeError(f"failed to read {key}")
     return self.values[key]
+
+  def put_int(self, key, value):
+    self.values[key] = value
+    self.writes.append((key, value))
 
 
 def make_param_renderer(module, *, next_refresh=0.0):
@@ -597,6 +606,8 @@ def test_render_keeps_sampling_and_interactions_live(hud_module, monkeypatch, re
   renderer = object.__new__(module.HudRenderer)
   renderer.is_cruise_available = False
   renderer._show_plot_mode = 6
+  renderer._longitudinal_personality = 3
+  renderer._gap_touch = module.GapTouch(lambda: None)
   renderer._font_display = object()
   renderer._overlay_state = None
   renderer._blink_timer = renderer._disp_timer = 0

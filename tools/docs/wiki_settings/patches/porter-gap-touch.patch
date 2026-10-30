@@ -1,0 +1,60 @@
+--- a/KO-포터-전용-GAP-사용.md
++++ b/KO-포터-전용-GAP-사용.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="d3d22721b59cc9cdf1dbcdbe62337ee11b9862b94bc02cbd7802be74fa392f66" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="9750140a4bb8dd063a0c841337869f51728313ff065f120e972596e7ce4e48cb" reviewed-at="2026-10-31T00:00:00Z" -->
+@@ -40,0 +41 @@
++콤마3 주행 화면의 GAP 숫자·녹색 막대를 짧게 누르면 4→3→2→1→4로 선택합니다. 길게 누르기·드래그는 제외하며 간격 수치는 Web에서 조절합니다.
+--- a/EN-Porter-dedicated-GAP.md
++++ b/EN-Porter-dedicated-GAP.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="d3d22721b59cc9cdf1dbcdbe62337ee11b9862b94bc02cbd7802be74fa392f66" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="9750140a4bb8dd063a0c841337869f51728313ff065f120e972596e7ce4e48cb" reviewed-at="2026-10-31T00:00:00Z" -->
+@@ -40,0 +41 @@
++Short-tap the GAP number or green bars on the comma 3 driving screen to select 4→3→2→1→4. Holds and drags are ignored; edit time values in Web.
+--- a/KO-갭-단계-수.md
++++ b/KO-갭-단계-수.md
+@@ -31 +31,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="8d9d0e14be4c9f0823d70c20defc78e0af682e9fa247d0b5b4e93de309b1fbbd" reviewed-at="2026-10-31T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++갭 버튼의 순환 단계 수를 선택합니다. 단계를 줄이면 선택 범위가 좁아지고 늘리면 더 많은 TF 단계를 사용하며, 저장된 간격 수치는 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++c3-pht-porter 콤마3 화면의 GAP 숫자·막대도 짧게 눌러 내림차순으로 선택합니다. openpilot 가감속 제어는 설정한 단계 수를 따르고 포터 일반 크루즈는 4→3→2→1→4를 사용합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++화면 선택은 공통·포터 전용 GAP 모드를 유지하며 직접 크루즈 버튼을 송신하지 않습니다. 길게 누르기·드래그는 단계를 바꾸지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/EN-Gap-cycle-levels.md
++++ b/EN-Gap-cycle-levels.md
+@@ -31 +31,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="8d9d0e14be4c9f0823d70c20defc78e0af682e9fa247d0b5b4e93de309b1fbbd" reviewed-at="2026-10-31T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Selects how many gap levels the button cycles through. Lower counts restrict the selected TF levels; higher counts include more levels while preserving stored time values.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++On c3-pht-porter, short-tap the comma 3 GAP number or bars for descending selection. Openpilot longitudinal control respects this count; Porter conventional cruise uses 4→3→2→1→4.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Screen selection retains common/dedicated Porter GAP mode and does not directly transmit a cruise button. Holds and drags do not change the level.
++<!-- CARROT:SECTION:END REFERENCE -->

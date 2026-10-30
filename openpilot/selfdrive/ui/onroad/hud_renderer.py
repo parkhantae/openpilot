@@ -3,8 +3,10 @@ import pyray as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
 from openpilot.selfdrive.carrot.deceleration_source import deceleration_source_presentation
+from openpilot.selfdrive.carrot.cruise_gap import cruise_gap_levels, next_gap_personality, supported_gap_levels
 from openpilot.selfdrive.ui.onroad.exp_button import ExpButton
-from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
+from openpilot.selfdrive.ui.onroad.gap_touch import GapTouch
+from openpilot.selfdrive.ui.ui_state import device, ui_state, UIStatus
 from openpilot.system.hardware.usbgpu import usbgpu_badge_state
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.multilang import tr
@@ -162,6 +164,7 @@ class HudRenderer(Widget):
     self._font_display = gui_app.font(FontWeight.DISPLAY)
 
     self._exp_button = ExpButton(UI_CONFIG.button_size, UI_CONFIG.wheel_icon_size)
+    self._gap_touch = GapTouch(self._on_gap_tap)
 
     self._txt_speed_bg = gui_app.texture('images/speed_bg.png')
 
@@ -284,9 +287,18 @@ class HudRenderer(Widget):
   def _render(self, rect: rl.Rectangle) -> None:
     """Render HUD elements to the screen."""
     self._refresh_hud_params(time.monotonic())
+    # Keep hit testing at camera cadence, outside the cached drawing layer.
+    bx, by = int(rect.x + 140), int(rect.y + rect.height - 230)
+    self._gap_touch.update(
+      (rl.Rectangle(bx + 180, by + 20, 80, 75), rl.Rectangle(bx + 260, by + 95, 90, 100)),
+      gui_app.mouse_events,
+      enabled=ui_state.started and self.is_cruise_available and ui_state.CP is not None,
+      awake=device.awake,
+    )
     self._plot_renderer.update(self._show_plot_mode)
     state = self._overlay_state
-    key = (state.key if state else None, self._blink_timer <= 8, self._disp_timer < 32, self._show_plot_mode)
+    key = (state.key if state else None, self._blink_timer <= 8, self._disp_timer < 32,
+           self._show_plot_mode, self._longitudinal_personality)
     self._overlay.draw(rect, self._paint, key, enabled=state is not None and state.enabled,
                        urgent=state is not None and state.urgent)
 
@@ -319,8 +331,25 @@ class HudRenderer(Widget):
     self._draw_tpms(rect)
     self._draw_egpu_badge(rect)
 
-  def user_interacting(self) -> bool:
-    return self._exp_button.is_pressed
+  def user_interacting(self, mouse_pos=None) -> bool:
+    # Position also covers a complete press/release delivered in one UI frame.
+    return self._exp_button.is_pressed or (mouse_pos is not None and self._gap_touch.contains(mouse_pos))
+
+  def _on_gap_tap(self) -> None:
+    if not ui_state.started or not self.is_cruise_available or ui_state.CP is None:
+      return
+    params = ui_state.params
+    try:
+      levels = supported_gap_levels(params.get_int("LongitudinalPersonalityMax"))
+      if ui_state.CP.openpilotLongitudinalControl:
+        levels = cruise_gap_levels(params.get_int("CruiseGapLevels"), levels)
+      personality = next_gap_personality(params.get_int("LongitudinalPersonality"), levels)
+      # Commit once per tap so rapid taps read the previous completed selection.
+      params.put_int("LongitudinalPersonality", personality)
+    except Exception:
+      return
+    self._longitudinal_personality = personality
+    self._overlay.invalidate()
 
   def _draw_egpu_badge(self, rect: rl.Rectangle) -> None:
     # Keep runtime state visible while the shared USB hub re-enumerates; a

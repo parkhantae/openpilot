@@ -48,6 +48,8 @@ class AugmentedRoadView(CameraView):
     self._cached_matrix: np.ndarray | None = None
     self._content_rect = rl.Rectangle()
     self._suppress_camera_for_cluster = False
+    self._blinker_state = (False, False)
+    self._blinker_started_at = 0.0
 
     self.model_renderer = ModelRenderer()
     self._render_diagnostics = RenderDiagnostics('ui')
@@ -168,8 +170,8 @@ class AugmentedRoadView(CameraView):
     self._pm.send('uiDebug', msg)
     timing.finish()
 
-  def _handle_mouse_press(self, _):
-    if not self._hud_renderer.user_interacting() and self._click_callback is not None:
+  def _handle_mouse_press(self, mouse_pos):
+    if not self._hud_renderer.user_interacting(mouse_pos) and self._click_callback is not None:
       self._click_callback()
 
   def close(self):
@@ -292,6 +294,14 @@ class AugmentedRoadView(CameraView):
   def _get_border_color(self, status: UIStatus) -> rl.Color:
     return BORDER_COLORS.get(status, BORDER_COLORS[UIStatus.DISENGAGED])
 
+  def _blinker_display_state(self, left: bool, right: bool, now: float) -> tuple[bool, bool]:
+    # Display animation only: held/debounced CAN signals can remain continuously ON.
+    if (left, right) != self._blinker_state or now < self._blinker_started_at:
+      self._blinker_state = (left, right)
+      self._blinker_started_at = now
+    lit = (now - self._blinker_started_at) % 0.8 < 0.4
+    return left and lit, right and lit
+
 
   def _draw_border_carrot(self, rect: rl.Rectangle):
     sm = ui_state.sm
@@ -299,7 +309,8 @@ class AugmentedRoadView(CameraView):
       self._draw_border(rect)
       return
 
-    border_params = self._border_params.refresh(time.monotonic())
+    now = time.monotonic()
+    border_params = self._border_params.refresh(now)
     car_state = sm["carState"]
 
     x = float(rect.x)
@@ -325,8 +336,8 @@ class AugmentedRoadView(CameraView):
 
     bottom_color = self._get_border_color(ui_state.status)
 
-    left_blink = bool(car_state.leftBlinker)
-    right_blink = bool(car_state.rightBlinker)
+    left_blink, right_blink = self._blinker_display_state(
+      bool(car_state.leftBlinker), bool(car_state.rightBlinker), now)
 
     # ---------- geometry ----------
     top_h = max(0.0, mid_y - gap_half - y)

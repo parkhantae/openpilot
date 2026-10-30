@@ -107,3 +107,12 @@ This patch is not published to the upstream live Wiki.
 `porter-main-set.patch` supplies reviewed Korean/English manual regions for
 `PorterAutoSetMain` on c3-pht-porter. Apply to staged pages generated from this
 branch, regenerate, and validate as above. No live upstream Wiki publication.
+
+## Porter comma 3 GAP touch selection
+
+`porter-gap-touch.patch` updates the Korean/English `PorterGapUse` and
+`CruiseGapLevels` manual regions for descending GAP selection from the comma 3
+screen. Generate from the current c3-pht-porter catalog and apply this patch
+with `git apply --unidiff-zero` **after** `porter-dedicated-gap.patch`; regenerate
+and validate. The zero-context format requires the same flag for `--check`. This is a staged
+branch-specific explanation, with no live upstream Wiki publication.

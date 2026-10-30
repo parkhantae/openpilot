@@ -195,6 +195,8 @@ Changes apply on the next gap-button press. If the current level is outside the 
 
 Porter II EV has no dedicated steering-wheel gap button, so **holding CANCEL** cycles the vision following gap through TF1→TF4→TF3→TF2→TF1. A short CANCEL press retains its normal cruise-cancel behavior. Stock cruise also receives CANCEL while the button is held, so changing the gap while driving can disengage cruise.
 
+On `c3-pht-porter`, **short-tap the GAP number or green bars on the comma 3 driving screen to cycle 4→3→2→1→4**. Holding or dragging does not change the level. Dedicated Porter GAP ON selects the corresponding Porter GAP1–4 value; OFF selects common TF1–TF4. Edit the time values in Web. The touch action does not transmit a cruise button or engage/disengage cruise. Other vehicles retain their supported level count; openpilot longitudinal control also respects `CruiseGapLevels`.
+
 ### Four base time gaps
 
 Multiply stored values by 0.01 seconds. All four range from 40 to 300 in steps of 5.
