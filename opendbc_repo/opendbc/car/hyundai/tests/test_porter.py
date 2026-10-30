@@ -124,18 +124,19 @@ class TestPorterLeadTracker(unittest.TestCase):
   def update(self, now, *, target=80, stock=50, ego=10, distance=40, relative=-5, visible=True, gap=2):
     return self.tracker.update(now, target, stock, ego, distance, relative, gap, lead_visible=visible)
 
-  def test_closing_lead_never_raises_stock_setting(self):
-    self.assertEqual(self.update(0, target=60, stock=42, distance=100, relative=-1), 42)
+  def test_distant_lead_allows_target_recovery_without_opening_confirmation(self):
+    self.assertEqual(self.update(0, target=60, stock=42, distance=100, relative=-1), 60)
+    self.assertEqual(self.update(.1, target=60, stock=42, distance=100, relative=.1), 60)
 
-  def test_opening_lead_allows_higher_target(self):
-    self.assertEqual(self.update(0, target=60, stock=42, distance=30, relative=1), 42)
-    self.assertEqual(self.update(.49, target=60, stock=42, distance=30, relative=1), 42)
-    self.assertEqual(self.update(.5, target=60, stock=42, distance=30, relative=1), 60)
+  def test_close_opening_lead_still_requires_confirmation(self):
+    self.assertEqual(self.update(0, target=60, stock=30, distance=15, relative=1), 30)
+    self.assertEqual(self.update(.49, target=60, stock=30, distance=15, relative=1), 30)
+    self.assertEqual(self.update(.5, target=60, stock=30, distance=15, relative=1), 60)
 
   def test_brief_opening_blip_does_not_restore_memorized_speed(self):
-    self.assertEqual(self.update(0, target=60, stock=42, distance=30, relative=-1), 42)
-    self.assertEqual(self.update(.1, target=60, stock=42, distance=30, relative=1), 42)
-    self.assertEqual(self.update(.2, target=60, stock=42, distance=30, relative=-1), 42)
+    self.assertEqual(self.update(0, target=60, stock=30, distance=15, relative=-1), 30)
+    self.assertEqual(self.update(.1, target=60, stock=30, distance=15, relative=1), 30)
+    self.assertEqual(self.update(.2, target=60, stock=30, distance=15, relative=-1), 30)
 
   def test_short_dropout_keeps_conservative_cap(self):
     self.assertEqual(self.update(0), 30)
@@ -148,13 +149,13 @@ class TestPorterLeadTracker(unittest.TestCase):
     self.assertAlmostEqual(cap, 54)
     self.assertEqual(self.update(.05, target=80, stock=70, ego=19, distance=56, relative=-1), cap)
     self.assertEqual(self.update(.3, target=80, stock=70, ego=19, distance=56, relative=-1), cap)
-    self.assertEqual(self.update(.61, target=80, stock=70, ego=19, distance=56, relative=-1), 70)
+    self.assertEqual(self.update(.61, target=80, stock=70, ego=19, distance=56, relative=-1), 80)
 
   def test_deceleration_hold_expires_even_with_continuous_lead_samples(self):
     self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
     for i in range(1, 61):
       self.update(i * .01, target=80, stock=70, ego=19, distance=56, relative=-1)
-    self.assertEqual(self.update(.61, target=80, stock=70, ego=19, distance=56, relative=-1), 70)
+    self.assertEqual(self.update(.61, target=80, stock=70, ego=19, distance=56, relative=-1), 80)
 
   def test_new_closing_constraint_refreshes_cap_but_lower_target_wins(self):
     self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
@@ -163,7 +164,35 @@ class TestPorterLeadTracker(unittest.TestCase):
 
   def test_expired_observation_gap_does_not_restore_an_old_deceleration_cap(self):
     self.update(0, target=80, stock=71, ego=19, distance=56, relative=-4)
-    self.assertEqual(self.update(2, target=80, stock=70, ego=19, distance=56, relative=-1), 70)
+    self.assertEqual(self.update(2, target=80, stock=70, ego=19, distance=56, relative=-1), 80)
+
+  def test_log55a_overspeed_recovery_before_vehicle_reaches_stock_setting(self):
+    # Segment46: the display is still near68.25, while stock was lowered to63.
+    # The lead is beyond the configured projected gap; noisy vRel near zero
+    # must not pin the recovered planner target67–69 to the old stock63.
+    for t,relative in ((0,-.082),(.1,.1),(.2,-.259)):
+      target=self.tracker.update(t,68.3,63,63.6/3.6,44.22,relative,3,gap_time_s=2.,reaction_s=6.)
+      self.assertEqual(target,68.3)
+
+  def test_recovery_keeps_closing_constraint_and_lower_planner_target(self):
+    self.assertEqual(self.update(0,target=80,stock=70,ego=19,distance=40,relative=-3),57.6)
+    self.assertEqual(self.update(.7,target=45,stock=70,ego=19,distance=100,relative=-1),45)
+
+  def test_recovery_does_not_use_dropout_as_clearance(self):
+    self.assertEqual(self.update(0,target=60,stock=42,distance=100,relative=-1),60)
+    self.assertEqual(self.update(.1,target=60,stock=42,visible=False),42)
+
+  def test_invalid_plan_or_radar_cannot_raise_target_but_lower_target_remains(self):
+    for visible in (False,True):
+      self.assertEqual(self.tracker.update(0,80,60,10,100,1,2,lead_visible=visible,recovery_allowed=False),60)
+      self.assertEqual(self.tracker.update(.1,45,60,10,100,1,2,lead_visible=visible,recovery_allowed=False),45)
+
+  def test_malformed_visible_lead_does_not_grant_clear_road_recovery(self):
+    for ego,distance,relative,visible in ((10,float('nan'),0,True),(10,0,0,True),
+                                          (10,100,float('nan'),True),(float('nan'),0,0,False)):
+      tracker=porter.PorterLeadTracker()
+      self.assertEqual(tracker.update(0,80,60,ego,distance,relative,2,lead_visible=visible),60)
+      self.assertFalse(tracker.recovery_ready)
 
   def test_held_lead_target_allows_next_acknowledged_deceleration_step(self):
     pulse = porter.PorterCruiseButtons()

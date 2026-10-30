@@ -268,6 +268,8 @@ For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control ev
 
 Porter II EV conventional-cruise button control retains a lead deceleration target for up to 0.6 seconds when brief relative-speed variation removes the constraint. Only another calculated lead constraint refreshes the timer; confirmed continuous lead opening or expired observations clears it. Lower navigation or planner targets still take priority. This does not provide direct braking or stopping, and the stock set-speed minimum remains 30 km/h.
 
+For Porter conventional cruise, a clear projected following gap and an expired lead deceleration hold allow the target to rise before vehicle speed falls to the lowered stock setting. Request RES+ toward the currently valid planner/navigation target without the extra 0.5s reversal confirmation in this case. Brief opening of a close lead, an active deceleration hold or a lead dropout does not qualify for this immediate reversal. Other deceleration-to-acceleration reversals retain the existing 0.5s confirmation. Valid planner/radar inputs, press/release/response checks, the minimum 0.3s request interval and driver-input/cancel guards still apply. Physical acceleration timing depends on stock acceptance and vehicle control.
+
 > [!CAUTION]
 > Incorrect `HyundaiCameraSCC`, `CanfdHDA2`, `EnableRadarTracks`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity`, or `SpeedFromPCM` values can change vehicle identification, SCC, radar, or longitudinal behavior. Confirm the vehicle, model year, HDA generation, harness location, and whether stock ACC is retained.
 

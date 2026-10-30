@@ -57,6 +57,32 @@ class TestPorterGap(unittest.TestCase):
           return int(value)
         self.assertEqual(porter_gap_time_s(SimpleNamespace(get_int=read), i), default)
 
+  def test_actual_speed_path_recovers_above_stock_only_with_fresh_plan_and_radar(self):
+    import ast
+    from pathlib import Path
+    from opendbc.car.hyundai.porter import porter_navi_target_kph
+    NS=SimpleNamespace
+    tree=ast.parse((Path(__file__).resolve().parents[5]/'openpilot/selfdrive/controls/controlsd.py').read_text())
+    node=next(n for n in ast.walk(tree) if isinstance(n,ast.If) and
+              'self.CP.carFingerprint == \'HYUNDAI_PORTER_II_EV\'' in ast.unparse(n.test) and
+              'lead_target_kph =' in ast.unparse(n))
+    code=compile(ast.Module(body=[node],type_ignores=[]),'actual_porter_recovery','exec')
+    for valid,expected in ((True,68.3),(False,63)):
+      class SM(dict):
+        frame=0
+
+        def all_checks(self,services,v=valid):return v
+      obj=NS(CP=NS(carFingerprint='HYUNDAI_PORTER_II_EV'),
+             sm=SM(radarState=NS(leadOne=NS(status=True,dRel=44.22,vRel=-.082)),
+                   selfdriveState=NS(personality=NS(raw=2))),
+             params=NS(get_bool=lambda _:True,get_int=lambda _:60),porter_lead_tracker=PorterLeadTracker())
+      hud=NS(setSpeed=68.3/3.6)
+      exec(code,dict(self=obj,CC=NS(enabled=True),CS=NS(cruiseState=NS(enabled=True,speed=63/3.6),vEgo=63.6/3.6),
+                     speed_from_pcm=0,lp=NS(tFollow=2.),hudControl=hud,desired_kph=85,DT_CTRL=.01,
+                     CV=NS(MS_TO_KPH=3.6,KPH_TO_MS=1/3.6),porter_navi_target_kph=porter_navi_target_kph,
+                     porter_gap_time_s=porter_gap_time_s,porter_lead_reaction_s=porter_lead_reaction_s))
+      self.assertAlmostEqual(hud.setSpeed*3.6,expected)
+
   def test_live_selected_gap(self):
     values = dict(TFollowGap1=100, TFollowGap2=130, TFollowGap3=160, TFollowGap4=200)
     params = SimpleNamespace(get_int=lambda key: values[key])

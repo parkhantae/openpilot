@@ -96,15 +96,7 @@ def porter_navi_target_kph(planner_target_kph, navi_target_kph):
   return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
 
 
-def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *,
-                           lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
-  """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
-  values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
-  if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
-    return target_kph
-  if lead_relative_speed > 0.2:
-    return target_kph
-
+def _porter_projected_gap_margin(ego_speed, lead_distance, lead_relative_speed, gap_level, gap_time_s, reaction_s):
   gap_index = min(len(PORTER_GAP_TIME_S), max(1, int(gap_level or 2))) - 1
   time_s = PORTER_GAP_TIME_S[gap_index]
   if gap_time_s is not None and math.isfinite(gap_time_s) and 0.0 <= gap_time_s <= 30.0:
@@ -113,7 +105,18 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
   if not math.isfinite(reaction_s) or not 4 <= reaction_s <= PORTER_LEAD_REACTION_S:
     reaction_s = PORTER_LEAD_REACTION_S
   projected_distance = lead_distance + min(0.0, lead_relative_speed) * reaction_s
-  if projected_distance >= desired_distance:
+  return projected_distance - desired_distance
+
+
+def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *,
+                           lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
+  """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
+  values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
+  if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
+    return target_kph
+  if lead_relative_speed > 0.2:
+    return target_kph
+  if _porter_projected_gap_margin(ego_speed, lead_distance, lead_relative_speed, gap_level, gap_time_s, reaction_s) >= 0:
     return target_kph
 
   lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6
@@ -132,9 +135,12 @@ class PorterLeadTracker:
     self.opening_since = None
     self.decel_cap = None
     self.decel_cap_time = None
+    self.recovery_ready = False
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
-             lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
+             lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True):
+    self.recovery_ready = False
     if (self.last_update is not None and
         (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):
       self.decel_cap = self.decel_cap_time = None
@@ -162,14 +168,17 @@ class PorterLeadTracker:
       self.closing = False
       self.opening_since = None
       self.decel_cap = self.decel_cap_time = None
-      return target_kph
+      # Explicit absence can clear a completed hold; malformed visible-lead
+      # data must not be mistaken for an empty road.
+      self.recovery_ready = recovery_allowed and not lead_visible and math.isfinite(ego_speed) and ego_speed >= 0
+      return min(target_kph, stock_target_kph) if not self.recovery_ready and math.isfinite(stock_target_kph) else target_kph
 
     opening_confirmed = (self.opening_since is not None and
                          now - self.opening_since >= PORTER_LEAD_OPENING_CONFIRM_S)
     self.closing = not opening_confirmed
     # Vision relative speed can briefly cross zero while range is noisy. Keep
-    # the existing cap until the lead has pulled away continuously, preventing
-    # a transient RES+ request from restoring the memorized cruise speed.
+    # the existing cap until opening is confirmed or its hold expires. A
+    # separate projected-gap check below releases the old stock-speed ceiling.
     effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
     lead_target_kph = porter_lead_target_kph(
       target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True,
@@ -188,9 +197,15 @@ class PorterLeadTracker:
       else:
         self.decel_cap = self.decel_cap_time = None
     target_kph = lead_target_kph
-    if self.closing and math.isfinite(stock_target_kph):
+    gap_clear = (finite_lead and math.isfinite(ego_speed) and ego_speed >= 0 and
+                 _porter_projected_gap_margin(ego_speed, self.distance, self.relative_speed,
+                                              gap_level, gap_time_s, reaction_s) >= 0)
+    self.recovery_ready = recovery_allowed and gap_clear and self.decel_cap is None
+    if ((self.closing and not gap_clear) or not recovery_allowed) and math.isfinite(stock_target_kph):
       # RES can restore the Porter's memorized speed in one large jump. Do not
-      # raise the stock setting while a tracked lead is not pulling away.
+      # raise it inside the projected gap without confirmed opening. Outside
+      # that gap, an expired lead cap must not pin a recovered planner target
+      # to the old stock setting until vehicle speed falls all the way to it.
       target_kph = min(target_kph, stock_target_kph)
     return target_kph
 
@@ -284,7 +299,7 @@ class PorterCruiseButtons:
     return None
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
-             manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3):
+             manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3, acceleration_ready=False):
     if frame_key != self.sample_frame:
       self.sample_frame = frame_key
       self.sample_seen = now
@@ -447,7 +462,7 @@ class PorterCruiseButtons:
       if at_target or now < self.next_request:
         self.status = "at_target" if at_target else "cooldown"
         return None
-      if (target > current and self.confirm_acceleration and
+      if (target > current and self.confirm_acceleration and not acceleration_ready and
           (self.accel_since is None or now - self.accel_since < PORTER_BUTTON_ACCEL_CONFIRM_S - 1e-9)):
         self.status = "accel_confirm"
         return None

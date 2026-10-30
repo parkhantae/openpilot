@@ -286,6 +286,25 @@ class TestPorterPulse(unittest.TestCase):
     # Confirmation applies only to the reversal, not each following RES+.
     self.assertEqual(self.step(.92, target=55, current=50), 1)
 
+  def test_confirmed_gap_clearance_bypasses_only_extra_reversal_dwell(self):
+    self.finish_deceleration()
+    for tick in range(10,30):
+      self.assertIsNone(self.step(tick*.01,target=55,current=49,acceleration_ready=True))
+    self.assertEqual(self.step(.30,target=55,current=49,acceleration_ready=True),1)
+    self.assertEqual(self.step(.34,target=55,current=50,acceleration_ready=True),0)
+    self.assertEqual(self.step(.36,target=55,current=50,acceleration_ready=True),0)
+
+  def test_gap_clearance_cannot_bypass_driver_override_or_response_wait(self):
+    for override in ({'blocked':True},{'manual':True},{'enabled':False},{'cancel':True}):
+      self.setUp()
+      self.finish_deceleration()
+      self.assertNotEqual(self.step(.3,target=55,current=49,acceleration_ready=True,**override),1)
+    self.setUp()
+    self.assertEqual(self.step(0,target=40,current=50),2)
+    self.step(.06,target=55,current=50,acceleration_ready=True)
+    self.step(.08,target=55,current=50,acceleration_ready=True)
+    self.assertIsNone(self.step(.3,target=55,current=50,acceleration_ready=True))
+
   def test_short_high_target_blip_after_deceleration_never_sends_res(self):
     self.finish_deceleration()
     for tick in range(10, 40):

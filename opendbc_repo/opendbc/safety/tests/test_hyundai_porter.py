@@ -62,6 +62,36 @@ class TestNativePorter(unittest.TestCase):
         for button in (1, 2):
             self.assertFalse(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button))))
 
+    def test_recovered_target_can_send_res_while_vehicle_remains_above_stock_speed(self):
+        from opendbc.car.hyundai.porter import PorterCruiseButtons, PorterLeadTracker
+        init(60417)
+        lib.set_timer(2000)
+        seed(counter=1, button=2, speed=63.6, cluster_speed=68.25)
+        lib.set_timer(4000)
+        seed(counter=2, target=64, speed=63.6, cluster_speed=68.25)
+        self.assertTrue(lib.get_controls_allowed())
+        pulse, lead = PorterCruiseButtons(), PorterLeadTracker()
+        emitted = []
+        for tick in range(50):
+            lib.set_timer(21000 + tick * 10000)
+            counter = tick // 2 + 3
+            stock = 64 if tick < 2 or tick >= 32 else 63
+            if tick % 2 == 0:
+                seed(counter=counter, target=stock, speed=63.6, cluster_speed=68.25)
+            target = 60 if tick < 6 else stock
+            if tick >= 30:
+                target = lead.update(tick*.01, 68.3, stock, 63.6/3.6, 44.22, -.082, 3,
+                                     gap_time_s=2., reaction_s=6.)
+            button = pulse.update(tick*.01, target, stock, counter, enabled=True,
+                                  acceleration_ready=lead.recovery_ready)
+            if button is not None:
+                self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter+1))),
+                                (tick, button))
+                emitted.append((tick, button))
+        self.assertEqual(next(t for t,b in emitted if b == 1), 30)
+        self.assertEqual(emitted[:3], [(0,2),(2,0),(4,0)])
+        self.assertEqual(pulse.acks, 2)
+
     def test_no_engagement_or_resume_from_transmit(self):
         init()
         for button in (1, 2):

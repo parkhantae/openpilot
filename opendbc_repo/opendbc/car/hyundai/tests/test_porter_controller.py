@@ -144,6 +144,31 @@ class TestPorterMessagePath(unittest.TestCase):
         outputs.append((tick, messages))
     self.assertEqual(outputs, [(1, [1]), (3, [1]), (5, [1]), (7, [0]), (9, [0])])
 
+  def test_clearance_flag_reaches_actual_button_sender_and_defaults_to_confirmation(self):
+    for ready,expected in ((False,[]),(True,[1])):
+      self.setUp()
+      self.cc.hudControl.setSpeed=40/3.6
+      self.assertEqual(self.tick(0),[2])
+      self.cs.out.cruiseState.speed=49/3.6
+      self.assertEqual(self.tick(2),[0])
+      self.assertEqual(self.tick(4),[0])
+      self.cc.hudControl.setSpeed=55/3.6
+      if ready:
+        self.cc.hudControl.porterAccelReady=True
+      for frame in range(5,30):
+        self.assertEqual(self.tick(frame),[])
+      self.assertEqual(self.tick(30),expected)
+
+  def test_clearance_flag_schema_defaults_and_round_trip(self):
+    from opendbc.car import structs
+    message=structs.CarControl.new_message()
+    self.assertFalse(message.hudControl.porterAccelReady)
+    message.hudControl.porterAccelReady=True
+    message.hudControl.setSpeed=68.3/3.6
+    with structs.CarControl.from_bytes(message.to_bytes()) as restored:
+      self.assertTrue(restored.hudControl.porterAccelReady)
+      self.assertAlmostEqual(restored.hudControl.setSpeed*3.6,68.3,places=4)
+
   def test_learned_slot_survives_manual_and_disabled_message_path(self):
     self.controller.porter_buttons.retry_sample_delay = .01
 

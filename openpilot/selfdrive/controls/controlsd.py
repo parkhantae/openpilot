@@ -421,10 +421,12 @@ class Controls:
           self.sm.frame * DT_CTRL, hudControl.setSpeed * CV.MS_TO_KPH,
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
           self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status,
+          recovery_allowed=self.sm.all_checks(['longitudinalPlan', 'radarState']),
           reaction_s=porter_lead_reaction_s(self.params),
           gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                       getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None))
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
+        hudControl.porterAccelReady = self.porter_lead_tracker.recovery_ready
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     self.update_porter_cancel(CS, CC, setSpeed * CV.MS_TO_KPH if len(speeds) else None, carrot_man)

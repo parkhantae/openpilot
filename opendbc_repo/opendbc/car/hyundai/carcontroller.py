@@ -714,6 +714,7 @@ class CarController(CarControllerBase):
         (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
         enabled=CC.enabled and CS.out.cruiseState.enabled and not cancel_busy,
         blocked=blocked or cancel_busy, manual=manual, cancel=False,
+        acceleration_ready=getattr(CC.hudControl, "porterAccelReady", False),
         press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL)
       porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
                        self.porter_buttons.acks, self.porter_buttons.timeouts)

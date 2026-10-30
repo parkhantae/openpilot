@@ -5,12 +5,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterGapUse -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="d03670004513f7f718d436eb6e3e87aab099e51abc3d3b2eb4276220cf627452" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="d3d22721b59cc9cdf1dbcdbe62337ee11b9862b94bc02cbd7802be74fa392f66" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+OFF는 공통 TF1~TF4, ON은 포터 GAP1~4를 포터2 EV 일반 크루즈 플래너와 버튼 감속·선택적 저속 취소에 함께 적용합니다. 기존 속도·모드·감속 보정은 유지합니다.
++OFF는 공통 TF1~TF4, ON은 포터 GAP1~4를 포터2 EV 일반 크루즈 플래너와 버튼 감속·선택적 저속 취소에 함께 적용합니다. 기존 속도·모드·감속 보정은 유지합니다. 두 모드 모두 예측 간격이 충분하고 감속 목표 유지가 끝나면 낮아진 순정 속도에 도달하기 전에도 RES+를 요청하며 추가 0.5초 전환 확인을 생략합니다. 가까운 앞차의 짧은 멀어짐은 기존 확인을 유지합니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -179,12 +179,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterGapUse -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="d03670004513f7f718d436eb6e3e87aab099e51abc3d3b2eb4276220cf627452" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="d3d22721b59cc9cdf1dbcdbe62337ee11b9862b94bc02cbd7802be74fa392f66" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+OFF selects common TF1–TF4; ON shares Porter GAP1–4 between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Existing speed, mode and deceleration adjustments remain.
++OFF selects common TF1–TF4; ON shares Porter GAP1–4 between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Existing speed, mode and deceleration adjustments remain. In either mode, a clear projected gap and expired deceleration hold permit RES+ before vehicle speed falls to the lowered stock setting, bypassing the extra 0.5s reversal dwell. Brief opening of a close lead retains confirmation.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
