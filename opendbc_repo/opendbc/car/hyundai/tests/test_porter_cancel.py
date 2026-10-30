@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
 
-from opendbc.car.hyundai.porter import porter_gap_time_s, porter_auto_set_speed_valid
+from opendbc.car.hyundai.porter import porter_gap_time_s, porter_auto_set_speed_valid, porter_lead_reaction_s
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 
 
@@ -74,6 +74,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     fn = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == 'Controls'
               for n in c.body if isinstance(n, ast.FunctionDef) and n.name == 'update_porter_cancel')
     env = dict(porter_auto_set_speed_valid=porter_auto_set_speed_valid, porter_gap_time_s=porter_gap_time_s,
+               porter_lead_reaction_s=porter_lead_reaction_s,
                PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
                DT_CTRL=.01, CV=NS(MS_TO_KPH=3.6), cloudlog=NS(info=lambda *args: None))
     exec(compile(ast.Module(body=[fn], type_ignores=[]), 'actual_porter_cancel_adapter', 'exec'), env)
@@ -155,6 +156,17 @@ class TestPorterCancelPublish(unittest.TestCase):
         self.sm.invalid.add('longitudinalPlan')
       self.run_frames(planner=60)
       self.assertEqual(self.cc.cruiseControl.cancel, expected)
+
+  def test_dedicated_lookahead_reaches_actual_cancel_adapter_without_raising_stop_targets(self):
+    for reaction, planner, expected in ((80,60,True),(60,60,False),(60,0,True)):
+      self.setUp()
+      self.values.update(PorterAutoCancelBelow30=True,PorterGapUse=True,PorterLeadReactionTime=reaction)
+      self.sm['longitudinalPlan'].tFollow = 2.
+      self.sm['radarState'].leadOne = NS(status=True,dRel=48,vRel=-3)
+      self.cs.vCruiseCluster = 60
+      self.cc.cruiseControl.resume = False
+      self.run_frames(planner=planner)
+      self.assertEqual(self.cc.cruiseControl.cancel,expected)
 
   def test_auto_set_requires_option_config_target_actual_speed_and_freshness(self):
     self.values['PorterAutoSetMain'] = True

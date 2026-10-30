@@ -169,7 +169,13 @@ Carrot Web > Settings > Vehicle & Hardware > Porter Only includes **Porter: canc
 
 This uses target speed, not vehicle speed or lead distance alone. Cancellation is a request to release stock cruise, not a brake/stop command. No automatic re-engagement is added. This opt-in function still needs vehicle response validation.
 
-Configure following time once through TF1–TF4 (`TFollowGap1`–`TFollowGap4`). Porter button deceleration and optional low-target cancellation share the planner’s applied following time, including speed, driving-mode and braking adjustments. Without a fresh valid planner time, use the selected common TF base setting. Legacy Porter-only values are neither read nor copied into common TF settings. The 7m distance floor and existing button/cancel bounds remain; actual following distance or braking is not guaranteed.
+In Settings > Vehicle & Hardware > Porter Only, enable **Porter: dedicated GAP** (`PorterGapUse`) to share `PorterGap1`–`PorterGap4` between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Default OFF uses common `TFollowGap1`–`TFollowGap4`. Existing GAP selection buttons remain; switching modes never copies or resets either set of saved values.
+
+Porter GAP1–4 range from 40 to 300 in steps of 5; 50=0.50s. Initial defaults are 100/130/160/200; previously saved dedicated values are preserved. Button decisions use the planner’s applied time after existing speed, driving-mode and deceleration adjustments. Without valid planner time, use the selected mode’s base time. Allow about five seconds for planner refresh after changes.
+
+**Porter: deceleration lookahead** (`PorterLeadReactionTime`) applies to both button deceleration and lead-based low-target cancellation while dedicated GAP is ON. Range 40–80 in steps of 5; 80=8s, 60=6s; initial default 80. Higher values can request deceleration farther away; lower values can wait until closer. Dedicated GAP OFF retains the existing 8s projection. Adjust the dedicated gap and lookahead separately.
+
+The 7m distance floor, existing button/cancel limits and model-stop/navigation targets remain. GAP or lookahead changes do not remove deceleration requested by a model stop judgment. This does not guarantee physical braking, stopping, actual spacing or stock button acceptance.
 
 The confirmed stock cruise set-speed floor on the 2024 Porter II EV is 30 km/h. Steering-wheel button emulation cannot change the stock ECU floor, so the Carrot target, stock set-speed state, button transmission, and panda permission checks use the same 30 km/h minimum. Vehicle speed can fall below 30 km/h while coasting, but stock cruise cannot be set to or hold 29 km/h or less.
 

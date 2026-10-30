@@ -394,6 +394,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"PorterGap2", {PERSISTENT, INT, "130"}},
     {"PorterGap3", {PERSISTENT, INT, "160"}},
     {"PorterGap4", {PERSISTENT, INT, "200"}},
+    {"PorterGapUse", {PERSISTENT, BOOL, "0"}},
+    {"PorterLeadReactionTime", {PERSISTENT, INT, "80"}},
     {"SpeedFromPCM", {PERSISTENT, INT, "2"}},
     {"MaxTimeOffroadMin", {PERSISTENT, INT, "60"}},
     {"TeslaWakeOnCAN", {PERSISTENT, BOOL, "1"}},

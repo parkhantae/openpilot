@@ -81,6 +81,27 @@ def test_gap_cycle_setting_is_registered_and_in_gap_menu(settings):
   assert section["items"].index("CruiseGapLevels") < section["items"].index("TFollowGap1")
 
 
+def test_porter_dedicated_gap_controls_are_registered_and_editable_below_one_second(settings):
+  _, by_name, _ = group_index(settings)
+  categories = build_menu_categories(settings, by_name)
+  section = next(section for category in categories for group in category['groups'] for section in group['sections']
+                 if 'PorterGapUse' in section['items'])
+  names = ['PorterGapUse',*[f'PorterGap{i}' for i in range(1,5)],'PorterLeadReactionTime']
+  assert all(name in section['items'] for name in names)
+  keys = PARAMS_KEYS_PATH.read_text(encoding='utf-8')
+  assert '{"PorterGapUse", {PERSISTENT, BOOL, "0"}}' in keys
+  assert '{"PorterLeadReactionTime", {PERSISTENT, INT, "80"}}' in keys
+  from openpilot.selfdrive.carrot.server.services.params import clamp_numeric
+  for i,default in enumerate((100,130,160,200),1):
+    item = by_name[f'PorterGap{i}']
+    assert (item['min'],item['max'],item['unit'],item['default']) == (40,300,5,default)
+    assert clamp_numeric(45,item) == 45
+    assert f'{{"PorterGap{i}", {{PERSISTENT, INT, "{default}"}}}}' in keys
+  item = by_name['PorterLeadReactionTime']
+  assert (item['min'],item['max'],item['unit'],item['default']) == (40,80,5,80)
+  assert clamp_numeric(60,item) == 60
+
+
 def test_rear_camera_hold_uses_meter_values_and_persistent_default(settings, params):
   hold = next(p for p in params if p["name"] == "AutoNaviRearCameraHoldDistance")
   assert (hold["min"], hold["max"], hold["default"], hold["unit"]) == (0, 300, 100, 10)

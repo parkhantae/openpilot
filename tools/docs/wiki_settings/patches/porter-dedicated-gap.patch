@@ -1,0 +1,348 @@
+--- a/KO-포터-전용-GAP-사용.md
++++ b/KO-포터-전용-GAP-사용.md
+@@ -26,7 +26,25 @@
+ <!-- CARROT:AUTO:END PorterGapUse -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGapUse -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="d03670004513f7f718d436eb6e3e87aab099e51abc3d3b2eb4276220cf627452" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++OFF는 공통 TF1~TF4, ON은 포터 GAP1~4를 포터2 EV 일반 크루즈 플래너와 버튼 감속·선택적 저속 취소에 함께 적용합니다. 기존 속도·모드·감속 보정은 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++포터 전용 메뉴에서 켠 뒤 전용 간격과 감속 예측을 조절합니다. 플래너 갱신에 최대 약 5초를 허용하며 기존 저장값은 복사하거나 초기화하지 않습니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++단계 선택 버튼과 모델 정지·내비 목표는 유지됩니다. 간격 설정은 실제 차간거리·제동·정차를 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGapUse -->
+ 
+ <!-- CARROT:SETTING:END PorterGapUse -->
+--- a/KO-포터-GAP-1-추종시간-×0.01초.md
++++ b/KO-포터-GAP-1-추종시간-×0.01초.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap1 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap1 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="744ef5ccab4aede639c9d521aa8898c15a729f52f69c76c800fc4920b42a83b8" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++전용 GAP ON일 때 해당 단계의 기본 추종시간입니다. 높이면 간격 판단을 넓히고 낮추면 좁히며 플래너 보정 후 같은 시간을 버튼 판단에 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 저장값을 유지합니다. 값 50은 0.50초이며 공통 TF 값은 변경하지 않습니다. 감속 시작 예측은 별도 설정으로 조절합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++유효한 플래너 시간이 없으면 선택 단계의 기본값을 사용합니다. 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 제동·차간거리 보장은 아닙니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap1 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap1 -->
+--- a/KO-포터-GAP-2-추종시간-×0.01초.md
++++ b/KO-포터-GAP-2-추종시간-×0.01초.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap2 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap2 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="110fd8ab63000747416c508becddf55209061631243d758532168d589c9d9472" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++전용 GAP ON일 때 해당 단계의 기본 추종시간입니다. 높이면 간격 판단을 넓히고 낮추면 좁히며 플래너 보정 후 같은 시간을 버튼 판단에 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 저장값을 유지합니다. 값 50은 0.50초이며 공통 TF 값은 변경하지 않습니다. 감속 시작 예측은 별도 설정으로 조절합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++유효한 플래너 시간이 없으면 선택 단계의 기본값을 사용합니다. 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 제동·차간거리 보장은 아닙니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap2 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap2 -->
+--- a/KO-포터-GAP-3-추종시간-×0.01초.md
++++ b/KO-포터-GAP-3-추종시간-×0.01초.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap3 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap3 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="75acc600591d37dd9ebd7c541c771b62b3f10dbfed46e4ec913bf642c39d1406" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++전용 GAP ON일 때 해당 단계의 기본 추종시간입니다. 높이면 간격 판단을 넓히고 낮추면 좁히며 플래너 보정 후 같은 시간을 버튼 판단에 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 저장값을 유지합니다. 값 50은 0.50초이며 공통 TF 값은 변경하지 않습니다. 감속 시작 예측은 별도 설정으로 조절합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++유효한 플래너 시간이 없으면 선택 단계의 기본값을 사용합니다. 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 제동·차간거리 보장은 아닙니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap3 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap3 -->
+--- a/KO-포터-GAP-4-추종시간-×0.01초.md
++++ b/KO-포터-GAP-4-추종시간-×0.01초.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap4 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap4 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="db686ae211fe532945b47ca6e3f2546136bd0c57e4a2165316ff7dd1ef08e13d" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++전용 GAP ON일 때 해당 단계의 기본 추종시간입니다. 높이면 간격 판단을 넓히고 낮추면 좁히며 플래너 보정 후 같은 시간을 버튼 판단에 사용합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 저장값을 유지합니다. 값 50은 0.50초이며 공통 TF 값은 변경하지 않습니다. 감속 시작 예측은 별도 설정으로 조절합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++유효한 플래너 시간이 없으면 선택 단계의 기본값을 사용합니다. 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 제동·차간거리 보장은 아닙니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap4 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap4 -->
+--- a/KO-포터-감속-예측-시간-×0.1초.md
++++ b/KO-포터-감속-예측-시간-×0.1초.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterLeadReactionTime -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterLeadReactionTime -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="30e9562695d57dff34f02f90104ade24c808cade3f9f219f97497eb93ed8d271" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++전용 GAP ON일 때 앞차 접근을 이 시간만큼 앞서 계산하여 버튼 감속과 앞차에 따른 저속 취소에 함께 사용합니다. 높이면 더 멀리서, 낮추면 더 가까워진 뒤 요청할 수 있습니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++값 80은 8초, 60은 6초입니다. 전용 GAP OFF는 기존 8초를 사용합니다. 전용 추종시간과 구분하여 한 설정씩 변경합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++모델 정지·내비 목표를 올리거나 없애지 않습니다. 실제 제동·정차와 순정 버튼 수락을 보장하지 않으며 긴급 감속을 대체하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterLeadReactionTime -->
+ 
+ <!-- CARROT:SETTING:END PorterLeadReactionTime -->
+--- a/EN-Porter-dedicated-GAP.md
++++ b/EN-Porter-dedicated-GAP.md
+@@ -26,7 +26,25 @@
+ <!-- CARROT:AUTO:END PorterGapUse -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGapUse -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="d03670004513f7f718d436eb6e3e87aab099e51abc3d3b2eb4276220cf627452" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++OFF selects common TF1–TF4; ON shares Porter GAP1–4 between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Existing speed, mode and deceleration adjustments remain.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Enable in Porter Only, then adjust the dedicated gaps and lookahead. Allow about five seconds for planner refresh; neither set of saved values is copied or reset.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++GAP selection buttons and model-stop/navigation targets remain. Settings do not guarantee physical spacing, braking or stopping.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGapUse -->
+ 
+ <!-- CARROT:SETTING:END PorterGapUse -->
+--- a/EN-Porter-GAP-1-follow-time-×0.01s.md
++++ b/EN-Porter-GAP-1-follow-time-×0.01s.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap1 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap1 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="744ef5ccab4aede639c9d521aa8898c15a729f52f69c76c800fc4920b42a83b8" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Base following time for this level while dedicated GAP is ON. Higher values widen the criterion; lower values narrow it. Button decisions share the planner’s adjusted time.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Preserve existing saved values. A value of 50 means 0.50s; common TF settings are unchanged. Deceleration lookahead is adjusted separately.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Without valid planner time use the selected base. The 7m distance floor and button/cancel bounds remain; this does not guarantee physical braking or spacing.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap1 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap1 -->
+--- a/EN-Porter-GAP-2-follow-time-×0.01s.md
++++ b/EN-Porter-GAP-2-follow-time-×0.01s.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap2 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap2 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="110fd8ab63000747416c508becddf55209061631243d758532168d589c9d9472" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Base following time for this level while dedicated GAP is ON. Higher values widen the criterion; lower values narrow it. Button decisions share the planner’s adjusted time.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Preserve existing saved values. A value of 50 means 0.50s; common TF settings are unchanged. Deceleration lookahead is adjusted separately.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Without valid planner time use the selected base. The 7m distance floor and button/cancel bounds remain; this does not guarantee physical braking or spacing.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap2 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap2 -->
+--- a/EN-Porter-GAP-3-follow-time-×0.01s.md
++++ b/EN-Porter-GAP-3-follow-time-×0.01s.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap3 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap3 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="75acc600591d37dd9ebd7c541c771b62b3f10dbfed46e4ec913bf642c39d1406" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Base following time for this level while dedicated GAP is ON. Higher values widen the criterion; lower values narrow it. Button decisions share the planner’s adjusted time.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Preserve existing saved values. A value of 50 means 0.50s; common TF settings are unchanged. Deceleration lookahead is adjusted separately.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Without valid planner time use the selected base. The 7m distance floor and button/cancel bounds remain; this does not guarantee physical braking or spacing.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap3 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap3 -->
+--- a/EN-Porter-GAP-4-follow-time-×0.01s.md
++++ b/EN-Porter-GAP-4-follow-time-×0.01s.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterGap4 -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterGap4 -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="db686ae211fe532945b47ca6e3f2546136bd0c57e4a2165316ff7dd1ef08e13d" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Base following time for this level while dedicated GAP is ON. Higher values widen the criterion; lower values narrow it. Button decisions share the planner’s adjusted time.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Preserve existing saved values. A value of 50 means 0.50s; common TF settings are unchanged. Deceleration lookahead is adjusted separately.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Without valid planner time use the selected base. The 7m distance floor and button/cancel bounds remain; this does not guarantee physical braking or spacing.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterGap4 -->
+ 
+ <!-- CARROT:SETTING:END PorterGap4 -->
+--- a/EN-Porter-deceleration-lookahead-×0.1s.md
++++ b/EN-Porter-deceleration-lookahead-×0.1s.md
+@@ -27,7 +27,25 @@
+ <!-- CARROT:AUTO:END PorterLeadReactionTime -->
+ 
+ <!-- CARROT:MANUAL:BEGIN PorterLeadReactionTime -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="30e9562695d57dff34f02f90104ade24c808cade3f9f219f97497eb93ed8d271" reviewed-at="2026-10-29T09:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++With dedicated GAP ON, project lead closing by this interval for both button deceleration and lead-based low-target cancellation. Higher values can act farther away; lower values can wait until closer.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++A value of 80 means 8s; 60 means 6s. Dedicated GAP OFF retains the existing 8s projection. Change this separately from following time.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Does not raise or remove model-stop/navigation targets. It does not guarantee physical braking, stopping or stock button acceptance, or replace urgent driver braking.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END PorterLeadReactionTime -->
+ 
+ <!-- CARROT:SETTING:END PorterLeadReactionTime -->

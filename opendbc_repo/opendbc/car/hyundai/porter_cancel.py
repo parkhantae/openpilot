@@ -1,10 +1,11 @@
 """Porter low-target cancellation and bounded CANCEL-button transmission."""
 import math
 
-from opendbc.car.hyundai.porter import PORTER_CRUISE_MAX_KPH, porter_lead_target_kph
+from opendbc.car.hyundai.porter import PORTER_CRUISE_MAX_KPH, PORTER_LEAD_REACTION_S, porter_lead_target_kph
 
 
-def porter_cancel_target(planner, selected, navigation, ego, distance, relative, gap, *, lead_visible=False, gap_time_s=None):
+def porter_cancel_target(planner, selected, navigation, ego, distance, relative, gap, *,
+                         lead_visible=False, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
   # Zero navigation/selected values mean unavailable; zero planner speed is a stop.
   candidates = [v for v in (selected, navigation) if v is not None and math.isfinite(v) and 0 < v <= 250]
   if planner is not None and math.isfinite(planner) and 0 <= planner <= 250:
@@ -12,7 +13,8 @@ def porter_cancel_target(planner, selected, navigation, ego, distance, relative,
   if lead_visible and all(math.isfinite(v) for v in (ego, distance, relative)) and ego >= 0 and distance > 0:
     lead_speed = max(0., ego + relative) * 3.6
     # Reuse the existing selected-lead constraint without changing its 30 floor.
-    cap = porter_lead_target_kph(PORTER_CRUISE_MAX_KPH, ego, distance, relative, gap, gap_time_s=gap_time_s)
+    cap = porter_lead_target_kph(PORTER_CRUISE_MAX_KPH, ego, distance, relative, gap,
+                               gap_time_s=gap_time_s, reaction_s=reaction_s)
     if cap <= 30 and lead_speed < 30:
       candidates.append(lead_speed)
   return min(candidates) if candidates else None

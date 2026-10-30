@@ -5,7 +5,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap1 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="41cef2694ada9a420b24595193766ac4c44cb8ea48a3b141fa8a4fc74c6abffc" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="21d2bfc10fba2d1167ab1dda4c95c8b09744b10573d12584c3e752b06b40010b" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -16,13 +16,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
++포터 전용 GAP 사용이 OFF이면 이 공통값을 사용합니다. ON이면 포터 GAP1~4를 플래너와 버튼 판단에 함께 사용하며 어느 쪽 저장값도 복사하거나 초기화하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 모드의 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap1 -->
  
@@ -34,7 +34,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap2 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="369a8c4dcb1f482b633073041bbf7ffa01e8e64d3659fe0c113e87394b246a27" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="55629944a672551d4b718062f59ff7bbd1cd88f5a7c90a00485f8bebf088283a" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -45,13 +45,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
++포터 전용 GAP 사용이 OFF이면 이 공통값을 사용합니다. ON이면 포터 GAP1~4를 플래너와 버튼 판단에 함께 사용하며 어느 쪽 저장값도 복사하거나 초기화하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 모드의 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap2 -->
  
@@ -63,7 +63,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap3 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="fa178ab50656a7c7ced1d1b8c67179ecb2fd7c2e21cb73b62eef667c3328be8f" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="b2f89f9424b507afa112cf52c98e6db6d77325a0cf7b534b8e8570ce8bee6372" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -74,13 +74,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
++포터 전용 GAP 사용이 OFF이면 이 공통값을 사용합니다. ON이면 포터 GAP1~4를 플래너와 버튼 판단에 함께 사용하며 어느 쪽 저장값도 복사하거나 초기화하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 모드의 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap3 -->
  
@@ -92,7 +92,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap4 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="08cee177e8e29670383b7c2011d898d790651c51b43c99b16700c43ba31b1137" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="603413a5374adfc48963a116533a61d8f9f4223e7d446af421f66149a069f328" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -103,13 +103,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+공통 TF1~TF4 한 곳에서 조절합니다. 기존 포터 전용 GAP 값은 사용하거나 공통 설정으로 복사하지 않습니다.
++포터 전용 GAP 사용이 OFF이면 이 공통값을 사용합니다. ON이면 포터 GAP1~4를 플래너와 버튼 판단에 함께 사용하며 어느 쪽 저장값도 복사하거나 초기화하지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+신선하고 유효한 플래너 시간이 없으면 선택한 공통 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
++신선하고 유효한 플래너 시간이 없으면 선택한 모드의 기본값을 사용합니다. 기존 최소 판단 거리 7m와 버튼·취소 제한은 유지하며 실제 차간거리·제동·정차를 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap4 -->
  
@@ -121,7 +121,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap1 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="41cef2694ada9a420b24595193766ac4c44cb8ea48a3b141fa8a4fc74c6abffc" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="21d2bfc10fba2d1167ab1dda4c95c8b09744b10573d12584c3e752b06b40010b" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -132,13 +132,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
++Porter dedicated GAP OFF uses these common values. ON selects Porter GAP1–4 for both planner and button decisions without copying or resetting either set of saved values.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
++Without a fresh valid planner time, use the selected mode’s base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap1 -->
  
@@ -150,7 +150,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap2 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="369a8c4dcb1f482b633073041bbf7ffa01e8e64d3659fe0c113e87394b246a27" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="55629944a672551d4b718062f59ff7bbd1cd88f5a7c90a00485f8bebf088283a" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -161,13 +161,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
++Porter dedicated GAP OFF uses these common values. ON selects Porter GAP1–4 for both planner and button decisions without copying or resetting either set of saved values.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
++Without a fresh valid planner time, use the selected mode’s base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap2 -->
  
@@ -179,7 +179,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap3 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="fa178ab50656a7c7ced1d1b8c67179ecb2fd7c2e21cb73b62eef667c3328be8f" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="b2f89f9424b507afa112cf52c98e6db6d77325a0cf7b534b8e8570ce8bee6372" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -190,13 +190,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
++Porter dedicated GAP OFF uses these common values. ON selects Porter GAP1–4 for both planner and button decisions without copying or resetting either set of saved values.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
++Without a fresh valid planner time, use the selected mode’s base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap3 -->
  
@@ -208,7 +208,7 @@
  
  <!-- CARROT:MANUAL:BEGIN TFollowGap4 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="08cee177e8e29670383b7c2011d898d790651c51b43c99b16700c43ba31b1137" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="603413a5374adfc48963a116533a61d8f9f4223e7d446af421f66149a069f328" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -219,13 +219,13 @@
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Adjust common TF1–TF4 in one place. Legacy Porter-only values are neither used nor copied into the common settings.
++Porter dedicated GAP OFF uses these common values. ON selects Porter GAP1–4 for both planner and button decisions without copying or resetting either set of saved values.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Without a fresh valid planner time, use the selected common base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
++Without a fresh valid planner time, use the selected mode’s base setting. The existing 7m distance floor and button/cancel bounds remain; actual following distance, braking or stopping is not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END TFollowGap4 -->
  

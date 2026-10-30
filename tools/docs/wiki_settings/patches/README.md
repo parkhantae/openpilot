@@ -91,13 +91,15 @@ Wiki directory; regenerate to preserve the reviewed manual content. Validate
 before publishing. This branch-specific patch is not a live Wiki publication
 and must not be generated from a catalog that lacks this setting.
 
-## Porter shared GAP times
+## Porter common and dedicated GAP times
 
 `porter-gap-times.patch` supplies branch-specific Korean/English manual regions
-for common `TFollowGap1`–`TFollowGap4`, which now also drive Porter button and
-low-target cancellation decisions through the applied planner time. Duplicate
-`PorterGap1`–`PorterGap4` controls and their former Wiki pages are retired; legacy
-stored values are unused. Generate from c3-pht-porter, apply in staging and validate.
+for common `TFollowGap1`–`TFollowGap4`, used when `PorterGapUse` is OFF.
+`porter-dedicated-gap.patch` supplies the six dedicated setting explanations:
+`PorterGapUse`, `PorterGap1`–`PorterGap4`, and `PorterLeadReactionTime`.
+Dedicated mode shares its base settings between the Porter conventional-cruise
+planner and button decisions, preserving both sets of stored values. Generate
+from c3-pht-porter, apply both patches in staging and validate.
 This patch is not published to the upstream live Wiki.
 
 ## Porter MAIN standby SET

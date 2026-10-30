@@ -105,14 +105,14 @@ Ignoring `x0.01`, `x0.001`, `cm`, `km/h`, or `%` can make a value appear one hun
 
 ## Settings map
 
-The current `carrot_settings.json` contains **201 parameters**. The driver-monitoring exception and `NNFF` are search only; the remaining entries appear in these menus:
+The `c3-pht-porter` catalog contains **209 parameters**. These counts describe the catalog entries registered under each menu:
 
 | Category | Count | Groups |
 |---|---:|---|
-| Driving control | 124 | Startup and auto, buttons and presets, steering, speed and deceleration, cruise and following gap |
-| Vehicle and hardware | 17 | Hyundai/Kia, CAN FD/HDA, radar, driver monitoring, vehicle assistance, device hardware |
+| Driving control | 138 | Startup and auto, buttons and presets, steering, speed and deceleration, cruise and following gap |
+| Vehicle and hardware | 28 | Hyundai/Kia, CAN FD/HDA, radar, driver monitoring, vehicle assistance, Porter Only, device hardware |
 | Display | 34 | Information, path, brightness/on-road view, external HUD |
-| System | 12 | Recording/power, network/map, sound, software |
+| System | 9 | Recording/power, network/map, sound, software |
 
 ## Driving control
 
@@ -261,7 +261,7 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | Radar | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC radar, front-track orientation, corner radar, and Carrot Radar processing and cut-in sensitivity |
 | Driver monitoring | `DriverMonitoringEnabled` (search only), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | Driver monitoring and selected vehicle alerts |
 | Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
-| Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain` | Below-30 cancellation and automatic SET from MAIN standby |
+| Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGapUse`, `PorterGap1`~`PorterGap4`, `PorterLeadReactionTime` | Automatic cancel/SET, dedicated GAP and deceleration lookahead |
 | Device hardware | `HardwareC3xLite` | Speakerless C3X Lite audio and process configuration |
 
 For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.
@@ -492,7 +492,13 @@ Porter automatic SET initializes MAIN parity consistently with AutoEngage while 
 
 Porter automatic SET transmits only on a newly observed CLU11 sample, without a 10ms delayed slot. It checks actual stock ON within 0.5s and records missing responses; pulse bounds, retry spacing and safety guards remain. Engaged speed matching retains its independent timing and acknowledgement memory.
 
-Porter GAP is configured once through common TF1–TF4. Button deceleration and low-target cancellation share the planner’s applied following time. Duplicate Porter-only gap controls were removed; their legacy values are unused and common TF settings are preserved.
+In Settings > Vehicle & Hardware > Porter Only, enable **Porter: dedicated GAP** (`PorterGapUse`) to share `PorterGap1`–`PorterGap4` between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Default OFF uses common `TFollowGap1`–`TFollowGap4`. Existing GAP selection buttons remain; switching modes never copies or resets either set of saved values.
+
+Porter GAP1–4 range from 40 to 300 in steps of 5; 50=0.50s. Initial defaults are 100/130/160/200; previously saved dedicated values are preserved. Button decisions use the planner’s applied time after existing speed, driving-mode and deceleration adjustments. Without valid planner time, use the selected mode’s base time. Allow about five seconds for planner refresh after changes.
+
+**Porter: deceleration lookahead** (`PorterLeadReactionTime`) applies to both button deceleration and lead-based low-target cancellation while dedicated GAP is ON. Range 40–80 in steps of 5; 80=8s, 60=6s; initial default 80. Higher values can request deceleration farther away; lower values can wait until closer. Dedicated GAP OFF retains the existing 8s projection. Adjust the dedicated gap and lookahead separately.
+
+The 7m distance floor, existing button/cancel limits and model-stop/navigation targets remain. GAP or lookahead changes do not remove deceleration requested by a model stop judgment. This does not guarantee physical braking, stopping, actual spacing or stock button acceptance.
 
 Initial AutoEngage=2 standby can request one SET trial without MAIN confirmation, after observing released gas and a fresh press of at least 0.1s followed by release at 30 km/h or above. Failure requires a new pedal cycle; the initial indication alone cannot start cruise. Restart after updating to apply the new Panda profile.
 

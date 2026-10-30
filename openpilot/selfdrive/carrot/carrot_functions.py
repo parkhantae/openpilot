@@ -17,6 +17,7 @@ from openpilot.selfdrive.carrot.driving_mode import DrivingMode, DrivingModeDete
 from openpilot.selfdrive.carrot.traffic_stop import TrafficStopModelLeadMatcher, is_traffic_stop_entry_allowed
 from openpilot.selfdrive.controls.radar_constants import RADAR_TO_CAMERA
 from openpilot.selfdrive.selfdrived.events import Events
+from opendbc.car.hyundai.porter import porter_conventional_cruise, porter_gap_enabled, porter_base_gap_time_s
 
 EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
@@ -58,7 +59,7 @@ class TrafficState(Enum):
 A_CRUISE_MAX_BP_CARROT = [0., 10 * CV.KPH_TO_MS, 40 * CV.KPH_TO_MS, 60 * CV.KPH_TO_MS, 80 * CV.KPH_TO_MS, 110 * CV.KPH_TO_MS, 140 * CV.KPH_TO_MS]
 
 class CarrotPlanner:
-  def __init__(self, signal_assist=None, start_guard=None, stop_prepare=None):
+  def __init__(self, signal_assist=None, start_guard=None, stop_prepare=None, *, CP=None):
     # SignalAssistMode defaults OFF; injected helpers support offline comparison.
     self.signal_assist = signal_assist
     self._signal_runtime = None
@@ -84,6 +85,7 @@ class CarrotPlanner:
     self.signal_lead_present = False
     self._signal_stop_owned = False
     self.params = Params()
+    self.porter_conventional = porter_conventional_cruise(CP)
     self.params_count = 0
     self.frame = 0
 
@@ -145,6 +147,8 @@ class CarrotPlanner:
     self.tFollowGap2 = 1.3
     self.tFollowGap3 = 1.45
     self.tFollowGap4 = 1.6
+    if self.porter_conventional and porter_gap_enabled(self.params):
+      self._update_follow_gaps()
 
     self.leadAccelResponse = 0
     self.leadAccelResponseBase = 0
@@ -190,6 +194,13 @@ class CarrotPlanner:
     self.trafficStopModelLeadOffset = 0.0
     self.last_event_time = 0.0
 
+  def _update_follow_gaps(self):
+    if self.porter_conventional and porter_gap_enabled(self.params):
+      gaps = [porter_base_gap_time_s(self.params, i) for i in range(1, 5)]
+    else:
+      gaps = [self.params.get_float(f"TFollowGap{i}") / 100. for i in range(1, 5)]
+    self.tFollowGap1, self.tFollowGap2, self.tFollowGap3, self.tFollowGap4 = gaps
+
   def _params_update(self):
     self.frame += 1
     self.params_count += 1
@@ -209,10 +220,7 @@ class CarrotPlanner:
       self.myHighModeFactor = 1.2 #float(self.params.get_int("MyHighModeFactor")) / 100.
       self.trafficLightDetectMode = self.params.get_int("TrafficLightDetectMode") # 0: None, 1:Stop, 2:Stop&Go
     elif self.params_count == 20:
-      self.tFollowGap1 = self.params.get_float("TFollowGap1") / 100.
-      self.tFollowGap2 = self.params.get_float("TFollowGap2") / 100.
-      self.tFollowGap3 = self.params.get_float("TFollowGap3") / 100.
-      self.tFollowGap4 = self.params.get_float("TFollowGap4") / 100.
+      self._update_follow_gaps()
       self.leadAccelResponseBase = int(np.clip(self.params.get_int("LeadAccelResponse"), 0, 5))
       self.leadAccelResponseTF = [int(np.clip(self.params.get_int(f"LeadAccelResponseTF{i}"), -1, 5)) for i in range(1, 5)]
       self.dynamicTFollowLC = self.params.get_float("DynamicTFollowLC") / 100.

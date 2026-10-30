@@ -17,19 +17,46 @@ PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 PORTER_PLANNER_GAP_TIME_S = (1.1, 1.2, 1.4, 1.6)
 
 
-def porter_gap_time_s(params, gap_level, planner_time_s=None):
-  """Use the fresh planner's applied TF, or its selected base setting."""
-  if planner_time_s is not None and math.isfinite(planner_time_s) and .3 <= planner_time_s <= 30:
-    return planner_time_s
+def porter_conventional_cruise(CP):
+  return (getattr(CP, "carFingerprint", None) == "HYUNDAI_PORTER_II_EV" and
+          getattr(CP, "pcmCruise", False) and not getattr(CP, "openpilotLongitudinalControl", True))
+
+
+def porter_gap_enabled(params):
+  return hasattr(params, "get_bool") and params.get_bool("PorterGapUse")
+
+
+def porter_base_gap_time_s(params, gap_level):
+  """Select a validated base without copying common or legacy stored values."""
   index = min(4, max(1, int(gap_level or 2))) - 1
+  dedicated = porter_gap_enabled(params)
+  defaults = PORTER_GAP_TIME_S if dedicated else PORTER_PLANNER_GAP_TIME_S
   try:
-    key = f"TFollowGap{index + 1}"
+    key = f"{'PorterGap' if dedicated else 'TFollowGap'}{index + 1}"
     if hasattr(params, "get") and params.get(key) is None:
-      return PORTER_PLANNER_GAP_TIME_S[index]
+      return defaults[index]
     value = params.get_int(key)
   except (KeyError, TypeError, ValueError):
-    return PORTER_PLANNER_GAP_TIME_S[index]
-  return value * 0.01 if 40 <= value <= 300 else PORTER_PLANNER_GAP_TIME_S[index]
+    return defaults[index]
+  return value * 0.01 if 40 <= value <= 300 else defaults[index]
+
+
+def porter_gap_time_s(params, gap_level, planner_time_s=None):
+  """Use the fresh planner's applied TF, or the selected mode's base."""
+  if planner_time_s is not None and math.isfinite(planner_time_s) and .3 <= planner_time_s <= 30:
+    return planner_time_s
+  return porter_base_gap_time_s(params, gap_level)
+
+
+def porter_lead_reaction_s(params):
+  if porter_gap_enabled(params):
+    try:
+      value = params.get_int("PorterLeadReactionTime")
+      if 40 <= value <= 80:
+        return value * .1
+    except (KeyError, TypeError, ValueError):
+      pass
+  return PORTER_LEAD_REACTION_S
 
 
 def porter_steer_request_frames(configured_frames):
@@ -69,7 +96,8 @@ def porter_navi_target_kph(planner_target_kph, navi_target_kph):
   return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
 
 
-def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None):
+def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *,
+                           lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
   """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
   values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
   if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
@@ -82,7 +110,9 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
   if gap_time_s is not None and math.isfinite(gap_time_s) and 0.0 <= gap_time_s <= 30.0:
     time_s = gap_time_s
   desired_distance = max(7.0, 5.0 + ego_speed * time_s)
-  projected_distance = lead_distance + min(0.0, lead_relative_speed) * PORTER_LEAD_REACTION_S
+  if not math.isfinite(reaction_s) or not 4 <= reaction_s <= PORTER_LEAD_REACTION_S:
+    reaction_s = PORTER_LEAD_REACTION_S
+  projected_distance = lead_distance + min(0.0, lead_relative_speed) * reaction_s
   if projected_distance >= desired_distance:
     return target_kph
 
@@ -104,7 +134,7 @@ class PorterLeadTracker:
     self.decel_cap_time = None
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
-             lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None):
+             lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
     if (self.last_update is not None and
         (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):
       self.decel_cap = self.decel_cap_time = None
@@ -142,7 +172,8 @@ class PorterLeadTracker:
     # a transient RES+ request from restoring the memorized cruise speed.
     effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
     lead_target_kph = porter_lead_target_kph(
-      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True, gap_time_s=gap_time_s)
+      target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True,
+      gap_time_s=gap_time_s, reaction_s=reaction_s)
     if opening_confirmed:
       self.decel_cap = self.decel_cap_time = None
     elif lead_target_kph < min(target_kph, stock_target_kph):

@@ -16,6 +16,39 @@ from openpilot.selfdrive.carrot.t_follow import (
 DT_MDL = 0.05
 
 
+@pytest.mark.parametrize('dedicated', [False, True])
+@pytest.mark.parametrize('porter', [False, True])
+def test_porter_mode_selects_planner_bases_and_shares_applied_time(dedicated, porter):
+  from types import SimpleNamespace
+  from opendbc.car.hyundai.porter import porter_gap_time_s
+  common = [110,120,140,160]
+  custom = [40,80,140,200]
+  values = {**{f'TFollowGap{i}':v for i,v in enumerate(common,1)},
+            **{f'PorterGap{i}':v for i,v in enumerate(custom,1)}}
+  params = SimpleNamespace(get_bool=lambda _:dedicated,get_int=lambda key:values[key],get_float=lambda key:float(values[key]))
+  planner = _speed_tf_planner(0,1.2)
+  planner.porter_conventional = porter
+  planner.params = params
+  planner.speedTFFactor = 10
+  planner.myTFollowFactor = 1.
+  planner._update_follow_gaps()
+  expected = custom if dedicated and porter else common
+  for gap,value in enumerate(expected):
+    tf = planner.get_T_FOLLOW(personality=gap,v_ego=10,a_ego=0)
+    # Settle the existing ramp without inventing different button-side TFs.
+    for _ in range(200):
+      tf = planner.get_T_FOLLOW(personality=gap,v_ego=10,a_ego=0)
+    assert tf == pytest.approx(value*.01)
+    if porter:
+      assert porter_gap_time_s(params,gap+1,tf) == tf
+  assert [values[f'TFollowGap{i}'] for i in range(1,5)] == common
+  assert [values[f'PorterGap{i}'] for i in range(1,5)] == custom
+  # Switching OFF restores the common bases without overwriting either set.
+  params.get_bool = lambda _:False
+  planner._update_follow_gaps()
+  assert [planner.tFollowGap1,planner.tFollowGap2,planner.tFollowGap3,planner.tFollowGap4] == pytest.approx([v*.01 for v in common])
+
+
 def _apply_for_seconds(current: float, target: float, seconds: float, decel_extra: float = 0.0) -> float:
   for _ in range(round(seconds / DT_MDL)):
     current = ramp_t_follow(target, current, decel_extra, DT_MDL)
@@ -231,8 +264,13 @@ def test_actual_update_resolves_response_after_refresh_on_every_gap_change(mode,
   tree = ast.parse(source.read_text(encoding='utf-8'))
   planner_class = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'CarrotPlanner')
   update = next(n for n in planner_class.body if isinstance(n, ast.FunctionDef) and n.name == 'update')
-  # Run the production refresh/selection prefix without hardware or navigation.
-  update.body = update.body[:3]
+  # Select the production refresh/selection statements; imports and signal
+  # policy now precede them, so a fixed first-three slice no longer runs them.
+  update.body = [n for n in update.body if
+                 (isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and
+                  isinstance(n.value.func, ast.Attribute) and n.value.func.attr in ('_params_update','_update_driving_mode')) or
+                 (isinstance(n, ast.Assign) and ast.unparse(n.targets[0]) == 'self.leadAccelResponse')]
+  assert len(update.body) == 3
   namespace = {'get_lead_response_for_gap': get_lead_response_for_gap, 'get_mode_lead_response': get_mode_lead_response}
   exec(compile(ast.Module(body=[update], type_ignores=[]), str(source), 'exec'), namespace)
   planner = SimpleNamespace(leadAccelResponseBase=0, leadAccelResponseTF=[5, 3, 0, -1], myDrivingMode=mode)

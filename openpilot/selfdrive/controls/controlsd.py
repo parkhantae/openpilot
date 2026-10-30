@@ -14,7 +14,7 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph, porter_auto_set_speed_valid
+from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph, porter_auto_set_speed_valid, porter_lead_reaction_s
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
@@ -129,6 +129,7 @@ class Controls:
         carrot_man.desiredSpeed if carrot_man is not None else None,
         CS.vEgo, lead.dRel, lead.vRel, self.sm['selfdriveState'].personality.raw + 1,
         lead_visible=self.sm.all_checks(['radarState']) and lead.status,
+        reaction_s=porter_lead_reaction_s(self.params),
         gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                     getattr(self.sm['longitudinalPlan'], 'tFollow', None)
                                     if self.sm.all_checks(['longitudinalPlan']) else None))
@@ -420,6 +421,7 @@ class Controls:
           self.sm.frame * DT_CTRL, hudControl.setSpeed * CV.MS_TO_KPH,
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
           self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status,
+          reaction_s=porter_lead_reaction_s(self.params),
           gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                       getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None))
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
