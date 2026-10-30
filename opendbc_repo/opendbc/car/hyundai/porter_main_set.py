@@ -26,6 +26,7 @@ class PorterMainSet:
     self.main_since = None
     self.raw_previous_gas = False
     self.rearm_gas_since = None
+    self.rearm_release_since = None
     self.sent_key = None
     self.awaiting_stock = False
     self.requests = 0
@@ -39,7 +40,8 @@ class PorterMainSet:
     self.startup_grant = False
     self.startup_grant_since = None
 
-  def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False, pedal_only=False):
+  def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured,
+             gas_pressed=False, pedal_only=False, release_eligible=True):
     fresh = key is not None and key != self.last_key
     if fresh:
       self.last_key = key
@@ -128,16 +130,28 @@ class PorterMainSet:
         self.startup_grant = False
     rearm_ready = (configured and self.main and self.main_known and clock_ok and not blocked and not main_pressed and
                    not manual_button and not stock_enabled)
-    if not rearm_ready:
+    if not rearm_ready or self.armed:
       self.rearm_gas_since = None
-    elif not self.armed:
-      if gas_pressed and not self.raw_previous_gas:
-        self.rearm_gas_since = now
+      self.rearm_release_since = None
+    else:
+      if gas_pressed:
+        self.rearm_release_since = None
+        if not self.raw_previous_gas:
+          self.rearm_gas_since = now
       elif not gas_pressed and self.raw_previous_gas:
-        if self.rearm_gas_since is not None and now - self.rearm_gas_since >= .1 - 1e-9 and request:
-          self.armed = True
-          self.previous_gas = True
+        if self.rearm_gas_since is not None and now - self.rearm_gas_since >= .1 - 1e-9 and release_eligible:
+          self.rearm_release_since = now
         self.rearm_gas_since = None
+      if self.rearm_release_since is not None:
+        if not release_eligible or now - self.rearm_release_since > .1 + 1e-9:
+          self.rearm_release_since = None
+        elif request:
+          # A brief lead/plan block at release must not erase a fresh driver
+          # cycle after brake/CANCEL. Rearm only with a currently valid request,
+          # and keep the original release time so recovery cannot renew the cue.
+          self.armed = True
+          self.gas_release_since = self.rearm_release_since
+          self.rearm_release_since = None
     self.raw_previous_gas = gas_pressed
     eligible = (self.armed or self.startup_grant) and configured and clock_ok and not blocked and not main_pressed and not manual_button
     if eligible and not stock_enabled and self.previous_gas and not gas_pressed:

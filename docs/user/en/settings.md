@@ -486,7 +486,7 @@ With MAIN and automatic SET ON, a fresh gas press/release at 30 km/h or above ca
 
 Porter automatic SET startup pulses allow at most six frames/120ms and release immediately on stock ON feedback. Existing speed-step and automatic-cancel bounds are unchanged.
 
-Porter automatic SET tolerates at most 0.1s of request blocking at gas release, then requests SET on the next available sample without an extra confirmation delay.
+Porter automatic SET tolerates at most 0.1s of request blocking at gas release. This also covers rearming after brake/CANCEL in confirmed MAIN standby following a fresh press of at least 0.1s. Dashboard/wheel speeds, MAIN availability, units and drive gear must qualify at release and remain valid. The target and other request conditions must become valid within the original release window; request SET on the next new CAN sample without renewing the deadline. A new gas press, driver button, brake or invalid input clears the observation. Initial unconfirmed-MAIN one-trial conditions and retry limits remain.
 
 Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.
 

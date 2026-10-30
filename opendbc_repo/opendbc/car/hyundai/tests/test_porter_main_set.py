@@ -220,6 +220,140 @@ class TestPorterMainSet(unittest.TestCase):
         self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
       self.assertEqual(self.tick(130), 2)
 
+  def prepare_revoked_pedal_release(self, **kw):
+    self.arm()
+    self.tick(4, blocked=True, **kw)
+    for t in range(5, 130):
+      self.assertIsNone(self.tick(t, gas_pressed=100 <= t, request=False, **kw))
+    self.assertFalse(self.state.armed)
+
+  def test_log556_rearm_keeps_release_during_brief_lead_target_block(self):
+    for pedal_only in (False, True):
+      with self.subTest(pedal_only=pedal_only):
+        self.setUp()
+        self.prepare_revoked_pedal_release(pedal_only=pedal_only)
+        # Target 29.82 at release, then above 30 about 66ms later. Neither
+        # the blocked target nor recovery between RX samples can send SET.
+        for t in range(130, 137):
+          self.assertIsNone(self.tick(t, request=False, pedal_only=pedal_only))
+          self.assertFalse(self.state.armed)
+        self.assertIsNone(self.tick(137, pedal_only=pedal_only))
+        self.assertTrue(self.state.armed)
+        self.assertAlmostEqual(self.state.gas_release_since, 1.30)
+        self.assertEqual(self.tick(138, pedal_only=pedal_only), 2)
+
+  def test_rearm_release_observation_has_exact_100ms_expiry(self):
+    for recovery, expected in ((140, 2), (141, None)):
+      with self.subTest(recovery=recovery):
+        self.setUp()
+        self.prepare_revoked_pedal_release(pedal_only=True)
+        for t in range(130, recovery):
+          self.assertIsNone(self.tick(t, request=False, pedal_only=True))
+        self.assertEqual(self.tick(recovery, pedal_only=True), expected)
+        if expected is None:
+          for t in range(recovery+1, 300):
+            self.assertIsNone(self.tick(t, pedal_only=True))
+          self.assertFalse(self.state.armed)
+
+  def test_rearm_requires_vehicle_eligibility_at_release_and_through_recovery(self):
+    for loss in (130, 135):
+      with self.subTest(loss=loss):
+        self.setUp()
+        self.prepare_revoked_pedal_release(pedal_only=True)
+        for t in range(130, 137):
+          self.assertIsNone(self.tick(t, request=False, release_eligible=t != loss, pedal_only=True))
+        for t in range(137, 300):
+          self.assertIsNone(self.tick(t, pedal_only=True))
+        self.assertFalse(self.state.armed)
+
+  def test_actual_controller_separates_vehicle_release_eligibility_from_target(self):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    tree = ast.parse((Path(__file__).resolve().parents[1] / 'carcontroller.py').read_text())
+    names = ('main_set_vehicle_ready', 'main_set')
+    nodes = [n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
+             isinstance(n.targets[0], ast.Name) and n.targets[0].id in names]
+    code = compile(ast.Module(body=nodes, type_ignores=[]), 'actual_porter_release_eligibility', 'exec')
+    for speed, metric, available, gear, target, expected in (
+      (33,True,True,'drive',False,(True,False)),
+      (33,True,True,'drive',True,(True,True)),
+      (29.875,True,True,'drive',True,(False,False)),
+      (33,False,True,'drive',True,(False,False)),
+      (33,True,False,'drive',True,(False,False)),
+      (33,True,True,'neutral',True,(False,False)),
+    ):
+      with self.subTest(speed=speed,metric=metric,available=available,gear=gear,target=target):
+        calls = []
+        obj = NS(frame=100, CP=NS(safetyConfigs=[NS(safetyParam=60417)]), speed_from_pcm=0,
+                 porter_main_params=NS(get_bool=lambda _: True),
+                 porter_main_set=NS(update=lambda *args,results=calls,**kwargs: results.append(kwargs)))
+        out = NS(cruiseState=NS(available=available,enabled=False),gasPressed=False,gearShifter=gear,
+                 vEgo=speed/3.6,vEgoCluster=speed/3.6,wheelSpeeds=NS(fl=speed/3.6,rr=speed/3.6),
+                 canValid=True,accFaulted=False,brakePressed=False,brakeHoldActive=False,parkingBrake=False)
+        cs = NS(out=out,is_metric=metric,main_buttons=[0],cruise_buttons=[0],
+                clu11={'CF_Clu_AliveCnt1': 0,'CF_Clu_CruiseSwMain': 0})
+        exec(code,dict(self=obj,CS=cs,CC=NS(enabled=False,latActive=False,cruiseControl=NS(resume=target,cancel=False)),
+                       fresh=True,timestamp=1,cancel_busy=False,DT_CTRL=.01,
+                       structs=NS(CarState=NS(GearShifter=NS(drive='drive'))),
+                       porter_auto_set_speed_valid=porter_auto_set_speed_valid))
+        self.assertEqual((calls[0]['release_eligible'],calls[0]['request']),expected)
+
+  def test_rearm_recovery_does_not_renew_release_or_queue_behind_retry(self):
+    for wait, sent_key in ((0., 70), (3., None)):
+      with self.subTest(wait=wait, sent_key=sent_key):
+        self.setUp()
+        self.prepare_revoked_pedal_release(pedal_only=True)
+        self.state.next_request = wait
+        for t in range(130, 139):
+          self.assertIsNone(self.tick(t, request=False, pedal_only=True))
+        self.state.sent_key = sent_key
+        # A valid target at 90ms cannot restart the original 100ms cue.
+        for t in range(139, 400):
+          self.assertIsNone(self.tick(t, pedal_only=True))
+        for t in range(400, 430):
+          self.assertIsNone(self.tick(t, gas_pressed=True, request=False, pedal_only=True))
+        self.assertEqual(self.tick(430, pedal_only=True), 2)
+
+  def test_pending_rearm_release_is_revoked_by_driver_or_invalid_input(self):
+    for override in (dict(blocked=True), dict(manual_button=4), dict(main_pressed=True),
+                     dict(configured=False), dict(stock_enabled=True)):
+      with self.subTest(override=override):
+        self.setUp()
+        self.prepare_revoked_pedal_release(pedal_only=True)
+        for t in range(130, 135):
+          self.assertIsNone(self.tick(t, request=False, pedal_only=True))
+        self.assertIsNone(self.tick(135, request=False, pedal_only=True, **override))
+        for t in range(136, 300):
+          self.assertIsNone(self.tick(t, pedal_only=True))
+
+  def test_pending_rearm_release_does_not_survive_clock_gap(self):
+    self.prepare_revoked_pedal_release(pedal_only=True)
+    self.tick(130, request=False, pedal_only=True)
+    self.assertIsNone(self.tick(141, pedal_only=True))
+    for t in range(142, 300):
+      self.assertIsNone(self.tick(t, pedal_only=True))
+    self.assertFalse(self.state.armed)
+
+  def test_short_or_repressed_pedal_cannot_reuse_pending_rearm_release(self):
+    for short_press in (False, True):
+      with self.subTest(short_press=short_press):
+        self.setUp()
+        self.prepare_revoked_pedal_release(pedal_only=True)
+        if not short_press:
+          # Discard the qualified release when the driver presses again.
+          self.tick(130, request=False, pedal_only=True)
+          self.tick(131, gas_pressed=True, request=False, pedal_only=True)
+        else:
+          self.state = PorterMainSet()
+          self.arm()
+          self.tick(4, blocked=True, pedal_only=True)
+          for t in range(5, 132):
+            self.tick(t, gas_pressed=t >= 128, request=False, pedal_only=True)
+        for t in range(132, 300):
+          self.assertIsNone(self.tick(t, pedal_only=True))
+        self.assertFalse(self.state.armed)
+
   def test_gas_held_through_brake_is_not_new_authorization(self):
     self.arm()
     for t in range(3, 100):

@@ -723,6 +723,9 @@ class CarController(CarControllerBase):
                       *porter_status, CC.hudControl.setSpeed * CV.MS_TO_KPH,
                       CS.out.cruiseState.speed * CV.MS_TO_KPH, blocked, fresh,
                       self.porter_buttons.retry_sample_delay * 1000)
+      main_set_vehicle_ready = (CS.out.cruiseState.available and CS.is_metric and
+                                CS.out.gearShifter == structs.CarState.GearShifter.drive and
+                                porter_auto_set_speed_valid(self.CP, CS.out))
       main_set = self.porter_main_set.update(
         self.frame * DT_CTRL, (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
         main_pressed=CS.main_buttons[-1] != 0 or CS.clu11["CF_Clu_CruiseSwMain"] != 0,
@@ -730,9 +733,8 @@ class CarController(CarControllerBase):
         blocked=(not fresh or not CS.out.canValid or CS.out.accFaulted or CS.out.brakePressed or
                  CS.out.brakeHoldActive or CS.out.parkingBrake or self.speed_from_pcm != 0),
         request=(CC.cruiseControl.resume and not CC.cruiseControl.cancel and not cancel_busy and
-                 CS.out.cruiseState.available and CS.is_metric and not CS.out.gasPressed and
-                 CS.out.gearShifter == structs.CarState.GearShifter.drive and
-                 porter_auto_set_speed_valid(self.CP, CS.out)),
+                 not CS.out.gasPressed and main_set_vehicle_ready),
+        release_eligible=main_set_vehicle_ready,
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and

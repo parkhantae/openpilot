@@ -5,12 +5,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="541508dbe3a9a028cf6bdbadb05c46cea644219e3bb53e66e63f65154e694e5b" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="408cd74ec9f17fe046a6e95697c0bf5253f9328e851d9f35f8265f8fd7df29a2" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+MAIN 대기에서 새 엑셀 밟기·해제마다 인게이지·조향 활성 여부와 관계없이 SET을 요청합니다. 비활성 상태는 페달 입력 없이 시작하지 않으며 재시도 제한에 막힌 입력을 나중에 실행하지 않습니다. AutoEngage=2의 초기 대기에서 MAIN 이력이 없으면, 놓인 엑셀 관측 뒤 새로 0.1초 이상 밟았다가 목표·계기판 속도 30km/h 이상에서 놓을 때 SET을 1회 요청합니다. 실패하면 새 페달 입력이 필요합니다.
++MAIN 대기에서 새 엑셀 밟기·해제마다 인게이지·조향 활성 여부와 관계없이 SET을 요청합니다. 비활성 상태는 페달 입력 없이 시작하지 않으며 재시도 제한에 막힌 입력을 나중에 실행하지 않습니다. 브레이크·CANCEL 뒤 MAIN ON이 확인된 대기에서 새로 0.1초 이상 밟았다 놓으면 목표 차단 중에도 해제 이력을 최대 0.1초 보존합니다. 해제 당시부터 계기판·바퀴 속도와 MAIN 대기·단위·주행 기어가 유효해야 하며 현재 목표 등 나머지 요청 조건이 그 안에 유효해져야 허가를 복구하며 회복 시각으로 기한을 연장하지 않습니다. 새 페달 밟기·운전자 버튼·브레이크·무효 신호는 이력을 지웁니다. AutoEngage=2의 초기 대기에서 MAIN 이력이 없으면, 놓인 엑셀 관측 뒤 새로 0.1초 이상 밟았다가 목표·계기판 속도 30km/h 이상에서 놓을 때 SET을 1회 요청합니다. 실패하면 새 페달 입력이 필요합니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -34,12 +34,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="541508dbe3a9a028cf6bdbadb05c46cea644219e3bb53e66e63f65154e694e5b" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="408cd74ec9f17fe046a6e95697c0bf5253f9328e851d9f35f8265f8fd7df29a2" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+MAIN standby requests SET after each fresh gas press/release regardless of engagement/lateral activity. Inactive controls require a pedal cue and never execute a retry-blocked cue later. Initial AutoEngage=2 standby without MAIN history can grant one SET after observing released gas, a fresh press of at least 0.1s, and release with target/dashboard speed at least 30 km/h. Failure requires a new pedal cycle.
++MAIN standby requests SET after each fresh gas press/release regardless of engagement/lateral activity. Inactive controls require a pedal cue and never execute a retry-blocked cue later. After brake/CANCEL in confirmed MAIN standby, a fresh press of at least 0.1s qualifies a release observation for at most 0.1s despite brief target blocking. Dashboard/wheel speeds, MAIN availability, units and drive gear must qualify at release and remain valid. Rearm only if the target and other current request conditions become valid within the original window; recovery never renews it. A new gas press, driver button, brake or invalid input clears the observation. Initial AutoEngage=2 standby without MAIN history can grant one SET after observing released gas, a fresh press of at least 0.1s, and release with target/dashboard speed at least 30 km/h. Failure requires a new pedal cycle.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->

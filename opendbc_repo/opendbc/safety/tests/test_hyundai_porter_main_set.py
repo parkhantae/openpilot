@@ -576,6 +576,34 @@ class TestPorterMainSetSafety(unittest.TestCase):
       self.assertEqual(starts, [130,530] if guard=='none' else [330] if guard in ('brake','cancel') else [], guard)
       self.assertFalse(lib.get_controls_allowed())
 
+  def test_log556_recovered_rearm_cue_obeys_native_guards_and_original_deadline(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for recovery, release_speed, expected in ((137,33,[138,140,142,144,146,148,150]), (141,33,[]), (137,29.875,[])):
+      with self.subTest(recovery=recovery,release_speed=release_speed):
+        init(60417)
+        pulse = PorterMainSet(initial_main=True, allow_startup_gas=True)
+        emitted = []
+        for tick in range(400):
+          counter = tick//2
+          gas, brake, stock = 100<=tick<130, 20<=tick<22, tick<10
+          cluster = release_speed if 100<=tick<137 else 33
+          lib.set_timer(21000+tick*10000)
+          if tick % 2 == 0:
+            seed(counter=counter, speed=31, cluster_speed=cluster, gas=gas,
+                 brake=brake, target=31 if stock else 0)
+          button = pulse.update(tick*.01, counter, main_pressed=False, manual_button=0,
+                                blocked=brake, request=tick>=recovery, stock_enabled=stock,
+                                configured=True, gas_pressed=gas, pedal_only=True,release_eligible=cluster>=30)
+          if button is not None:
+            self.assertTrue(lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=button,counter=counter+1))),
+                            (recovery,tick,button))
+            emitted.append((tick,button))
+        self.assertEqual([t for t,_ in emitted], expected)
+        self.assertEqual([b for _,b in emitted], [2]*6+[0] if expected else [])
+        # Native eligibility and TX acceptance are not stock ECU engagement.
+        self.assertEqual(pulse.acks, 0)
+        self.assertFalse(lib.get_controls_allowed())
+
   def test_confirmed_stock_on_resets_attempt_sequence_not_existing_window(self):
     # Case2 exposes the old lifetime counter: after successful attempt2, the
     # next attempt must be first, not a third attempt that imposes 3 seconds.
