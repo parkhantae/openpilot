@@ -306,10 +306,10 @@ class TestPorterMainSetSafety(unittest.TestCase):
     init(9217)
     pulse=PorterMainSet()
     starts=[]
-    for tick in range(180):
+    for tick in range(400):
       lib.set_timer(21000+tick*10000)
       counter=tick//2
-      stock=tick>=168
+      stock=tick>=370
       if tick % 2==0:
         seed(counter=counter,main=tick==0,target=40 if stock else 0,speed=40)
       was=pulse.pressing
@@ -319,7 +319,7 @@ class TestPorterMainSetSafety(unittest.TestCase):
         self.assertTrue(lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=b,counter=counter+1))),(tick,b))
         if b==2 and not was:
           starts.append(tick)
-    self.assertEqual(starts,[52,164])
+    self.assertEqual(starts,[52,364])
     self.assertEqual(pulse.acks,1)
 
   def test_startup_keeps_speed_retry_timing_independent_under_native_guards(self):
@@ -328,9 +328,9 @@ class TestPorterMainSetSafety(unittest.TestCase):
     init(9217)
     startup, speed = PorterMainSet(), PorterCruiseButtons()
     requests = []
-    for tick in range(850):
+    for tick in range(1100):
       lib.set_timer(21000+tick*10000)
-      counter, stock = tick//2, tick>=168
+      counter, stock = tick//2, tick>=370
       if tick % 2 == 0:
         seed(counter=counter, main=tick==0, target=40 if stock else 0, speed=40)
       before = speed.requests
@@ -381,7 +381,7 @@ class TestPorterMainSetSafety(unittest.TestCase):
     init(9217)
     pulse = PorterMainSet()
     starts = []
-    for tick in range(601):
+    for tick in range(1001):
       counter = tick//2
       gas = tick < 100 or tick % 100 in (2, 3)
       lib.set_timer(21000+tick*10000)
@@ -395,7 +395,7 @@ class TestPorterMainSetSafety(unittest.TestCase):
                         (tick, button))
         if button == 2 and not was:
           starts.append(tick)
-    self.assertEqual(starts, [100, 200, 300, 600])
+    self.assertEqual(starts, [100, 404, 716])
 
   def test_off_set_transport_window_keeps_latest_counter_guard(self):
     # CAN batches are published after physical RX; TX also takes transport time.
@@ -415,7 +415,7 @@ class TestPorterMainSetSafety(unittest.TestCase):
           seed(counter=next_rx, main=next_rx==0, speed=40)
           next_rx += 1
 
-      for tick in range(180):
+      for tick in range(400):
         now = tick * .01
         receive_until(now)
         button = pulse.update(now, tick//2, main_pressed=tick<2, manual_button=0, blocked=False,
@@ -555,9 +555,9 @@ class TestPorterMainSetSafety(unittest.TestCase):
       init(11265)
       pulse = PorterMainSet()
       starts = []
-      for tick in range(600):
+      for tick in range(800):
         counter = tick//2
-        gas = 100<=tick<130 or 300<=tick<330
+        gas = 100<=tick<130 or 300<=tick<330 or 500<=tick<530
         brake = guard=='brake' and 130<=tick<200
         manual = 4 if guard=='cancel' and 130<=tick<200 else 0
         main = tick<2 or (guard=='main_off' and 120<=tick<122)
@@ -573,5 +573,51 @@ class TestPorterMainSetSafety(unittest.TestCase):
                           (guard,tick,button))
           if button==2 and not was:
             starts.append(tick)
-      self.assertEqual(starts, [130,330] if guard=='none' else [330] if guard in ('brake','cancel') else [], guard)
+      self.assertEqual(starts, [130,530] if guard=='none' else [330] if guard in ('brake','cancel') else [], guard)
       self.assertFalse(lib.get_controls_allowed())
+
+  def test_confirmed_stock_on_resets_attempt_sequence_not_existing_window(self):
+    # Case2 exposes the old lifetime counter: after successful attempt2, the
+    # next attempt must be first, not a third attempt that imposes 3 seconds.
+    # Case3 proves actual ON cannot erase an already reserved 3-second window.
+    for starts, feedback, probe in (((100,220,340,460),230,270),
+                                    ((100,220,340,660,780),350,450)):
+      init(9217)
+      for tick in range(max(starts)+4):
+        lib.set_timer(21000+tick*10000)
+        counter = tick//2
+        if tick % 2 == 0:
+          seed(counter=counter, main=tick==0, speed=40,
+               target=40 if feedback<=tick<feedback+20 else 0)
+        if tick in starts:
+          self.assertTrue(self.tx(counter=counter+1), (starts,tick))
+        elif tick in tuple(t+2 for t in starts):
+          self.assertTrue(self.tx(button=0,counter=counter+1))
+        elif tick==probe:
+          self.assertFalse(self.tx(counter=counter+1), (starts,tick))
+
+  def test_unconfirmed_host_request_cannot_desynchronize_native_retry_phase(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    init(9217)
+    pulse = PorterMainSet()
+    starts = []
+    request_number = 0
+    for tick in range(1800):
+      lib.set_timer(21000+tick*10000)
+      counter, gas = tick//2, 20<=tick<100
+      if tick % 2 == 0:
+        seed(counter=counter, main=tick==0, speed=40, gas=gas)
+      was = pulse.pressing
+      button = pulse.update(tick*.01,counter,main_pressed=tick<2,manual_button=0,blocked=False,
+                            request=not gas,stock_enabled=False,configured=True,gas_pressed=gas)
+      if button==2 and not was:
+        request_number += 1
+        starts.append(tick)
+      # Simulate a first request never reaching Panda. Host intended counts
+      # and native accepted counts now differ, even without an ECU response.
+      if button is not None and request_number>1:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=button,counter=counter+1))),
+                        (tick,request_number,button))
+    self.assertGreaterEqual(len(starts), 5)
+    self.assertTrue(all(b-a>=300 for a,b in zip(starts,starts[1:],strict=False)))
+    self.assertFalse(lib.get_controls_allowed())

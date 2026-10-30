@@ -5,7 +5,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="b1aee18495f9af250e767bd0db256b5373f3057411bef028d122fbe0d2d57e68" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="541508dbe3a9a028cf6bdbadb05c46cea644219e3bb53e66e63f65154e694e5b" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -22,7 +22,7 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+초기 ON 표시만으로 시작하지 않으며 실제 순정 ON만 MAIN 확인을 동기화합니다. 자동 SET은 새 CLU11 수신 주기에만 보내고 10ms 지연이나 가감속 타이밍 학습에 연결하지 않습니다. 새 Panda 설정은 계기판 30~160km/h와 각 바퀴 25~160km/h를 확인합니다. 두 바퀴가 모두 30km/h 이상이면 기존 허용 조건을 유지하고, 어느 하나라도 30km/h 미만이면 두 바퀴 모두 계기판과의 차이 5km/h 이내를 추가로 요구합니다. 버튼 상태·카운터 변경 후 패리티를 다시 계산하고 Panda도 검사합니다. ON 응답은 0.5초 동안 관측하며 명시적 MAIN OFF·브레이크·CANCEL·무효 신호와 기존 누름·재시도 제한을 유지합니다. 실차 수락은 확인이 필요합니다.
++초기 ON 표시만으로 시작하지 않으며 실제 순정 ON만 MAIN 확인을 동기화합니다. 자동 SET은 새 CLU11 수신 주기에만 보내고 10ms 지연이나 가감속 타이밍 학습에 연결하지 않습니다. 새 Panda 설정은 계기판 30~160km/h와 각 바퀴 25~160km/h를 확인합니다. 두 바퀴가 모두 30km/h 이상이면 기존 허용 조건을 유지하고, 어느 하나라도 30km/h 미만이면 두 바퀴 모두 계기판과의 차이 5km/h 이내를 추가로 요구합니다. 버튼 상태·카운터 변경 후 패리티를 다시 계산하고 Panda도 검사합니다. ON 응답은 0.5초 동안 관측하며 무응답·관측 중단 뒤에는 마지막 송신부터 3초 기다립니다. 실제 ON만 host·Panda의 연속 시도 횟수를 초기화하며 기존 대기시간은 줄이지 않습니다. 명시적 MAIN OFF·브레이크·CANCEL·무효 신호와 기존 누름·재시도 제한을 유지합니다. 실차 수락은 확인이 필요합니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END PorterAutoSetMain -->
  
@@ -34,7 +34,7 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoSetMain -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="b1aee18495f9af250e767bd0db256b5373f3057411bef028d122fbe0d2d57e68" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="541508dbe3a9a028cf6bdbadb05c46cea644219e3bb53e66e63f65154e694e5b" reviewed-at="2026-10-29T09:00:00Z" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -51,7 +51,7 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+The initial indication alone cannot start cruise; only stock ON confirms MAIN. Automatic SET uses newly observed CLU11 samples, without 10ms delays or changing speed-matching timing memory. The new Panda profile requires dashboard 30–160km/h and each wheel 25–160km/h. Both wheels at least 30km/h retain the original admission; if either is below 30km/h, both must be within 5km/h of the dashboard. Recompute switch/counter parity for transmitted buttons and validate it in Panda. Observe actual ON for 0.5s; explicit MAIN OFF, brake, CANCEL, invalid inputs and existing pulse/retry bounds remain. Vehicle acceptance requires confirmation.
++The initial indication alone cannot start cruise; only stock ON confirms MAIN. Automatic SET uses newly observed CLU11 samples, without 10ms delays or changing speed-matching timing memory. The new Panda profile requires dashboard 30–160km/h and each wheel 25–160km/h. Both wheels at least 30km/h retain the original admission; if either is below 30km/h, both must be within 5km/h of the dashboard. Recompute switch/counter parity for transmitted buttons and validate it in Panda. Observe actual ON for 0.5s; missing/interrupted feedback requires three seconds after the last transmission. Actual ON resets host/native consecutive attempts without shortening existing waits. Explicit MAIN OFF, brake, CANCEL, invalid inputs and existing pulse/retry bounds remain. Vehicle acceptance requires confirmation.
 +<!-- CARROT:SECTION:END REFERENCE -->
  <!-- CARROT:MANUAL:END PorterAutoSetMain -->
  

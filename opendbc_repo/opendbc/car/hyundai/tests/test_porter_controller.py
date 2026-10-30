@@ -347,13 +347,13 @@ class TestPorterMessagePath(unittest.TestCase):
     self.tick(0)
     self.cs.main_buttons = [0]
     starts = []
-    for frame in range(1, 600):
-      self.cs.out.gasPressed = 100 <= frame < 130 or 300 <= frame < 330
+    for frame in range(1, 700):
+      self.cs.out.gasPressed = 100 <= frame < 130 or 300 <= frame < 330 or 500 <= frame < 530
       was = self.controller.porter_main_set.pressing
       output = self.tick(frame)
       if 2 in output and not was:
         starts.append(frame)
-    self.assertEqual(starts, [130,330])
+    self.assertEqual(starts, [130,530])
 
 
 if __name__ == "__main__":

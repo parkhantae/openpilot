@@ -750,12 +750,13 @@ class CarController(CarControllerBase):
         self.porter_main_status = main_status
         cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s "
                       "startup=%s grant=%s pedal_ready=%s gas=%s fresh=%s manual=%s "
-                      "req=%d ack=%d noack=%d response=%s awaiting=%s cluster_kph=%.2f speed_ok=%s",
+                      "req=%d ack=%d noack=%d response=%s awaiting=%s cluster_kph=%.2f speed_ok=%s retry_ms=%.0f",
                       *main_status[:3], CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
                       self.porter_main_set.main_known, self.porter_main_set.allow_startup_gas,
                       self.porter_main_set.startup_grant, self.porter_main_set.startup_released, CS.out.gasPressed, fresh, manual,
                       *main_status[5:], self.porter_main_set.awaiting_stock, CS.out.vEgoCluster * CV.MS_TO_KPH,
-                      porter_auto_set_speed_valid(self.CP, CS.out))
+                      porter_auto_set_speed_valid(self.CP, CS.out),
+                      max(0., self.porter_main_set.next_request - self.frame * DT_CTRL) * 1000)
       if cancel_busy:
         button = cancel_button
       elif button is None:

@@ -501,3 +501,5 @@ The new Porter automatic SET Panda profile uses dashboard speed of 30–160 km/h
 Porter button messages, including automatic SET, recompute parity after switch/counter changes and are checked by Panda. Actual stock feedback still determines engagement; existing speed, driver-input and retry limits remain.
 
 With Porter automatic SET ON, a fresh gas press/release in MAIN standby requests SET− on the next new CAN sample regardless of engagement/lateral activity. Inactive control cannot start without pedal input, and cues blocked by retry limits are not executed later. Existing speed, lead, brake, CANCEL and signal-validity guards remain.
+
+If Porter automatic SET has no actual stock ON within 0.5s, or driver intervention/invalid input interrupts response observation, wait at least three seconds after the last SET or release transmission before another attempt. TX echo does not establish success or the native retry phase. Actual ON resets consecutive attempts in both host and Panda without shortening an already reserved minimum wait. Inactive controls discard cues blocked by the wait and require a new pedal cycle; `retry_ms` diagnostics show remaining wait.

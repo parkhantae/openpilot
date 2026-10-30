@@ -272,6 +272,9 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
             !hyundai_porter_fault && !brake_pressed) {
           hyundai_porter_main = true;
           hyundai_porter_main_known = true;
+          // Valid stock ON ends consecutive failures without shortening the
+          // already-reserved retry window or restoring revoked permission.
+          hyundai_porter_set_attempts = 0;
         }
       }
       bool recent_enable_button = hyundai_porter_enable_button_seen &&

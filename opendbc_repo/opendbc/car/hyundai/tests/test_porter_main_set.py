@@ -95,10 +95,10 @@ class TestPorterMainSet(unittest.TestCase):
 
   def test_set_only_confirmation_pulse_release_and_retry_limit(self):
     self.arm()
-    output = [(t, b) for t in range(3, 180) if (b := self.tick(t)) is not None]
+    output = [(t, b) for t in range(3, 400) if (b := self.tick(t)) is not None]
     self.assertEqual(output[:7], [(52, 2), (54, 2), (56, 2), (58, 2), (60, 2), (62, 2), (64, 0)])
     self.assertTrue(all(b in (0, 2) for _, b in output))
-    self.assertGreaterEqual(output[7][0] - output[0][0], 100)
+    self.assertGreaterEqual(output[7][0] - output[6][0], 300)
 
   def test_cancel_brake_main_off_and_live_off_disarm(self):
     for guard in (dict(manual_button=4), dict(blocked=True), dict(main_pressed=True), dict(configured=False)):
@@ -285,7 +285,7 @@ class TestPorterMainSet(unittest.TestCase):
   def test_repeated_release_cannot_bypass_retry_limits_after_interrupted_pulses(self):
     self.arm()
     starts = []
-    for t in range(3, 601):
+    for t in range(3, 1001):
       # A new pedal tap after every 20ms interrupts each attempted SET. Even
       # those incomplete pulses must consume the native one-/three-second gap.
       gas = t < 100 or t % 100 in (2, 3)
@@ -293,7 +293,7 @@ class TestPorterMainSet(unittest.TestCase):
       button = self.tick(t, gas_pressed=gas, request=not gas)
       if button == 2 and not was:
         starts.append(t)
-    self.assertEqual(starts, [100, 200, 300, 600])
+    self.assertEqual(starts, [100, 404, 716])
 
   def test_initial_on_parity_does_not_authorize_without_physical_input(self):
     self.state = PorterMainSet(initial_main=True)
@@ -316,21 +316,21 @@ class TestPorterMainSet(unittest.TestCase):
   def test_unanswered_set_waits_for_real_on_and_retries_on_new_rx_only(self):
     self.arm()
     starts = []
-    for t in range(3, 168):
+    for t in range(3, 370):
       was = self.state.pressing
       button = self.tick(t)
       if button == 2 and not was:
         starts.append(t)
         self.assertEqual(t % 2, 0)
-    self.assertEqual(starts, [52, 164])
+    self.assertEqual(starts, [52, 364])
     self.assertEqual(self.state.requests, 2)
     self.assertEqual(self.state.timeouts, 1)
     self.assertEqual(self.state.acks, 0)
-    self.assertEqual(self.tick(168, stock_enabled=True), 0)
+    self.assertEqual(self.tick(370, stock_enabled=True), 0)
     self.assertEqual(self.state.acks, 1)
     self.assertEqual(self.state.response, "engaged")
     self.assertFalse(self.state.awaiting_stock)
-    self.tick(169, stock_enabled=True)
+    self.tick(371, stock_enabled=True)
     self.assertEqual(self.state.acks, 1)
 
   def test_physical_set_brake_and_late_on_do_not_ack_automatic_request(self):
@@ -395,7 +395,7 @@ class TestPorterMainSet(unittest.TestCase):
     cc = NS(cruiseControl=NS(resume=True))
     cs = NS(out=NS(cruiseState=NS(enabled=False), vEgo=40/3.6, vEgoCluster=42/3.6, gasPressed=False))
     messages = []
-    env = dict(self=obj, CC=cc, CS=cs, porter_auto_set_speed_valid=porter_auto_set_speed_valid, CV=NS(MS_TO_KPH=3.6), fresh=True, manual=False,
+    env = dict(self=obj, CC=cc, CS=cs, DT_CTRL=.01, porter_auto_set_speed_valid=porter_auto_set_speed_valid, CV=NS(MS_TO_KPH=3.6), fresh=True, manual=False,
                cloudlog=NS(info=lambda fmt, *args: messages.append(fmt % args)))
     self.arm()
     for t in range(3, 104):
@@ -417,13 +417,13 @@ class TestPorterMainSet(unittest.TestCase):
   def test_inactive_controls_require_pedal_and_request_on_each_fresh_release(self):
     self.arm()
     starts = []
-    for t in range(3, 600):
-      gas = 100 <= t < 130 or 300 <= t < 330
+    for t in range(3, 700):
+      gas = 100 <= t < 130 or 300 <= t < 330 or 500 <= t < 530
       was = self.state.pressing
       button = self.tick(t, pedal_only=True, gas_pressed=gas, request=not gas)
       if button == 2 and not was:
         starts.append(t)
-    self.assertEqual(starts, [130, 330])
+    self.assertEqual(starts, [130, 530])
     self.assertEqual(self.state.requests, 2)
     self.assertEqual(self.state.timeouts, 2)
 
@@ -460,8 +460,21 @@ class TestPorterMainSet(unittest.TestCase):
     self.assertEqual(self.tick(52), 2)
     self.assertIsNone(self.tick(53, pedal_only=True))
     self.assertEqual(self.tick(54, pedal_only=True), 0)  # release timer-only pulse
-    for t in range(55, 150):
+    for t in range(55, 400):
       self.assertIsNone(self.tick(t, pedal_only=True))
-    for t in range(150, 180):
+    for t in range(400, 430):
       self.assertIsNone(self.tick(t, pedal_only=True, gas_pressed=True))
-    self.assertEqual(self.tick(180, pedal_only=True), 2)
+    self.assertEqual(self.tick(430, pedal_only=True), 2)
+
+  def test_confirmed_on_retains_short_retry_window_for_next_fresh_release(self):
+    self.arm()
+    for t in range(3, 100):
+      self.tick(t, gas_pressed=True, request=False)
+    self.assertEqual(self.tick(100), 2)
+    self.assertEqual(self.tick(102, stock_enabled=True), 0)
+    for t in range(103, 150):
+      self.tick(t, stock_enabled=True)
+    for t in range(150, 220):
+      self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
+    self.assertEqual(self.tick(220), 2)  # positive ON did not become a 3s failure wait
+    self.assertEqual(self.state.acks, 1)

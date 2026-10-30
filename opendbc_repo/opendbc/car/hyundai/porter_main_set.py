@@ -17,6 +17,7 @@ class PorterMainSet:
     self.started = 0.
     self.frames = 0
     self.next_request = 0.
+    self.unknown_retry_at = 0.
     self.attempts = 0
     self.retry_wait = 1.
     self.pending_release = False
@@ -52,6 +53,12 @@ class PorterMainSet:
 
     def send(button):
       self.sent_key = key
+      # A missing response does not reveal whether Panda accepted the pulse.
+      # Cover its maximum three-second wait from the last possible SET/release,
+      # rather than guessing native attempt phase from intended requests.
+      self.unknown_retry_at = now + 3.
+      if self.response in ("no_response", "interrupted"):
+        self.next_request = max(self.next_request, self.unknown_retry_at)
       return button
 
     stock_rising = stock_enabled and not self.previous_stock
@@ -60,6 +67,7 @@ class PorterMainSet:
       self.awaiting_stock = False
       self.timeouts += 1
       self.response = "no_response"
+      self.next_request = max(self.next_request, self.unknown_retry_at)
     if stock_rising:
       if (self.awaiting_stock and clock_ok and configured and now - self.started <= .5 + 1e-9 and
           not manual_button and not main_pressed and not blocked and not gas_pressed):
@@ -67,10 +75,12 @@ class PorterMainSet:
         self.response = "engaged"
       elif self.awaiting_stock:
         self.response = "interrupted"
+        self.next_request = max(self.next_request, self.unknown_retry_at)
       self.awaiting_stock = False
     if manual_button or main_pressed or blocked or not configured or not clock_ok:
       if self.awaiting_stock:
         self.response = "interrupted"
+        self.next_request = max(self.next_request, self.unknown_retry_at)
       self.awaiting_stock = False
     if configured and stock_rising and not main_pressed:
       # Stock engagement proves MAIN is on, but never restores revoked permission.
