@@ -51,9 +51,13 @@ def porter_auto_set_speed_valid(CP, CS):
   wheels = getattr(CS, "wheelSpeeds", None)
   fl = getattr(wheels, "fl", float("nan")) * 3.6
   rr = getattr(wheels, "rr", float("nan")) * 3.6
+  # Both wheels at >=30 already satisfy the original admission floor. Use
+  # dashboard/wheel agreement only to qualify the added 25..<30 range;
+  # deceleration-related dashboard lag must not revoke the original range.
   return (all(math.isfinite(v) for v in (cluster, fl, rr)) and
           30 - 1e-5 <= cluster <= 160 + 1e-5 and 25 - 1e-5 <= fl <= 160 + 1e-5 and 25 - 1e-5 <= rr <= 160 + 1e-5 and
-          abs(cluster - fl) <= 5 + 1e-5 and abs(cluster - rr) <= 5 + 1e-5)
+          ((fl >= 30 - 1e-5 and rr >= 30 - 1e-5) or
+           (abs(cluster - fl) <= 5 + 1e-5 and abs(cluster - rr) <= 5 + 1e-5)))
 
 
 def porter_navi_target_kph(planner_target_kph, navi_target_kph):

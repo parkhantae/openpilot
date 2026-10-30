@@ -530,3 +530,21 @@ class TestPorterMainSetSafety(unittest.TestCase):
       invalid[0] ^= 0x20
       self.assertFalse(lib.safety_tx_hook(packet(0x4f1, invalid)), button)
       self.assertTrue(lib.safety_tx_hook(packet(0x4f1, valid)), button)
+
+  def test_log553_native_finishes_set_when_dashboard_lags_wheels_above30(self):
+    self.prepare(param=11265)
+    for i in range(6):
+      lib.set_timer(701000+i*20000)
+      seed(counter=35+i, speed=54.125, speed_rr=53.15625 if i>=4 else 54.15625,
+           cluster_speed=58.25)
+      self.assertTrue(self.tx(counter=36+i), i)
+    lib.set_timer(821000)
+    seed(counter=41, speed=54.125, speed_rr=53.15625, cluster_speed=58.25)
+    self.assertFalse(self.tx(counter=42))  # original six-frame/120ms bound
+    self.assertTrue(self.tx(button=0, counter=42))
+    self.assertFalse(lib.get_controls_allowed())
+
+  def test_low_wheel_range_still_requires_both_dashboard_comparisons(self):
+    for fl, rr, expected in ((30,30,True),(29.96875,30,False),(30,29.96875,False)):
+      self.startup_pedal(param=60417, speed_fl=fl, speed_rr=rr, speed=30, cluster_speed=35.125)
+      self.assertEqual(self.tx(counter=46), expected, (fl,rr))

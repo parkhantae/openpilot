@@ -213,3 +213,18 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.cs.vEgoCluster = 29.875/3.6
     self.run_frames(planner=31.5, start=80)
     self.assertFalse(self.cc.cruiseControl.resume)
+
+  def test_log553_request_remains_valid_across_high_speed_dashboard_lag(self):
+    self.values['PorterAutoSetMain'] = True
+    self.obj.CP.safetyConfigs = [NS(safetyParam=60417)]
+    self.cs.cruiseState.enabled, self.cs.cruiseState.available = False, True
+    self.cs.vEgo = 54/3.6
+    self.cs.vEgoCluster = 58.25/3.6
+    self.cs.wheelSpeeds = NS(fl=54.125/3.6, rr=54.15625/3.6)
+    self.cc.enabled, self.cc.latActive = False, True
+    for tick in range(20):
+      self.sm.frame = tick
+      self.cc.cruiseControl.resume = False
+      self.cs.wheelSpeeds.rr = (53.15625 if tick % 2 else 54.15625)/3.6
+      self.function(self.obj, self.cs, self.cc, 58, None)
+      self.assertTrue(self.cc.cruiseControl.resume)

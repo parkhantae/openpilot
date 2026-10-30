@@ -313,6 +313,29 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.out.wheelSpeeds.rr = 20/3.6
     self.assertEqual(self.tick(101), [0])
 
+  def test_log553_complete_set_pulse_survives_dashboard_lag(self):
+    self.controller.porter_main_params.get_bool = lambda key: True
+    self.controller.CP.safetyConfigs = [NS(safetyParam=11265)]
+    self.cs.out.cruiseState.enabled = False
+    self.cs.out.vEgo = 54/3.6
+    self.cs.out.vEgoCluster = 58.25/3.6
+    self.cs.out.wheelSpeeds = NS(fl=54.125/3.6, rr=54.15625/3.6)
+    self.cc.enabled, self.cc.latActive = False, True
+    self.cc.cruiseControl.resume = True
+    self.cs.main_buttons = [1]
+    self.cs.out.gasPressed = True
+    self.tick(0)
+    self.cs.main_buttons = [0]
+    for frame in range(1, 100):
+      self.tick(frame)
+    self.cs.out.gasPressed = False
+    output = []
+    for frame in range(100, 107):
+      if frame == 104:
+        self.cs.out.wheelSpeeds.rr = 53.15625/3.6
+      output.extend(self.tick(frame))
+    self.assertEqual(output, [2]*6+[0])
+
 
 if __name__ == "__main__":
   unittest.main()

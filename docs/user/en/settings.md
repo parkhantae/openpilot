@@ -496,6 +496,6 @@ Porter GAP is configured once through common TF1–TF4. Button deceleration and 
 
 Initial AutoEngage=2 standby can request one SET trial without MAIN confirmation, after observing released gas and a fresh press of at least 0.1s followed by release at 30 km/h or above. Failure requires a new pedal cycle; the initial indication alone cannot start cruise. Restart after updating to apply the new Panda profile.
 
-The new Porter automatic SET Panda profile uses dashboard speed of 30–160 km/h and cross-checks both wheel speeds. Dashboard 31 km/h with wheels at 29 km/h no longer fails solely on the former raw-wheel 30 km/h floor. Each wheel must be 25–160 km/h and within 5 km/h of the dashboard. Restart after updating; targets below 30 km/h still block SET.
+The new Porter automatic SET Panda profile uses dashboard speed of 30–160 km/h and cross-checks both wheel speeds. Dashboard 31 km/h with wheels at 29 km/h no longer fails solely on the former raw-wheel 30 km/h floor. Each wheel must be 25–160 km/h. Both wheels at or above 30 km/h retain the original admission despite temporary dashboard lag; if either is below 30 km/h, both must be within 5 km/h of the dashboard. Restart after updating; targets below 30 km/h still block SET.
 
 Porter button messages, including automatic SET, recompute parity after switch/counter changes and are checked by Panda. Actual stock feedback still determines engagement; existing speed, driver-input and retry limits remain.

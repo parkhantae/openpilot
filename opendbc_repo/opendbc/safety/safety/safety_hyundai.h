@@ -105,13 +105,14 @@ static bool hyundai_porter_set_speed_valid(void) {
     return fl >= 960U && rr >= 960U && fl <= 5120U && rr <= 5120U;
   }
   // Cluster units are 1/8km/h; wheel units are 1/32km/h. Require dashboard
-  // 30..160km/h AND both wheels 25..160km/h within 5km/h of the dashboard.
+  // 30..160km/h and both wheels 25..160km/h. Dashboard agreement qualifies
+  // only the added 25..<30 range; both wheels >=30 retain the original gate.
   uint32_t cluster = hyundai_porter_cluster_eighth_kph * 4U;
   uint32_t fl_difference = cluster >= fl ? cluster - fl : fl - cluster;
   uint32_t rr_difference = cluster >= rr ? cluster - rr : rr - cluster;
   return hyundai_porter_cluster_metric && cluster >= 960U && cluster <= 5120U &&
          fl >= 800U && rr >= 800U && fl <= 5120U && rr <= 5120U &&
-         fl_difference <= 160U && rr_difference <= 160U;
+         ((fl >= 960U && rr >= 960U) || (fl_difference <= 160U && rr_difference <= 160U));
 }
 
 static const uint32_t HYUNDAI_PORTER_ENABLE_BUTTON_TIMEOUT = 1000000U;

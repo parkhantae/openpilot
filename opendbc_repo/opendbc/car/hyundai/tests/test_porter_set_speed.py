@@ -29,3 +29,11 @@ class TestPorterSetSpeed(unittest.TestCase):
     cp = NS(safetyConfigs=[NS(safetyParam=60417)])
     self.assertFalse(porter_auto_set_speed_valid(cp, NS(vEgo=40/3.6)))
     self.assertFalse(porter_auto_set_speed_valid(cp, NS(vEgo=40/3.6, vEgoCluster=42/3.6)))
+
+  def test_log553_dashboard_lag_does_not_revoke_original_wheel_speed_range(self):
+    self.assertTrue(self.valid(cluster=58.25, fl=54.125, rr=53.15625))
+    self.assertTrue(self.valid(cluster=39.625, fl=34, rr=33.875))
+    self.assertTrue(self.valid(cluster=35.125, fl=30, rr=30))
+    # Below the original floor, both dashboard comparisons are still required.
+    self.assertFalse(self.valid(cluster=35.125, fl=30, rr=29.96875))
+    self.assertFalse(self.valid(cluster=35.125, fl=29.96875, rr=30))
