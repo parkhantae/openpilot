@@ -13,6 +13,7 @@ class PorterMainSet:
     self.last_key = None
     self.since = None
     self.pressing = False
+    self.pedal_started = False
     self.started = 0.
     self.frames = 0
     self.next_request = 0.
@@ -37,7 +38,7 @@ class PorterMainSet:
     self.startup_grant = False
     self.startup_grant_since = None
 
-  def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False):
+  def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured, gas_pressed=False, pedal_only=False):
     fresh = key is not None and key != self.last_key
     if fresh:
       self.last_key = key
@@ -138,7 +139,12 @@ class PorterMainSet:
       # A brief lead/plan transition may straddle pedal release. Keep only a
       # 100ms observation window; never turn it into a delayed engagement queue.
       self.gas_release_since = None
-    if not eligible or stock_enabled or not request or gas_pressed:
+    if (pedal_only and self.gas_release_since is not None and
+        now - self.gas_release_since > .1 + 1e-9):
+      # Inactive controls must not queue a later engagement behind retry limits.
+      self.gas_release_since = None
+    if (not eligible or stock_enabled or not request or gas_pressed or
+        (pedal_only and self.pressing and not self.pedal_started)):
       self.since = None
       if self.pressing:
         self.pending_release = True
@@ -170,19 +176,22 @@ class PorterMainSet:
         self.frames += 1
         return send(2)
       return None
-    if self.since is None:
+    if pedal_only:
+      self.since = None
+    elif self.since is None:
       self.since = now
     # Gas release is the driver's immediate SET cue. Do not add a 100ms
     # confirmation dwell once all request/override guards are already valid.
     # Native MAIN settling, retry quiet periods and fresh-sample timing remain.
     release_ready = (self.gas_release_since is not None and self.main_since is not None and
                      now - self.main_since >= .5 - 1e-9)
-    if now >= self.next_request and (release_ready or now - self.since >= .5 - 1e-9):
+    if now >= self.next_request and (release_ready or (not pedal_only and now - self.since >= .5 - 1e-9)):
       # A pedal release or retry deadline between RX updates must wait for
       # the next sample, rather than sending its predecessor late. Normal
       # engaged speed matching keeps its independent timing policy.
       if not fresh or not tx_fresh:
         return None
+      self.pedal_started = release_ready
       self.awaiting_stock = True
       self.requests += 1
       self.response = "pending"

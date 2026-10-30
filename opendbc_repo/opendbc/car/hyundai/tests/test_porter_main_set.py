@@ -413,3 +413,55 @@ class TestPorterMainSet(unittest.TestCase):
       self.tick(t)
     self.assertEqual(self.state.acks, 0)
     self.assertEqual(self.state.timeouts, 0)
+
+  def test_inactive_controls_require_pedal_and_request_on_each_fresh_release(self):
+    self.arm()
+    starts = []
+    for t in range(3, 600):
+      gas = 100 <= t < 130 or 300 <= t < 330
+      was = self.state.pressing
+      button = self.tick(t, pedal_only=True, gas_pressed=gas, request=not gas)
+      if button == 2 and not was:
+        starts.append(t)
+    self.assertEqual(starts, [130, 330])
+    self.assertEqual(self.state.requests, 2)
+    self.assertEqual(self.state.timeouts, 2)
+
+  def test_inactive_controls_release_cannot_wait_behind_retry_backoff(self):
+    self.arm()
+    self.state.next_request = 3.
+    for t in range(3, 400):
+      self.assertIsNone(self.tick(t, pedal_only=True, gas_pressed=100<=t<130))
+    for t in range(400, 430):
+      self.assertIsNone(self.tick(t, pedal_only=True, gas_pressed=True))
+    self.assertEqual(self.tick(430, pedal_only=True), 2)
+
+  def test_inactive_release_keeps_main_brake_cancel_and_option_guards(self):
+    for override in (dict(blocked=True),dict(manual_button=4),dict(main_pressed=True),dict(configured=False)):
+      self.setUp()
+      self.arm()
+      for t in range(3, 100):
+        self.tick(t, gas_pressed=True, request=False, pedal_only=True)
+      self.assertIsNone(self.tick(100, pedal_only=True, **override))
+      for t in range(101, 200):
+        self.assertIsNone(self.tick(t, pedal_only=True))
+
+  def test_inactive_transition_cannot_inherit_standby_dwell_or_timer_pulse(self):
+    self.arm()
+    for t in range(3, 200):
+      self.assertIsNone(self.tick(t, pedal_only=True))
+    for t in range(200, 250):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.tick(250), 2)  # active mode gets its own 500ms dwell
+    self.setUp()
+    self.arm()
+    for t in range(3, 52):
+      self.tick(t)
+    self.assertEqual(self.tick(52), 2)
+    self.assertIsNone(self.tick(53, pedal_only=True))
+    self.assertEqual(self.tick(54, pedal_only=True), 0)  # release timer-only pulse
+    for t in range(55, 150):
+      self.assertIsNone(self.tick(t, pedal_only=True))
+    for t in range(150, 180):
+      self.assertIsNone(self.tick(t, pedal_only=True, gas_pressed=True))
+    self.assertEqual(self.tick(180, pedal_only=True), 2)

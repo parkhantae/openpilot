@@ -336,6 +336,25 @@ class TestPorterMessagePath(unittest.TestCase):
       output.extend(self.tick(frame))
     self.assertEqual(output, [2]*6+[0])
 
+  def test_inactive_standby_sends_only_for_fresh_pedal_releases(self):
+    self.controller.porter_main_params.get_bool = lambda key: True
+    self.controller.CP.safetyConfigs = [NS(safetyParam=11265)]
+    self.cs.out.cruiseState.enabled = False
+    self.cs.out.wheelSpeeds = NS(fl=50/3.6, rr=50/3.6)
+    self.cc.enabled, self.cc.latActive = False, False
+    self.cc.cruiseControl.resume = True
+    self.cs.main_buttons = [1]
+    self.tick(0)
+    self.cs.main_buttons = [0]
+    starts = []
+    for frame in range(1, 600):
+      self.cs.out.gasPressed = 100 <= frame < 130 or 300 <= frame < 330
+      was = self.controller.porter_main_set.pressing
+      output = self.tick(frame)
+      if 2 in output and not was:
+        starts.append(frame)
+    self.assertEqual(starts, [130,330])
+
 
 if __name__ == "__main__":
   unittest.main()

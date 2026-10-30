@@ -193,7 +193,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.cc.latActive = False
     self.cc.cruiseControl.resume = False
     self.run_frames(planner=34, start=40)
-    self.assertFalse(self.cc.cruiseControl.resume)
+    self.assertTrue(self.cc.cruiseControl.resume)  # candidate; controller still requires fresh pedal
 
   def test_cluster_profile_accepts_dashboard30_with_plausible_wheels_only(self):
     self.values['PorterAutoSetMain'] = True

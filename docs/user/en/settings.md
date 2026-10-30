@@ -499,3 +499,5 @@ Initial AutoEngage=2 standby can request one SET trial without MAIN confirmation
 The new Porter automatic SET Panda profile uses dashboard speed of 30–160 km/h and cross-checks both wheel speeds. Dashboard 31 km/h with wheels at 29 km/h no longer fails solely on the former raw-wheel 30 km/h floor. Each wheel must be 25–160 km/h. Both wheels at or above 30 km/h retain the original admission despite temporary dashboard lag; if either is below 30 km/h, both must be within 5 km/h of the dashboard. Restart after updating; targets below 30 km/h still block SET.
 
 Porter button messages, including automatic SET, recompute parity after switch/counter changes and are checked by Panda. Actual stock feedback still determines engagement; existing speed, driver-input and retry limits remain.
+
+With Porter automatic SET ON, a fresh gas press/release in MAIN standby requests SET− on the next new CAN sample regardless of engagement/lateral activity. Inactive control cannot start without pedal input, and cues blocked by retry limits are not executed later. Existing speed, lead, brake, CANCEL and signal-validity guards remain.

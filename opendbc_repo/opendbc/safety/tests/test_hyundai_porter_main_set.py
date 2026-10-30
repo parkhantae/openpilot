@@ -548,3 +548,30 @@ class TestPorterMainSetSafety(unittest.TestCase):
     for fl, rr, expected in ((30,30,True),(29.96875,30,False),(30,29.96875,False)):
       self.startup_pedal(param=60417, speed_fl=fl, speed_rr=rr, speed=30, cluster_speed=35.125)
       self.assertEqual(self.tx(counter=46), expected, (fl,rr))
+
+  def test_pedal_only_host_releases_keep_native_authorization_and_rate_limits(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for guard in ('none','brake','cancel','main_off'):
+      init(11265)
+      pulse = PorterMainSet()
+      starts = []
+      for tick in range(600):
+        counter = tick//2
+        gas = 100<=tick<130 or 300<=tick<330
+        brake = guard=='brake' and 130<=tick<200
+        manual = 4 if guard=='cancel' and 130<=tick<200 else 0
+        main = tick<2 or (guard=='main_off' and 120<=tick<122)
+        lib.set_timer(21000+tick*10000)
+        if tick % 2==0:
+          seed(counter=counter, speed=40, gas=gas, brake=brake, button=manual, main=main)
+        was = pulse.pressing
+        button = pulse.update(tick*.01, counter, main_pressed=main, manual_button=manual,
+                              blocked=brake, request=not gas, stock_enabled=False,
+                              configured=True, gas_pressed=gas, pedal_only=True)
+        if button is not None:
+          self.assertTrue(lib.safety_tx_hook(packet(0x4f1,data(0x4f1,button=button,counter=counter+1))),
+                          (guard,tick,button))
+          if button==2 and not was:
+            starts.append(tick)
+      self.assertEqual(starts, [130,330] if guard=='none' else [330] if guard in ('brake','cancel') else [], guard)
+      self.assertFalse(lib.get_controls_allowed())

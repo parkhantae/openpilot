@@ -112,9 +112,10 @@ class Controls:
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
     auto_set = (self.params.get_bool("PorterAutoSetMain") and
                 any(c.safetyParam in (9217, 11265, 25601, 58369, 60417) for c in getattr(self.CP, 'safetyConfigs', ())))
-    # PCM disengagement clears enabled even while AlwaysLateral remains ready.
-    # Lateral readiness does not authorize SET; physical MAIN is checked below.
-    ready = CC.enabled or (auto_set and getattr(CC, 'latActive', False))
+    # MAIN standby plus a fresh pedal release may request stock SET even when
+    # lateral control is inactive. The controller requires a pedal cue in that
+    # state; this candidate alone never grants MAIN or pedal authorization.
+    ready = CC.enabled or auto_set
     eligible = (self.CP.brand == "hyundai" and self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
                 self.CP.pcmCruise and not self.CP.openpilotLongitudinalControl and
                 self.params.get_int("SpeedFromPCM") == 0 and

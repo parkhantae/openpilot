@@ -729,12 +729,12 @@ class CarController(CarControllerBase):
         manual_button=CS.cruise_buttons[-1],
         blocked=(not fresh or not CS.out.canValid or CS.out.accFaulted or CS.out.brakePressed or
                  CS.out.brakeHoldActive or CS.out.parkingBrake or self.speed_from_pcm != 0),
-        request=((CC.enabled or getattr(CC, "latActive", False)) and
-                 CC.cruiseControl.resume and not CC.cruiseControl.cancel and not cancel_busy and
+        request=(CC.cruiseControl.resume and not CC.cruiseControl.cancel and not cancel_busy and
                  CS.out.cruiseState.available and CS.is_metric and not CS.out.gasPressed and
                  CS.out.gearShifter == structs.CarState.GearShifter.drive and
                  porter_auto_set_speed_valid(self.CP, CS.out)),
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
+        pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
                     any(c.safetyParam in (9217, 11265, 25601, 58369, 60417) for c in self.CP.safetyConfigs)))
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
