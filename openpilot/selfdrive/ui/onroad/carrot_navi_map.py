@@ -25,7 +25,7 @@ VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
 MAP_EGO_Y = 192.0
-MAP_METERS_PER_PIXEL = 3.0
+MAP_METERS_PER_PIXEL = 1000.0 / MAP_EGO_Y
 PERSPECTIVE_NEAR_Y = 0.82
 PERSPECTIVE_HORIZON_Y = 0.0
 PERSPECTIVE_DEPTH_M = 120.0
@@ -122,12 +122,12 @@ def project_map_point(source_x: float, source_y: float, rect: rl.Rectangle) -> r
     raster_depth = MAP_EGO_Y / (MAP_EGO_Y + PERSPECTIVE_DEPTH_M)
     depth = min(1.0, raw_depth / raster_depth)
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y - (PERSPECTIVE_NEAR_Y - PERSPECTIVE_HORIZON_Y) * depth)
-    # A wide near plane clipped by the panel and a narrow horizon produce a
-    # visible 3D road surface instead of a flat top-down map.
-    width_factor = 1.20 - 0.65 * depth
+    # Keep a constant width: distance is compressed vertically without a
+    # trapezoidal near/far width change.
+    width_factor = 1.0
   else:
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y + 0.18 * min(1.0, -forward_m / 64.0))
-    width_factor = 1.20
+    width_factor = 1.0
   scale = rect.width / MAP_SIZE * width_factor
   return rl.Vector2(rect.x + rect.width * 0.5 + (source_x - MAP_SIZE * 0.5) * scale, screen_y)
 
