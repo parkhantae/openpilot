@@ -90,7 +90,7 @@ def test_projected_route_uses_same_perspective_as_road_raster():
   assert panel.y < projected[2].y < projected[1].y < projected[0].y
 
 
-def test_distance_compression_keeps_constant_map_width():
+def test_distance_compression_fits_complete_map_into_mild_trapezoid():
   panel = rl.Rectangle(1360, 10, 790, 760)
   near_left = project_map_point(0, 192, panel)
   far_left = project_map_point(0, 0, panel)
@@ -98,8 +98,9 @@ def test_distance_compression_keeps_constant_map_width():
   far_center = project_map_point(128, 0, panel)
 
   assert far_center.y < near_center.y
-  assert far_left.x == pytest.approx(near_left.x)
+  assert far_left.x > near_left.x
   assert near_left.x == pytest.approx(panel.x)
+  assert far_left.x == pytest.approx(panel.x + panel.width * 0.1)
   assert far_center.y == pytest.approx(panel.y)
 
 

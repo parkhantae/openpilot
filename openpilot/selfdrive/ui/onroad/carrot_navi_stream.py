@@ -37,9 +37,13 @@ uniform sampler2D texture2;
 uniform vec2 uvScaleU;
 uniform vec2 uvScaleV;
 void main() {
-  float y = 1.164383 * (texture2D(texture0, fragTexCoord).r - 0.062745);
-  float u = texture2D(texture1, fragTexCoord * uvScaleU).r - 0.501961;
-  float v = texture2D(texture2, fragTexCoord * uvScaleV).r - 0.501961;
+  float width = mix(0.8, 1.0, fragTexCoord.y);
+  float left = (1.0 - width) * 0.5;
+  if (fragTexCoord.x < left || fragTexCoord.x > left + width) discard;
+  vec2 mapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
+  float y = 1.164383 * (texture2D(texture0, mapCoord).r - 0.062745);
+  float u = texture2D(texture1, mapCoord * uvScaleU).r - 0.501961;
+  float v = texture2D(texture2, mapCoord * uvScaleV).r - 0.501961;
   vec3 rgb = vec3(
     y + 1.596027 * v,
     y - 0.391762 * u - 0.812968 * v,
@@ -71,7 +75,11 @@ in vec2 fragTexCoord;
 uniform samplerExternalOES texture0;
 out vec4 fragColor;
 void main() {
-  fragColor = texture(texture0, fragTexCoord);
+  float width = mix(0.8, 1.0, fragTexCoord.y);
+  float left = (1.0 - width) * 0.5;
+  if (fragTexCoord.x < left || fragTexCoord.x > left + width) discard;
+  vec2 mapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
+  fragColor = texture(texture0, mapCoord);
 }
 """
 
@@ -114,20 +122,11 @@ class NaviMapTextureRenderer:
       return False
 
     source_w, source_h = map(float, cached.size)
-    # Fill the comma map panel while keeping the phone map's aspect ratio.
-    # The centered crop keeps the route and ego vehicle visible.
-    scale = max(rect.width / source_w, rect.height / source_h)
-    draw_w = source_w * scale
-    draw_h = source_h * scale
+    # Fit the complete phone map into the panel. H264 shaders compress complete
+    # rows into an 80%-to-100% trapezoid, so the far edge narrows without crop.
     source = rl.Rectangle(0.0, 0.0, source_w, source_h)
-    dest = rl.Rectangle(
-      rect.x + (rect.width - draw_w) * 0.5,
-      rect.y + (rect.height - draw_h) * 0.5,
-      draw_w,
-      draw_h,
-    )
-    rl.draw_rectangle_rec(rect, rl.BLACK)
-    self._draw_cached(cached, source, dest)
+    rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
+    self._draw_cached(cached, source, rect)
     return True
 
   def _texture_for(self, frame: NaviMediaFrame) -> CachedNaviTexture | None:

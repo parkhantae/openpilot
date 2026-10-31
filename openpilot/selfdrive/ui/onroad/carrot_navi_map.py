@@ -42,6 +42,7 @@ PERSPECTIVE_HORIZON_Y = 0.0
 PERSPECTIVE_DEPTH_M = 120.0
 PERSPECTIVE_FAR_START = 0.40
 PERSPECTIVE_FAR_STRENGTH = 1.8
+PERSPECTIVE_TOP_WIDTH = 0.80
 VALID_MAP_HOLD_S = 5.0
 
 
@@ -138,9 +139,9 @@ def project_map_point(source_x: float, source_y: float, rect: rl.Rectangle) -> r
       far = (depth - PERSPECTIVE_FAR_START) / (1.0 - PERSPECTIVE_FAR_START)
       depth += PERSPECTIVE_FAR_STRENGTH * far * far * (1.0 - depth)
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y - (PERSPECTIVE_NEAR_Y - PERSPECTIVE_HORIZON_Y) * depth)
-    # Keep a constant width: distance is compressed vertically without a
-    # trapezoidal near/far width change.
-    width_factor = 1.0
+    # Fit every source row inside a mild trapezoid. The far edge narrows to
+    # 80%, but no map content is cropped because the complete row is scaled.
+    width_factor = 1.0 - (1.0 - PERSPECTIVE_TOP_WIDTH) * depth
   else:
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y + 0.18 * min(1.0, -forward_m / 64.0))
     width_factor = 1.0
