@@ -8,6 +8,7 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
   SimpleMapState,
   carrot_navi_panel_rect,
   map_state_from_carrot_navi,
+  project_map_point,
   project_route,
   route_local_points,
 )
@@ -73,14 +74,25 @@ def test_route_is_rotated_heading_up(heading, point):
   assert local[-1].right_m == pytest.approx(0.0, abs=0.01)
 
 
-def test_projected_route_uses_same_one_meter_scale_as_road_raster():
+def test_projected_route_uses_same_perspective_as_road_raster():
   state = map_state_from_carrot_navi(carrot_navi_message(), True, True)
   assert state is not None
   panel = rl.Rectangle(1360, 10, 790, 790)
   projected = project_route(route_local_points(state), panel)
 
   assert len(projected) == 3
-  scale = panel.width / 256
   assert projected[0].x == pytest.approx(panel.x + panel.width / 2)
-  assert projected[0].y == pytest.approx(panel.y + 192 * scale)
-  assert projected[1].y == pytest.approx(projected[0].y - 55.66 * scale, abs=1.0)
+  assert projected[0].y == pytest.approx(panel.y + panel.height * 0.82)
+  assert panel.y < projected[2].y < projected[1].y < projected[0].y
+
+
+def test_perspective_compresses_far_distance_and_width_toward_horizon():
+  panel = rl.Rectangle(1360, 10, 790, 790)
+  near_left = project_map_point(0, 192, panel)
+  far_left = project_map_point(0, 0, panel)
+  near_center = project_map_point(128, 192, panel)
+  far_center = project_map_point(128, 0, panel)
+
+  assert far_center.y < near_center.y
+  assert far_left.x > near_left.x
+  assert far_center.y > panel.y

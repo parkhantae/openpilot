@@ -17,14 +17,17 @@ PANEL_TOP = 10.0
 EARTH_RADIUS_M = 6_378_137.0
 MAX_ROUTE_DISTANCE_M = 1_200.0
 
-PANEL_COLOR = rl.Color(12, 18, 25, 224)
+PANEL_COLOR = rl.Color(12, 18, 25, 120)
 GRID_COLOR = rl.Color(70, 82, 94, 76)
 ROUTE_BORDER_COLOR = rl.Color(8, 13, 18, 245)
 ROUTE_COLOR = rl.Color(40, 142, 255, 255)
 VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
-MAP_SOURCE_TOP = 0.0
+MAP_EGO_Y = 192.0
+PERSPECTIVE_NEAR_Y = 0.82
+PERSPECTIVE_HORIZON_Y = 0.07
+PERSPECTIVE_DEPTH_M = 20.0
 
 
 @dataclass(frozen=True)
@@ -109,24 +112,32 @@ def route_local_points(state: SimpleMapState) -> tuple[LocalPoint, ...]:
   return tuple(result)
 
 
+def project_map_point(source_x: float, source_y: float, rect: rl.Rectangle) -> rl.Vector2:
+  """Project the one-meter map raster into a heading-up 3D road plane."""
+  forward_m = MAP_EGO_Y - source_y
+  if forward_m >= 0.0:
+    depth = forward_m / (forward_m + PERSPECTIVE_DEPTH_M)
+    screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y - (PERSPECTIVE_NEAR_Y - PERSPECTIVE_HORIZON_Y) * depth)
+    width_factor = 1.0 - 0.80 * depth
+  else:
+    screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y + 0.18 * min(1.0, -forward_m / 64.0))
+    width_factor = 1.0
+  scale = rect.width / MAP_SIZE * width_factor
+  return rl.Vector2(rect.x + rect.width * 0.5 + (source_x - MAP_SIZE * 0.5) * scale, screen_y)
+
+
 def project_route(points: tuple[LocalPoint, ...], rect: rl.Rectangle) -> tuple[rl.Vector2, ...]:
   if len(points) < 2:
     return ()
 
-  # mapsd renders at one meter per source pixel with ego at (128, 192).
-  # Use the identical transform so the blue route stays on top of the road raster.
-  scale = rect.width / MAP_SIZE
-  center_x = rect.x + rect.width * 0.5
-  vehicle_y = rect.y + (192.0 - MAP_SOURCE_TOP) * scale
-  return tuple(rl.Vector2(center_x + point.right_m * scale, vehicle_y - point.forward_m * scale) for point in points)
+  return tuple(project_map_point(MAP_SIZE * 0.5 + point.right_m, MAP_EGO_Y - point.forward_m, rect) for point in points)
 
 
 def _draw_grid(rect: rl.Rectangle) -> None:
-  for fraction in (0.25, 0.5, 0.75):
-    x = int(rect.x + rect.width * fraction)
-    y = int(rect.y + rect.height * fraction)
-    rl.draw_line(x, int(rect.y + 18), x, int(rect.y + rect.height - 18), GRID_COLOR)
-    rl.draw_line(int(rect.x + 18), y, int(rect.x + rect.width - 18), y, GRID_COLOR)
+  for source_x in (32.0, 80.0, 128.0, 176.0, 224.0):
+    rl.draw_line_v(project_map_point(source_x, 0.0, rect), project_map_point(source_x, 256.0, rect), GRID_COLOR)
+  for source_y in (0.0, 48.0, 96.0, 144.0, 192.0, 224.0):
+    rl.draw_line_v(project_map_point(0.0, source_y, rect), project_map_point(256.0, source_y, rect), GRID_COLOR)
 
 
 class RoadMapTexture:
@@ -157,11 +168,20 @@ class RoadMapTexture:
     if self._texture is None or not self._has_roads or not 0.0 <= now - self._updated_at < 1.0:
       return False
 
-    # The square panel displays the complete square raster without distortion.
-    # Ego remains three quarters down, leaving about 192 m visible ahead.
-    source_height = MAP_SIZE * rect.height / rect.width
-    source = rl.Rectangle(0.0, MAP_SOURCE_TOP, float(MAP_SIZE), source_height)
-    rl.draw_texture_pro(self._texture, source, rect, rl.Vector2(0.0, 0.0), 0.0, rl.Color(118, 132, 146, 255))
+    # Four-pixel strips approximate a trapezoidal perspective without adding a
+    # shader or GPU render target. Far roads narrow toward the upper vanishing point.
+    for source_y in range(0, MAP_SIZE, 4):
+      next_y = min(MAP_SIZE, source_y + 4)
+      middle_y = (source_y + next_y) * 0.5
+      left = project_map_point(0.0, middle_y, rect)
+      right = project_map_point(float(MAP_SIZE), middle_y, rect)
+      top = project_map_point(MAP_SIZE * 0.5, float(source_y), rect).y
+      bottom = project_map_point(MAP_SIZE * 0.5, float(next_y), rect).y
+      source = rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y))
+      destination = rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75))
+      rl.draw_texture_pro(
+        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(135, 150, 165, 165),
+      )
     return True
 
   def _upload(self, pixels: bytes) -> None:
@@ -179,15 +199,16 @@ class RoadMapTexture:
     self._client = None
 
 
-def _draw_route(points: tuple[rl.Vector2, ...]) -> None:
+def _draw_route(points: tuple[rl.Vector2, ...], rect: rl.Rectangle) -> None:
   for start, end in zip(points, points[1:], strict=False):
-    rl.draw_line_ex(start, end, 18.0, ROUTE_BORDER_COLOR)
-    rl.draw_line_ex(start, end, 10.0, ROUTE_COLOR)
+    depth = min(1.0, max(0.0, ((start.y + end.y) * 0.5 - rect.y) / rect.height))
+    rl.draw_line_ex(start, end, 7.0 + 13.0 * depth, ROUTE_BORDER_COLOR)
+    rl.draw_line_ex(start, end, 3.0 + 9.0 * depth, ROUTE_COLOR)
 
 
 def _draw_vehicle(rect: rl.Rectangle) -> None:
-  x = rect.x + rect.width * 0.5
-  y = rect.y + (192.0 - MAP_SOURCE_TOP) * rect.width / MAP_SIZE
+  vehicle = project_map_point(MAP_SIZE * 0.5, MAP_EGO_Y, rect)
+  x, y = vehicle.x, vehicle.y
   outer = (rl.Vector2(x, y - 22), rl.Vector2(x - 17, y + 20), rl.Vector2(x + 17, y + 20))
   inner = (rl.Vector2(x, y - 15), rl.Vector2(x - 11, y + 14), rl.Vector2(x + 11, y + 14))
   rl.draw_triangle(*outer, VEHICLE_BORDER_COLOR)
@@ -220,8 +241,8 @@ class CarrotNaviMapView:
       _draw_grid(panel)
     # Restore a translucent navy cast over the raster so the roads stay readable
     # without competing with the blue active route and the driving HUD.
-    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 82))
-    _draw_route(projected)
+    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 42))
+    _draw_route(projected, panel)
     _draw_vehicle(panel)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))
     rl.end_scissor_mode()

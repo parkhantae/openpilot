@@ -92,7 +92,7 @@ class TogglesLayout(Widget):
       ),
       "CarrotNaviOnroad": (
         lambda: "CarrotNavi Map",
-        "Show a square nearby-road and route map in the upper-right of the driving screen.",
+        "Show a square translucent 3D road and route map in the upper-right of the driving screen.",
         "carrot_web.png",
         False,
       ),
