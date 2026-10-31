@@ -11,9 +11,9 @@ from openpilot.selfdrive.carrot.carrot_navi_control import parse_carrot_navi_con
 
 
 PANEL_WIDTH = 790.0
-PANEL_HEIGHT = 360.0
+PANEL_HEIGHT = PANEL_WIDTH
 PANEL_RIGHT_MARGIN = 10.0
-PANEL_TOP = 170.0
+PANEL_TOP = 10.0
 EARTH_RADIUS_M = 6_378_137.0
 MAX_ROUTE_DISTANCE_M = 1_200.0
 
@@ -24,7 +24,7 @@ ROUTE_COLOR = rl.Color(40, 142, 255, 255)
 VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
-MAP_SOURCE_TOP = 100.0
+MAP_SOURCE_TOP = 0.0
 
 
 @dataclass(frozen=True)
@@ -157,8 +157,8 @@ class RoadMapTexture:
     if self._texture is None or not self._has_roads or not 0.0 <= now - self._updated_at < 1.0:
       return False
 
-    # Cover the wide panel without distortion. This crop keeps the ego at 78% height
-    # and shows roughly 90 m ahead, matching the route overlay's perspective.
+    # The square panel displays the complete square raster without distortion.
+    # Ego remains three quarters down, leaving about 192 m visible ahead.
     source_height = MAP_SIZE * rect.height / rect.width
     source = rl.Rectangle(0.0, MAP_SOURCE_TOP, float(MAP_SIZE), source_height)
     rl.draw_texture_pro(self._texture, source, rect, rl.Vector2(0.0, 0.0), 0.0, rl.Color(118, 132, 146, 255))

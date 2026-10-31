@@ -46,9 +46,9 @@ def test_panel_matches_lower_right_guidance_width_and_x():
   panel = carrot_navi_panel_rect(rl.Rectangle(0, 0, 2160, 1080))
 
   assert panel.x == 1360
-  assert panel.y == 170
+  assert panel.y == 10
   assert panel.width == 790
-  assert panel.height == 360
+  assert panel.height == 790
 
 
 def test_map_state_requires_live_connected_vehicle_and_route():
@@ -76,11 +76,11 @@ def test_route_is_rotated_heading_up(heading, point):
 def test_projected_route_uses_same_one_meter_scale_as_road_raster():
   state = map_state_from_carrot_navi(carrot_navi_message(), True, True)
   assert state is not None
-  panel = rl.Rectangle(1360, 170, 790, 360)
+  panel = rl.Rectangle(1360, 10, 790, 790)
   projected = project_route(route_local_points(state), panel)
 
   assert len(projected) == 3
   scale = panel.width / 256
   assert projected[0].x == pytest.approx(panel.x + panel.width / 2)
-  assert projected[0].y == pytest.approx(panel.y + (192 - 100) * scale)
+  assert projected[0].y == pytest.approx(panel.y + 192 * scale)
   assert projected[1].y == pytest.approx(projected[0].y - 55.66 * scale, abs=1.0)
