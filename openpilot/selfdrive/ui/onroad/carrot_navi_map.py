@@ -139,8 +139,8 @@ def project_map_point(source_x: float, source_y: float, rect: rl.Rectangle) -> r
       far = (depth - PERSPECTIVE_FAR_START) / (1.0 - PERSPECTIVE_FAR_START)
       depth += PERSPECTIVE_FAR_STRENGTH * far * far * (1.0 - depth)
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y - (PERSPECTIVE_NEAR_Y - PERSPECTIVE_HORIZON_Y) * depth)
-    # Fit every source row inside a mild trapezoid. The far edge narrows to
-    # 80%, but no map content is cropped because the complete row is scaled.
+    # Fit every source row inside the trapezoid. The far edge narrows to 60%,
+    # but no map content is cropped because the complete row is scaled.
     width_factor = 1.0 - (1.0 - PERSPECTIVE_TOP_WIDTH) * depth
   else:
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y + 0.18 * min(1.0, -forward_m / 64.0))

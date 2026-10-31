@@ -34,13 +34,19 @@ varying vec2 fragTexCoord;
 uniform sampler2D texture0;
 uniform sampler2D texture1;
 uniform sampler2D texture2;
+uniform float textureScaleX;
 uniform vec2 uvScaleU;
 uniform vec2 uvScaleV;
 void main() {
-  float width = mix(0.6, 1.0, fragTexCoord.y);
+  // The software decoder can expose a padded luma stride. Convert its texture
+  // coordinate back to a 0..1 visible-map coordinate before applying the
+  // perspective, otherwise the padded columns clip the far left/right edges.
+  vec2 displayCoord = vec2(fragTexCoord.x / textureScaleX, fragTexCoord.y);
+  float width = mix(0.6, 1.0, displayCoord.y);
   float left = (1.0 - width) * 0.5;
-  if (fragTexCoord.x < left || fragTexCoord.x > left + width) discard;
-  vec2 mapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
+  if (displayCoord.x < left || displayCoord.x > left + width) discard;
+  vec2 visibleMapCoord = vec2((displayCoord.x - left) / width, displayCoord.y);
+  vec2 mapCoord = vec2(visibleMapCoord.x * textureScaleX, visibleMapCoord.y);
   float y = 1.164383 * (texture2D(texture0, mapCoord).r - 0.062745);
   float u = texture2D(texture1, mapCoord * uvScaleU).r - 0.501961;
   float v = texture2D(texture2, mapCoord * uvScaleV).r - 0.501961;
@@ -97,6 +103,7 @@ class CachedNaviTexture:
   uv_scale_u: object | None = None
   uv_scale_v: object | None = None
   hardware_token: tuple[int, int] | None = None
+  texture_scale_x: object | None = None
 
 
 def map_frame_from_dashboard(dashboard) -> NaviMediaFrame | None:
@@ -238,6 +245,7 @@ class NaviMapTextureRenderer:
           self._new_plane_texture(v_stride, chroma_height, rl.TextureFilter.TEXTURE_FILTER_POINT),
           rl.ffi.new("float[]", [y_stride / (2.0 * u_stride), 1.0]),
           rl.ffi.new("float[]", [y_stride / (2.0 * v_stride), 1.0]),
+          texture_scale_x=rl.ffi.new("float[]", [width / y_stride]),
         )
       except Exception:
         if replacement is not cached and replacement is not None:
@@ -324,11 +332,15 @@ class NaviMapTextureRenderer:
       return
     if cached.u_texture is None or cached.v_texture is None:
       return
+    if cached.texture_scale_x is None:
+      return
     shader = self._get_yuv_shader()
     rl.begin_shader_mode(shader)
     try:
       rl.set_shader_value_texture(shader, self._yuv_locations["texture1"], cached.u_texture)
       rl.set_shader_value_texture(shader, self._yuv_locations["texture2"], cached.v_texture)
+      rl.set_shader_value(shader, self._yuv_locations["textureScaleX"], cached.texture_scale_x,
+                          rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
       rl.set_shader_value(shader, self._yuv_locations["uvScaleU"], cached.uv_scale_u,
                           rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
       rl.set_shader_value(shader, self._yuv_locations["uvScaleV"], cached.uv_scale_v,
@@ -344,7 +356,7 @@ class NaviMapTextureRenderer:
         raise RuntimeError("failed to load navigation YUV shader")
       self._yuv_locations = {
         name: rl.get_shader_location(self._yuv_shader, name)
-        for name in ("texture1", "texture2", "uvScaleU", "uvScaleV")
+        for name in ("texture1", "texture2", "textureScaleX", "uvScaleU", "uvScaleV")
       }
     return self._yuv_shader
 
