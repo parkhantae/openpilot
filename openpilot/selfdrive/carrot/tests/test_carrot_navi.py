@@ -139,7 +139,7 @@ def test_manifest_disables_only_cluster_unused_images():
   map_stream = next(stream for stream in manifest["streams"] if stream["kind"] == "render")
   assert map_stream["params"]["map_theme"] == "auto"
   assert map_stream["params"]["screen_center_y_ratio"] == 0.8
-  assert map_stream["params"]["tilt"] == 30.0
+  assert map_stream["params"]["tilt"] == 80.0
 
   invalid_requirements = requirements_query()
   invalid_requirements["catalog_revision"] = 2
