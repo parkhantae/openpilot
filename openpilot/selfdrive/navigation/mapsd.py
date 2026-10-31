@@ -95,7 +95,7 @@ def main():
               archive = MapboxTiles(mapbox_token) if mapbox_token else PMTiles(RemoteTiles())
               archive_created = now
               renderer = MapRenderer(archive)
-              ui_renderer = MapRenderer(archive, meters_per_pixel=2.0, forward_offset=128.0)
+              ui_renderer = MapRenderer(archive, meters_per_pixel=3.0, forward_offset=192.0)
               ui_renderer.roads = renderer.roads
             pose = tracker.update_pose(gps.longitude, gps.latitude, gps.speed * (now - gps.time))
             # Fetch only the current view; do not prefetch a whole country/route.

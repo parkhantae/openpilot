@@ -107,6 +107,9 @@ class TestRendering(unittest.TestCase):
     zoomed = project(points, Position(0, 0, 0), meters_per_pixel=2.0, forward_offset=128.0)
     np.testing.assert_allclose(zoomed, [[128, 192], [128, 160], [160, 192]], atol=1e-5)
 
+    farther = project(points, Position(0, 0, 0), meters_per_pixel=3.0, forward_offset=192.0)
+    np.testing.assert_allclose(farther, [[128, 192], [128, 170.6666667], [149.3333333, 192]], atol=1e-5)
+
   def test_strokes(self):
     image = np.zeros((SIZE, SIZE), dtype=np.uint8)
     draw_line(image, np.array([[-1000, 128], [1000, 128]]), 255, 8)
