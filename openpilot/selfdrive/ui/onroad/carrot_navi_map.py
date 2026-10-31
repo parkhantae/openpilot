@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import time
 from typing import Any
 
 import pyray as rl
@@ -22,6 +23,8 @@ ROUTE_BORDER_COLOR = rl.Color(8, 13, 18, 245)
 ROUTE_COLOR = rl.Color(40, 142, 255, 255)
 VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
+MAP_SIZE = 256
+MAP_SOURCE_TOP = 100.0
 
 
 @dataclass(frozen=True)
@@ -110,15 +113,11 @@ def project_route(points: tuple[LocalPoint, ...], rect: rl.Rectangle) -> tuple[r
   if len(points) < 2:
     return ()
 
-  pad_x = 54.0
-  pad_top = 38.0
-  vehicle_y = rect.y + rect.height * 0.78
-  usable_width = max(1.0, rect.width - 2.0 * pad_x)
-  usable_forward = max(1.0, vehicle_y - (rect.y + pad_top))
-  max_forward = max(80.0, max(point.forward_m for point in points))
-  max_side = max(30.0, max(abs(point.right_m) for point in points))
-  scale = min(usable_forward / max_forward, usable_width / (2.0 * max_side))
+  # mapsd renders at one meter per source pixel with ego at (128, 192).
+  # Use the identical transform so the blue route stays on top of the road raster.
+  scale = rect.width / MAP_SIZE
   center_x = rect.x + rect.width * 0.5
+  vehicle_y = rect.y + (192.0 - MAP_SOURCE_TOP) * scale
   return tuple(rl.Vector2(center_x + point.right_m * scale, vehicle_y - point.forward_m * scale) for point in points)
 
 
@@ -130,6 +129,56 @@ def _draw_grid(rect: rl.Rectangle) -> None:
     rl.draw_line(int(rect.x + 18), y, int(rect.x + rect.width - 18), y, GRID_COLOR)
 
 
+class RoadMapTexture:
+  """Nonblocking reader for mapsd's lightweight local road raster."""
+  def __init__(self) -> None:
+    self._client = None
+    self._texture = None
+    self._retry_at = 0.0
+    self._updated_at = 0.0
+    self._has_roads = False
+
+  def draw(self, rect: rl.Rectangle) -> bool:
+    now = time.monotonic()
+    if self._client is None:
+      from msgq.visionipc import VisionIpcClient, VisionStreamType
+      self._client = VisionIpcClient("mapsd", VisionStreamType.VISION_STREAM_MAP, True)
+    if not self._client.is_connected() and now >= self._retry_at:
+      self._client.connect(False)
+      self._retry_at = now + 1.0
+    if self._client.is_connected():
+      buffer = self._client.recv(0)
+      if buffer is not None and (buffer.width, buffer.height) == (MAP_SIZE, MAP_SIZE) and len(buffer.data) >= MAP_SIZE ** 2:
+        pixels = bytes(buffer.data[:MAP_SIZE ** 2])
+        self._has_roads = any(pixels)
+        self._updated_at = int(self._client.timestamp_eof) * 1e-9
+        self._upload(pixels)
+
+    if self._texture is None or not self._has_roads or not 0.0 <= now - self._updated_at < 1.0:
+      return False
+
+    # Cover the wide panel without distortion. This crop keeps the ego at 78% height
+    # and shows roughly 90 m ahead, matching the route overlay's perspective.
+    source_height = MAP_SIZE * rect.height / rect.width
+    source = rl.Rectangle(0.0, MAP_SOURCE_TOP, float(MAP_SIZE), source_height)
+    rl.draw_texture_pro(self._texture, source, rect, rl.Vector2(0.0, 0.0), 0.0, rl.Color(118, 132, 146, 255))
+    return True
+
+  def _upload(self, pixels: bytes) -> None:
+    if self._texture is None:
+      image = rl.Image(None, MAP_SIZE, MAP_SIZE, 1, rl.PixelFormat.PIXELFORMAT_UNCOMPRESSED_GRAYSCALE)
+      self._texture = rl.load_texture_from_image(image)
+      rl.set_texture_filter(self._texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+    data = rl.ffi.cast("void *", rl.ffi.from_buffer("const unsigned char[]", pixels))
+    rl.update_texture(self._texture, data)
+
+  def close(self) -> None:
+    if self._texture is not None:
+      rl.unload_texture(self._texture)
+      self._texture = None
+    self._client = None
+
+
 def _draw_route(points: tuple[rl.Vector2, ...]) -> None:
   for start, end in zip(points, points[1:], strict=False):
     rl.draw_line_ex(start, end, 18.0, ROUTE_BORDER_COLOR)
@@ -138,7 +187,7 @@ def _draw_route(points: tuple[rl.Vector2, ...]) -> None:
 
 def _draw_vehicle(rect: rl.Rectangle) -> None:
   x = rect.x + rect.width * 0.5
-  y = rect.y + rect.height * 0.78
+  y = rect.y + (192.0 - MAP_SOURCE_TOP) * rect.width / MAP_SIZE
   outer = (rl.Vector2(x, y - 22), rl.Vector2(x - 17, y + 20), rl.Vector2(x + 17, y + 20))
   inner = (rl.Vector2(x, y - 15), rl.Vector2(x - 11, y + 14), rl.Vector2(x + 11, y + 14))
   rl.draw_triangle(*outer, VEHICLE_BORDER_COLOR)
@@ -146,6 +195,9 @@ def _draw_vehicle(rect: rl.Rectangle) -> None:
 
 
 class CarrotNaviMapView:
+  def __init__(self) -> None:
+    self._road_map = RoadMapTexture()
+
   def render(self, content_rect: rl.Rectangle, enabled: bool, sm: Any) -> bool:
     if not enabled:
       return False
@@ -162,12 +214,23 @@ class CarrotNaviMapView:
     projected = project_route(route_local_points(state), panel)
     if len(projected) < 2:
       return False
+    rl.begin_scissor_mode(int(panel.x), int(panel.y), int(panel.width), int(panel.height))
     rl.draw_rectangle_rounded(panel, 0.08, 8, PANEL_COLOR)
-    _draw_grid(panel)
+    if not self._road_map.draw(panel):
+      _draw_grid(panel)
+    # Restore a translucent navy cast over the raster so the roads stay readable
+    # without competing with the blue active route and the driving HUD.
+    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 82))
     _draw_route(projected)
     _draw_vehicle(panel)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))
+    rl.end_scissor_mode()
+    # The road view owns a content scissor around us; restore it after using the
+    # tighter map clip because raylib's scissor state is not a stack.
+    rl.begin_scissor_mode(
+      int(content_rect.x), int(content_rect.y), int(content_rect.width), int(content_rect.height),
+    )
     return True
 
   def close(self) -> None:
-    pass
+    self._road_map.close()
