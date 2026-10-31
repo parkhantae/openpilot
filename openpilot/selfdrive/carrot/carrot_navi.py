@@ -322,7 +322,7 @@ def _stream_params(
     "map_theme": map_theme,
     "map_type": map_type,
     "zoom": 11.0,
-    "tilt": 50.0,
+    "tilt": 65.0,
     "bearing": 0.0,
     "follow_vehicle_bearing": True,
     "fov": 40.0,
