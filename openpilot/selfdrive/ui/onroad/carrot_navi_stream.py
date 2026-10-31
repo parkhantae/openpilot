@@ -37,7 +37,7 @@ uniform sampler2D texture2;
 uniform vec2 uvScaleU;
 uniform vec2 uvScaleV;
 void main() {
-  float width = mix(0.8, 1.0, fragTexCoord.y);
+  float width = mix(0.6, 1.0, fragTexCoord.y);
   float left = (1.0 - width) * 0.5;
   if (fragTexCoord.x < left || fragTexCoord.x > left + width) discard;
   vec2 mapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
@@ -75,7 +75,7 @@ in vec2 fragTexCoord;
 uniform samplerExternalOES texture0;
 out vec4 fragColor;
 void main() {
-  float width = mix(0.8, 1.0, fragTexCoord.y);
+  float width = mix(0.6, 1.0, fragTexCoord.y);
   float left = (1.0 - width) * 0.5;
   if (fragTexCoord.x < left || fragTexCoord.x > left + width) discard;
   vec2 mapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
@@ -123,7 +123,7 @@ class NaviMapTextureRenderer:
 
     source_w, source_h = map(float, cached.size)
     # Fit the complete phone map into the panel. H264 shaders compress complete
-    # rows into an 80%-to-100% trapezoid, so the far edge narrows without crop.
+    # rows into a 60%-to-100% trapezoid, so the far edge narrows without crop.
     source = rl.Rectangle(0.0, 0.0, source_w, source_h)
     rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
     self._draw_cached(cached, source, rect)

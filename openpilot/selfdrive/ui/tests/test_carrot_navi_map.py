@@ -100,7 +100,7 @@ def test_distance_compression_fits_complete_map_into_mild_trapezoid():
   assert far_center.y < near_center.y
   assert far_left.x > near_left.x
   assert near_left.x == pytest.approx(panel.x)
-  assert far_left.x == pytest.approx(panel.x + panel.width * 0.1)
+  assert far_left.x == pytest.approx(panel.x + panel.width * 0.2)
   assert far_center.y == pytest.approx(panel.y)
 
 
