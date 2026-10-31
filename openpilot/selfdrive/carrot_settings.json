@@ -519,7 +519,8 @@
           "params": [
             "ShowCustomBrightness",
             "ShowModelView",
-            "ShowCameraWithCluster"
+            "ShowCameraWithCluster",
+            "CarrotNaviOnroad"
           ]
         },
         {
@@ -4142,6 +4143,23 @@
       "max": 1,
       "default": 0,
       "unit": 1
+    },
+    {
+      "group": "화면",
+      "name": "CarrotNaviOnroad",
+      "title": "콤마 화면에 CarrotNavi 지도 표시",
+      "descr": "휴대폰 CarrotNavi가 보내는 지도를 콤마 주행 화면의 카메라 대신 표시합니다. 속도, 운전자 감시, 안전 경고는 계속 표시됩니다. 지도 연결이 없거나 영상이 멈추면 카메라 화면으로 자동 복귀합니다.",
+      "egroup": "DISPLAY",
+      "etitle": "Show CarrotNavi Map on comma",
+      "edescr": "Show the map streamed by CarrotNavi on the comma driving screen instead of the road camera. Speed, driver monitoring, and safety alerts remain visible. The road camera returns automatically when the map is disconnected or stalled.",
+      "cgroup": "显示",
+      "ctitle": "在 comma 屏幕上显示 CarrotNavi 地图",
+      "cdescr": "在 comma 行车画面中用 CarrotNavi 手机传输的地图替代道路摄像头。速度、驾驶员监控和安全警告仍会显示。地图断开或停滞时自动恢复道路摄像头。",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "unit": 1,
+      "control": "toggle"
     },
     {
       "group": "외부 HUD",
