@@ -31,7 +31,7 @@ MAX_ROUTE_DISTANCE_M = 1_200.0
 PANEL_COLOR = rl.Color(12, 18, 25, 70)
 GRID_COLOR = rl.Color(70, 82, 94, 76)
 ROUTE_BORDER_COLOR = rl.Color(8, 13, 18, 245)
-ROUTE_COLOR = rl.Color(20, 102, 255, 255)
+ROUTE_COLOR = rl.Color(0, 220, 80, 255)
 VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
@@ -240,7 +240,7 @@ def colorize_map(pixels: bytes) -> bytes:
   # mapsd draws the active route at intensity 128. Color that already-aligned
   # route instead of reprojecting phone coordinates against a snapped map pose.
   route = (gray >= 105) & (gray <= 175)
-  rgba[route] = (20, 102, 255, 255)
+  rgba[route] = (0, 220, 80, 255)
   return rgba.tobytes()
 
 

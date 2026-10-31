@@ -41,8 +41,8 @@ vec3 strengthenRoute(vec3 color) {
   float blueLead = color.b - max(color.r, color.g);
   float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
   float routeMask = smoothstep(0.08, 0.24, blueLead) * smoothstep(0.20, 0.50, saturation);
-  vec3 routeBlue = vec3(0.08, 0.40, 1.0);
-  return mix(color, routeBlue, routeMask * 0.95);
+  vec3 routeGreen = vec3(0.0, 0.86, 0.31);
+  return mix(color, routeGreen, routeMask * 0.95);
 }
 void main() {
   // The software decoder can expose a padded luma stride. Convert its texture
@@ -94,8 +94,8 @@ vec3 strengthenRoute(vec3 color) {
   float blueLead = color.b - max(color.r, color.g);
   float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
   float routeMask = smoothstep(0.08, 0.24, blueLead) * smoothstep(0.20, 0.50, saturation);
-  vec3 routeBlue = vec3(0.08, 0.40, 1.0);
-  return mix(color, routeBlue, routeMask * 0.95);
+  vec3 routeGreen = vec3(0.0, 0.86, 0.31);
+  return mix(color, routeGreen, routeMask * 0.95);
 }
 void main() {
   float width = mix(0.6, 1.0, fragTexCoord.y);
