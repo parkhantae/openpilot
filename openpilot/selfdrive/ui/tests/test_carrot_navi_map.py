@@ -103,6 +103,19 @@ def test_distance_compression_keeps_constant_map_width():
   assert far_center.y == pytest.approx(panel.y)
 
 
+def test_extra_perspective_only_changes_the_far_map():
+  panel = rl.Rectangle(1360, 10, 790, 760)
+  near = project_map_point(128, 180, panel)
+  far = project_map_point(128, 80, panel)
+
+  near_base_depth = (12 / (12 + 120)) / (192 / (192 + 120))
+  near_base_y = panel.y + panel.height * 0.82 * (1 - near_base_depth)
+  far_base_depth = (112 / (112 + 120)) / (192 / (192 + 120))
+  far_base_y = panel.y + panel.height * 0.82 * (1 - far_base_depth)
+  assert near.y == pytest.approx(near_base_y)
+  assert far.y < far_base_y
+
+
 def test_map_colorization_uses_aligned_raster_route_and_transparent_background():
   pixels = bytearray(256 * 256)
   pixels[1] = 128

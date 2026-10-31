@@ -13,7 +13,7 @@ from openpilot.selfdrive.navigation.renderer import SIZE, MapRenderer, Position
 from openpilot.selfdrive.navigation.route import RouteTracker, route_coordinates
 
 
-UI_METERS_PER_PIXEL = 700.0 / 192.0
+UI_METERS_PER_PIXEL = 800.0 / 192.0
 UI_FORWARD_OFFSET = 64.0 * UI_METERS_PER_PIXEL
 
 

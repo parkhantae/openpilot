@@ -36,10 +36,12 @@ VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
 MAP_EGO_Y = 192.0
-MAP_METERS_PER_PIXEL = 700.0 / MAP_EGO_Y
+MAP_METERS_PER_PIXEL = 800.0 / MAP_EGO_Y
 PERSPECTIVE_NEAR_Y = 0.82
 PERSPECTIVE_HORIZON_Y = 0.0
 PERSPECTIVE_DEPTH_M = 120.0
+PERSPECTIVE_FAR_START = 0.40
+PERSPECTIVE_FAR_STRENGTH = 1.0
 VALID_MAP_HOLD_S = 5.0
 
 
@@ -132,6 +134,9 @@ def project_map_point(source_x: float, source_y: float, rect: rl.Rectangle) -> r
     raw_depth = forward_m / (forward_m + PERSPECTIVE_DEPTH_M)
     raster_depth = MAP_EGO_Y / (MAP_EGO_Y + PERSPECTIVE_DEPTH_M)
     depth = min(1.0, raw_depth / raster_depth)
+    if depth > PERSPECTIVE_FAR_START:
+      far = (depth - PERSPECTIVE_FAR_START) / (1.0 - PERSPECTIVE_FAR_START)
+      depth += PERSPECTIVE_FAR_STRENGTH * far * far * (1.0 - depth)
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y - (PERSPECTIVE_NEAR_Y - PERSPECTIVE_HORIZON_Y) * depth)
     # Keep a constant width: distance is compressed vertically without a
     # trapezoidal near/far width change.

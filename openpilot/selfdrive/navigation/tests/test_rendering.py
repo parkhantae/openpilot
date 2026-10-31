@@ -118,6 +118,10 @@ class TestRendering(unittest.TestCase):
     seven_hundred = project(points, Position(0, 0, 0), seven_hundred_scale, 64.0 * seven_hundred_scale)
     np.testing.assert_allclose(seven_hundred, [[128, 192], [128, 174.4457143], [145.5542857, 192]], atol=1e-5)
 
+    eight_hundred_scale = 800.0 / 192.0
+    eight_hundred = project(points, Position(0, 0, 0), eight_hundred_scale, 64.0 * eight_hundred_scale)
+    np.testing.assert_allclose(eight_hundred, [[128, 192], [128, 176.64], [143.36, 192]], atol=1e-5)
+
   def test_strokes(self):
     image = np.zeros((SIZE, SIZE), dtype=np.uint8)
     draw_line(image, np.array([[-1000, 128], [1000, 128]]), 255, 8)
