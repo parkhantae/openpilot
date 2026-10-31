@@ -10,6 +10,7 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
   carrot_navi_panel_rect,
   colorize_map,
   map_state_from_carrot_navi,
+  phone_map_hold_active,
   project_map_point,
   project_route,
   route_local_points,
@@ -142,6 +143,13 @@ def test_phone_map_requires_connected_fresh_render_stream():
   dashboard.connected = True
   dashboard.map_stream_stalled = True
   assert map_frame_from_dashboard(dashboard) is None
+
+
+def test_phone_map_holds_last_frame_across_short_stream_stall():
+  assert phone_map_hold_active(100.0, 109.99)
+  assert phone_map_hold_active(100.0, 110.0)
+  assert not phone_map_hold_active(100.0, 110.01)
+  assert not phone_map_hold_active(0.0, 1.0)
 
 
 def test_yuv_perspective_normalizes_decoder_stride_before_narrowing_map():

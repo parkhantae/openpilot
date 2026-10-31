@@ -44,6 +44,7 @@ PERSPECTIVE_FAR_START = 0.40
 PERSPECTIVE_FAR_STRENGTH = 1.8
 PERSPECTIVE_TOP_WIDTH = 0.60
 VALID_MAP_HOLD_S = 5.0
+PHONE_MAP_HOLD_S = 10.0
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,10 @@ def carrot_navi_panel_rect(rect: rl.Rectangle) -> rl.Rectangle:
   width = max(1.0, rect.width - 2.0 * margin)
   height = max(1.0, rect.height * 0.28)
   return rl.Rectangle(rect.x + margin, rect.y + margin, width, height)
+
+
+def phone_map_hold_active(last_update_at: float, now: float) -> bool:
+  return last_update_at > 0.0 and 0.0 <= now - last_update_at <= PHONE_MAP_HOLD_S
 
 
 def map_state_from_carrot_navi(message: Any, alive: bool, valid: bool) -> SimpleMapState | None:
@@ -268,6 +273,7 @@ class CarrotNaviMapView:
     self._phone_renderer = NaviMapTextureRenderer()
     self._phone_stream_enabled = False
     self._phone_map_active = False
+    self._phone_map_updated_at = 0.0
 
   def _set_phone_map_active(self, active: bool) -> None:
     active = bool(active)
@@ -292,6 +298,7 @@ class CarrotNaviMapView:
         pass
     else:
       self._set_phone_map_active(False)
+      self._phone_map_updated_at = 0.0
       if self._phone_source is not None:
         self._phone_source.close()
         self._phone_source = None
@@ -309,14 +316,21 @@ class CarrotNaviMapView:
     if self._phone_source is not None:
       dashboard = self._phone_source.update(None)
       phone_frame = map_frame_from_dashboard(dashboard)
-      if phone_frame is not None:
+      now = time.monotonic()
+      if phone_frame is not None or phone_map_hold_active(self._phone_map_updated_at, now):
         rl.begin_scissor_mode(int(panel.x), int(panel.y), int(panel.width), int(panel.height))
-        rendered = self._phone_renderer.draw(phone_frame, panel)
+        rendered = (
+          self._phone_renderer.draw(phone_frame, panel)
+          if phone_frame is not None
+          else self._phone_renderer.draw_cached(panel)
+        )
         rl.end_scissor_mode()
         rl.begin_scissor_mode(
           int(content_rect.x), int(content_rect.y), int(content_rect.width), int(content_rect.height),
         )
         if rendered:
+          if phone_frame is not None:
+            self._phone_map_updated_at = now
           self._set_phone_map_active(True)
           rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 180))
           return True

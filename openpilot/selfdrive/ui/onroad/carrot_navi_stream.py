@@ -144,6 +144,13 @@ class NaviMapTextureRenderer:
 
   def draw(self, frame: NaviMediaFrame, rect: rl.Rectangle) -> bool:
     cached = self._texture_for(frame)
+    return self._draw_texture(cached, rect)
+
+  def draw_cached(self, rect: rl.Rectangle) -> bool:
+    """Keep the last decoded map visible across short stream stalls."""
+    return self._draw_texture(self._cached, rect)
+
+  def _draw_texture(self, cached: CachedNaviTexture | None, rect: rl.Rectangle) -> bool:
     if cached is None or cached.size[0] <= 0 or cached.size[1] <= 0:
       return False
 
