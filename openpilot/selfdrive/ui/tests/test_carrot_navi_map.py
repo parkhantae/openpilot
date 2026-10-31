@@ -87,7 +87,7 @@ def test_projected_route_uses_same_perspective_as_road_raster():
   assert panel.y < projected[2].y < projected[1].y < projected[0].y
 
 
-def test_perspective_compresses_far_distance_and_width_toward_horizon():
+def test_perspective_compresses_far_distance_and_fills_panel_width():
   panel = rl.Rectangle(1360, 10, 790, 760)
   near_left = project_map_point(0, 192, panel)
   far_left = project_map_point(0, 0, panel)
@@ -95,5 +95,5 @@ def test_perspective_compresses_far_distance_and_width_toward_horizon():
   far_center = project_map_point(128, 0, panel)
 
   assert far_center.y < near_center.y
-  assert far_left.x > near_left.x
-  assert far_center.y > panel.y
+  assert far_left.x == pytest.approx(near_left.x)
+  assert far_center.y == pytest.approx(panel.y)

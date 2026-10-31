@@ -26,8 +26,9 @@ VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
 MAP_EGO_Y = 192.0
 PERSPECTIVE_NEAR_Y = 0.82
-PERSPECTIVE_HORIZON_Y = 0.07
+PERSPECTIVE_HORIZON_Y = 0.0
 PERSPECTIVE_DEPTH_M = 20.0
+VALID_MAP_HOLD_S = 5.0
 
 
 @dataclass(frozen=True)
@@ -116,9 +117,13 @@ def project_map_point(source_x: float, source_y: float, rect: rl.Rectangle) -> r
   """Project the one-meter map raster into a heading-up 3D road plane."""
   forward_m = MAP_EGO_Y - source_y
   if forward_m >= 0.0:
-    depth = forward_m / (forward_m + PERSPECTIVE_DEPTH_M)
+    raw_depth = forward_m / (forward_m + PERSPECTIVE_DEPTH_M)
+    raster_depth = MAP_EGO_Y / (MAP_EGO_Y + PERSPECTIVE_DEPTH_M)
+    depth = min(1.0, raw_depth / raster_depth)
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y - (PERSPECTIVE_NEAR_Y - PERSPECTIVE_HORIZON_Y) * depth)
-    width_factor = 1.0 - 0.80 * depth
+    # Keep every horizontal raster strip edge-to-edge. Vertical compression
+    # supplies the 3D distance cue without leaving empty wedges in the panel.
+    width_factor = 1.0
   else:
     screen_y = rect.y + rect.height * (PERSPECTIVE_NEAR_Y + 0.18 * min(1.0, -forward_m / 64.0))
     width_factor = 1.0
@@ -161,15 +166,18 @@ class RoadMapTexture:
       buffer = self._client.recv(0)
       if buffer is not None and (buffer.width, buffer.height) == (MAP_SIZE, MAP_SIZE) and len(buffer.data) >= MAP_SIZE ** 2:
         pixels = bytes(buffer.data[:MAP_SIZE ** 2])
-        self._has_roads = any(pixels)
-        self._updated_at = int(self._client.timestamp_eof) * 1e-9
-        self._upload(pixels)
+        # mapsd deliberately sends black while a tile/instruction update is in
+        # flight. Retain the last valid frame instead of flashing to fallback.
+        if any(pixels):
+          self._has_roads = True
+          self._updated_at = int(self._client.timestamp_eof) * 1e-9
+          self._upload(pixels)
 
-    if self._texture is None or not self._has_roads or not 0.0 <= now - self._updated_at < 1.0:
+    if self._texture is None or not self._has_roads or not 0.0 <= now - self._updated_at < VALID_MAP_HOLD_S:
       return False
 
-    # Four-pixel strips approximate a trapezoidal perspective without adding a
-    # shader or GPU render target. Far roads narrow toward the upper vanishing point.
+    # Four-pixel strips approximate vertical road-plane perspective without
+    # adding a shader or GPU render target.
     for source_y in range(0, MAP_SIZE, 4):
       next_y = min(MAP_SIZE, source_y + 4)
       middle_y = (source_y + next_y) * 0.5
