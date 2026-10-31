@@ -42,17 +42,21 @@ def main():
   server = VisionIpcServer('mapsd')
   server.create_buffers_with_sizes(VisionStreamType.VISION_STREAM_MAP, 4, SIZE, SIZE, SIZE * SIZE, SIZE, SIZE * SIZE)
   server.start_listener()
+  ui_server = VisionIpcServer('mapsd_ui')
+  ui_server.create_buffers_with_sizes(VisionStreamType.VISION_STREAM_MAP, 4, SIZE, SIZE, SIZE * SIZE, SIZE, SIZE * SIZE)
+  ui_server.start_listener()
   params = Params()
   demand_checked, demand = 0., False
   mapbox_token = ''
   archive_created = 0.
   diagnostics = RuntimeDiagnostics('mapsd', cloudlog.event, interval=5.)
   rk = Ratekeeper(10., print_delay_threshold=None)
-  route, tracker, archive, renderer = np.empty((0, 2)), None, None, None
+  route, tracker, archive, renderer, ui_renderer = np.empty((0, 2)), None, None, None, None
   retry_at = next_render = next_preview = 0.
   was_ready = False
   route_id = 0
   image = np.zeros((SIZE, SIZE), np.uint8)
+  ui_image = np.zeros((SIZE, SIZE), np.uint8)
   try:
     while True:
       sm.update(0)
@@ -74,7 +78,7 @@ def main():
         if token != mapbox_token or (archive is not None and now - archive_created >= 3600):
           if archive is not None:
             archive.close()
-          archive = renderer = None
+          archive = renderer = ui_renderer = None
           retry_at = next_render = 0.
           mapbox_token = token
         demand_checked = now + 1.
@@ -82,6 +86,7 @@ def main():
       if now >= next_render or (was_ready and not ready):
         started, cpu_started = time.monotonic(), time.process_time()
         image.fill(0)
+        ui_image.fill(0)
         valid = False
         reason = 'idle' if not demand else 'route' if tracker is None else 'position' if gps is None else 'instruction' if not fresh_tbt else 'tiles'
         try:
@@ -90,24 +95,30 @@ def main():
               archive = MapboxTiles(mapbox_token) if mapbox_token else PMTiles(RemoteTiles())
               archive_created = now
               renderer = MapRenderer(archive)
+              ui_renderer = MapRenderer(archive, meters_per_pixel=2.0, forward_offset=128.0)
+              ui_renderer.roads = renderer.roads
             pose = tracker.update_pose(gps.longitude, gps.latitude, gps.speed * (now - gps.time))
             # Fetch only the current view; do not prefetch a whole country/route.
             if pose is not None:
               lon, lat, bearing = pose
             result = renderer.render(Position(lat, lon, bearing), route) if pose is not None else None
+            ui_result = ui_renderer.render(Position(lat, lon, bearing), route) if pose is not None and ui_renderer is not None else None
             valid = result is not None and result.valid
             reason = 'ready' if valid else 'route_position' if pose is None else 'tiles'
             if valid:
               image = result.image
+            if ui_result is not None and ui_result.valid:
+              ui_image = ui_result.image
         except (OSError, ValueError, RuntimeError):
           cloudlog.warning('mapsd: map unavailable; retry in 30 seconds')
           if archive is not None:
             archive.close()
-          archive = renderer = None
+          archive = renderer = ui_renderer = None
           retry_at = time.monotonic() + 30.
         finished = time.monotonic()
         if finished - started >= .5:
           image.fill(0)
+          ui_image.fill(0)
           valid = False
           reason = 'slow'
         cpu = time.process_time() - cpu_started
@@ -115,6 +126,8 @@ def main():
         # Timestamp at render START prevents a slow tile request looking fresh.
         server.send(VisionStreamType.VISION_STREAM_MAP, image.tobytes(), rk.frame,
                     route_id, int(started * 1e9))
+        ui_server.send(VisionStreamType.VISION_STREAM_MAP, ui_image.tobytes(), rk.frame,
+                       route_id, int(started * 1e9))
         if finished >= next_preview:
           write_preview(image, reason=reason)
           next_preview = finished + .5

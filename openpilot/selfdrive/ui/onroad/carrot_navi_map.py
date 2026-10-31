@@ -17,7 +17,7 @@ GUIDANCE_TOP_FROM_BOTTOM = 310.0
 EARTH_RADIUS_M = 6_378_137.0
 MAX_ROUTE_DISTANCE_M = 1_200.0
 
-PANEL_COLOR = rl.Color(12, 18, 25, 90)
+PANEL_COLOR = rl.Color(12, 18, 25, 70)
 GRID_COLOR = rl.Color(70, 82, 94, 76)
 ROUTE_BORDER_COLOR = rl.Color(8, 13, 18, 245)
 ROUTE_COLOR = rl.Color(64, 180, 255, 255)
@@ -25,6 +25,7 @@ VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
 MAP_EGO_Y = 192.0
+MAP_METERS_PER_PIXEL = 2.0
 PERSPECTIVE_NEAR_Y = 0.82
 PERSPECTIVE_HORIZON_Y = 0.0
 PERSPECTIVE_DEPTH_M = 120.0
@@ -135,7 +136,11 @@ def project_route(points: tuple[LocalPoint, ...], rect: rl.Rectangle) -> tuple[r
   if len(points) < 2:
     return ()
 
-  return tuple(project_map_point(MAP_SIZE * 0.5 + point.right_m, MAP_EGO_Y - point.forward_m, rect) for point in points)
+  return tuple(project_map_point(
+    MAP_SIZE * 0.5 + point.right_m / MAP_METERS_PER_PIXEL,
+    MAP_EGO_Y - point.forward_m / MAP_METERS_PER_PIXEL,
+    rect,
+  ) for point in points)
 
 
 def _draw_grid(rect: rl.Rectangle) -> None:
@@ -158,7 +163,7 @@ class RoadMapTexture:
     now = time.monotonic()
     if self._client is None:
       from msgq.visionipc import VisionIpcClient, VisionStreamType
-      self._client = VisionIpcClient("mapsd", VisionStreamType.VISION_STREAM_MAP, True)
+      self._client = VisionIpcClient("mapsd_ui", VisionStreamType.VISION_STREAM_MAP, True)
     if not self._client.is_connected() and now >= self._retry_at:
       self._client.connect(False)
       self._retry_at = now + 1.0
@@ -188,7 +193,7 @@ class RoadMapTexture:
       source = rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y))
       destination = rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75))
       rl.draw_texture_pro(
-        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(220, 232, 245, 170),
+        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(225, 235, 248, 145),
       )
     return True
 
@@ -249,7 +254,7 @@ class CarrotNaviMapView:
       _draw_grid(panel)
     # Restore a translucent navy cast over the raster so the roads stay readable
     # without competing with the blue active route and the driving HUD.
-    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 15))
+    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 10))
     _draw_route(projected, panel)
     _draw_vehicle(panel)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))

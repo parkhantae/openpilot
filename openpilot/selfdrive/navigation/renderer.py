@@ -117,7 +117,8 @@ def mercator(coordinates: np.ndarray) -> np.ndarray:
   return np.column_stack(((longitude + 180.0) / 360.0, y))
 
 
-def project(points: np.ndarray, position: Position) -> np.ndarray:
+def project(points: np.ndarray, position: Position, meters_per_pixel: float = METERS_PER_PIXEL,
+            forward_offset: float = FORWARD_OFFSET) -> np.ndarray:
   origin = mercator(np.array([[position.longitude, position.latitude]]))[0]
   delta = points - origin
   delta[:, 0] = (delta[:, 0] + 0.5) % 1.0 - 0.5  # wrap across the antimeridian
@@ -126,8 +127,8 @@ def project(points: np.ndarray, position: Position) -> np.ndarray:
   angle = math.radians(position.bearing)
   right = east * math.cos(angle) - north * math.sin(angle)
   forward = east * math.sin(angle) + north * math.cos(angle)
-  return np.column_stack((SIZE / 2 + right / METERS_PER_PIXEL,
-                          SIZE / 2 - (forward - FORWARD_OFFSET) / METERS_PER_PIXEL))
+  return np.column_stack((SIZE / 2 + right / meters_per_pixel,
+                          SIZE / 2 - (forward - forward_offset) / meters_per_pixel))
 
 
 def draw_segments(image: np.ndarray, starts: np.ndarray, ends: np.ndarray, radii: np.ndarray | float, intensity: int,
@@ -195,8 +196,13 @@ def draw_vehicle(image: np.ndarray, center: np.ndarray):
 
 
 class MapRenderer:
-  def __init__(self, archive: PMTiles):
+  def __init__(self, archive: PMTiles, meters_per_pixel: float = METERS_PER_PIXEL,
+               forward_offset: float = FORWARD_OFFSET):
+    if not math.isfinite(meters_per_pixel) or meters_per_pixel <= 0:
+      raise ValueError("meters_per_pixel must be positive")
     self.archive = archive
+    self.meters_per_pixel = meters_per_pixel
+    self.forward_offset = forward_offset
     self.zoom = min(max(ZOOM, archive.min_zoom), archive.max_zoom)
     self.roads = lru_cache(maxsize=128)(self._load_roads)
 
@@ -227,7 +233,8 @@ class MapRenderer:
     """Tiles covering the view at a point for every heading, and whether the view stays within the map."""
     origin = mercator(np.array([[longitude, latitude]]))[0]
     # A bounding circle includes all headings, forward offset and road stroke widths.
-    radius = (SIZE * METERS_PER_PIXEL / math.sqrt(2) + FORWARD_OFFSET + 16) / (EARTH_CIRCUMFERENCE * math.cos(math.radians(latitude)))
+    radius = (SIZE * self.meters_per_pixel / math.sqrt(2) + self.forward_offset + 16) / (
+      EARTH_CIRCUMFERENCE * math.cos(math.radians(latitude)))
     count = 1 << self.zoom
     low = np.floor((origin - radius) * count).astype(int)
     high = np.floor((origin + radius) * count).astype(int)
@@ -256,17 +263,18 @@ class MapRenderer:
     complete = complete and len(tiles) == len(loaded)
     # The training renderer's latitude-dependent style zoom: the web mercator zoom with METERS_PER_PIXEL
     # at this latitude, under the 512-pixel tile convention. Tile zoom and style zoom are independent.
-    style_zoom = math.log2(math.cos(math.radians(position.latitude)) * EARTH_CIRCUMFERENCE / (256 * METERS_PER_PIXEL)) - 1
-    ego = np.array([SIZE / 2, SIZE / 2 + FORWARD_OFFSET / METERS_PER_PIXEL])
+    style_zoom = math.log2(math.cos(math.radians(position.latitude)) * EARTH_CIRCUMFERENCE / (256 * self.meters_per_pixel)) - 1
+    ego = np.array([SIZE / 2, SIZE / 2 + self.forward_offset / self.meters_per_pixel])
     road_distance = math.inf
     if tiles:
       starts, ends, styles, levels, caps = (np.concatenate(column) for column in zip(*tiles, strict=True))
-      starts, ends = project(starts, position), project(ends, position)
+      starts = project(starts, position, self.meters_per_pixel, self.forward_offset)
+      ends = project(ends, position, self.meters_per_pixel, self.forward_offset)
       # Tunnels are drawn at their interior width; everywhere else the white casing widens the stroke.
       table = np.array([[interpolate_width(style_zoom, *style.interior), interpolate_width(style_zoom, *style.casing)]
                         for style in STYLES])
       widths = table[styles, 0] + np.where(levels < 0, 0, 2 * table[styles, 1])
-      road_distance = nearest_distance(ego, starts, ends) * METERS_PER_PIXEL
+      road_distance = nearest_distance(ego, starts, ends) * self.meters_per_pixel
       for level in np.unique(levels):
         chosen = levels == level
         if level > levels.min():
@@ -276,7 +284,8 @@ class MapRenderer:
         draw_segments(image, starts[chosen], ends[chosen], widths[chosen] / 2, ROAD_INTENSITY)
     route_present = route is not None and len(route) >= 2
     if route_present:
-      draw_line(image, project(mercator(route), position), ROUTE_INTENSITY, ROUTE_WIDTH, overlay=True)
+      draw_line(image, project(mercator(route), position, self.meters_per_pixel, self.forward_offset),
+                ROUTE_INTENSITY, ROUTE_WIDTH, overlay=True)
     draw_vehicle(image, ego)
     return RenderResult(image, complete, route_present, road_distance)
 
