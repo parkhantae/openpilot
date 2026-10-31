@@ -153,7 +153,7 @@ def test_yuv_perspective_normalizes_decoder_stride_before_narrowing_map():
 def test_phone_map_perspective_fills_side_wedges_with_map(shader):
   assert ") discard;" not in shader
   assert "insidePerspective ? perspectiveMapCoord" in shader
-  assert "0.82" in shader
+  assert "0.82" not in shader
   assert "strengthenRoute" in shader
 
 

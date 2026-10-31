@@ -65,8 +65,7 @@ void main() {
     y - 0.391762 * u - 0.812968 * v,
     y + 2.017232 * u
   );
-  float brightness = insidePerspective ? 1.0 : 0.82;
-  gl_FragColor = vec4(strengthenRoute(clamp(rgb, 0.0, 1.0)) * brightness, 1.0);
+  gl_FragColor = vec4(strengthenRoute(clamp(rgb, 0.0, 1.0)), 1.0);
 }
 """
 
@@ -106,7 +105,6 @@ void main() {
   vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
   fragColor = texture(texture0, mapCoord);
   fragColor.rgb = strengthenRoute(fragColor.rgb);
-  if (!insidePerspective) fragColor.rgb *= 0.82;
 }
 """
 
@@ -151,7 +149,7 @@ class NaviMapTextureRenderer:
 
     source_w, source_h = map(float, cached.size)
     # Fit the complete phone map into the panel. H264 shaders compress complete
-    # rows into a 60%-to-100% center trapezoid and retain a dim side-map fill.
+    # rows into a 60%-to-100% center trapezoid and fill both sides at full brightness.
     source = rl.Rectangle(0.0, 0.0, source_w, source_h)
     rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
     self._draw_cached(cached, source, rect)
