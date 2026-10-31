@@ -14,7 +14,11 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
   project_route,
   route_local_points,
 )
-from openpilot.selfdrive.ui.onroad.carrot_navi_stream import NAVI_YUV_FRAGMENT_SHADER, map_frame_from_dashboard
+from openpilot.selfdrive.ui.onroad.carrot_navi_stream import (
+  NAVI_EXTERNAL_FRAGMENT_SHADER,
+  NAVI_YUV_FRAGMENT_SHADER,
+  map_frame_from_dashboard,
+)
 
 
 def meta(present=True, sequence=1):
@@ -143,6 +147,14 @@ def test_phone_map_requires_connected_fresh_render_stream():
 def test_yuv_perspective_normalizes_decoder_stride_before_narrowing_map():
   assert "fragTexCoord.x / textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
   assert "visibleMapCoord.x * textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
+
+
+@pytest.mark.parametrize("shader", (NAVI_YUV_FRAGMENT_SHADER, NAVI_EXTERNAL_FRAGMENT_SHADER))
+def test_phone_map_perspective_fills_side_wedges_with_map(shader):
+  assert ") discard;" not in shader
+  assert "insidePerspective ? perspectiveMapCoord" in shader
+  assert "0.82" in shader
+  assert "strengthenRoute" in shader
 
 
 def test_phone_map_activity_param_is_only_written_on_transition():

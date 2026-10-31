@@ -37,6 +37,13 @@ uniform sampler2D texture2;
 uniform float textureScaleX;
 uniform vec2 uvScaleU;
 uniform vec2 uvScaleV;
+vec3 strengthenRoute(vec3 color) {
+  float blueLead = color.b - max(color.r, color.g);
+  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+  float routeMask = smoothstep(0.08, 0.24, blueLead) * smoothstep(0.20, 0.50, saturation);
+  vec3 strongerBlue = vec3(color.r * 0.45, color.g * 0.88, min(1.0, color.b * 1.15));
+  return mix(color, strongerBlue, routeMask * 0.78);
+}
 void main() {
   // The software decoder can expose a padded luma stride. Convert its texture
   // coordinate back to a 0..1 visible-map coordinate before applying the
@@ -44,8 +51,11 @@ void main() {
   vec2 displayCoord = vec2(fragTexCoord.x / textureScaleX, fragTexCoord.y);
   float width = mix(0.6, 1.0, displayCoord.y);
   float left = (1.0 - width) * 0.5;
-  if (displayCoord.x < left || displayCoord.x > left + width) discard;
-  vec2 visibleMapCoord = vec2((displayCoord.x - left) / width, displayCoord.y);
+  bool insidePerspective = displayCoord.x >= left && displayCoord.x <= left + width;
+  // Keep the original side map in the wedges instead of discarding it. The
+  // central region still contains the complete map compressed to 60% at top.
+  vec2 perspectiveMapCoord = vec2((displayCoord.x - left) / width, displayCoord.y);
+  vec2 visibleMapCoord = insidePerspective ? perspectiveMapCoord : displayCoord;
   vec2 mapCoord = vec2(visibleMapCoord.x * textureScaleX, visibleMapCoord.y);
   float y = 1.164383 * (texture2D(texture0, mapCoord).r - 0.062745);
   float u = texture2D(texture1, mapCoord * uvScaleU).r - 0.501961;
@@ -55,7 +65,8 @@ void main() {
     y - 0.391762 * u - 0.812968 * v,
     y + 2.017232 * u
   );
-  gl_FragColor = vec4(clamp(rgb, 0.0, 1.0), 1.0);
+  float brightness = insidePerspective ? 1.0 : 0.82;
+  gl_FragColor = vec4(strengthenRoute(clamp(rgb, 0.0, 1.0)) * brightness, 1.0);
 }
 """
 
@@ -80,12 +91,22 @@ precision mediump float;
 in vec2 fragTexCoord;
 uniform samplerExternalOES texture0;
 out vec4 fragColor;
+vec3 strengthenRoute(vec3 color) {
+  float blueLead = color.b - max(color.r, color.g);
+  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+  float routeMask = smoothstep(0.08, 0.24, blueLead) * smoothstep(0.20, 0.50, saturation);
+  vec3 strongerBlue = vec3(color.r * 0.45, color.g * 0.88, min(1.0, color.b * 1.15));
+  return mix(color, strongerBlue, routeMask * 0.78);
+}
 void main() {
   float width = mix(0.6, 1.0, fragTexCoord.y);
   float left = (1.0 - width) * 0.5;
-  if (fragTexCoord.x < left || fragTexCoord.x > left + width) discard;
-  vec2 mapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
+  bool insidePerspective = fragTexCoord.x >= left && fragTexCoord.x <= left + width;
+  vec2 perspectiveMapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
+  vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
   fragColor = texture(texture0, mapCoord);
+  fragColor.rgb = strengthenRoute(fragColor.rgb);
+  if (!insidePerspective) fragColor.rgb *= 0.82;
 }
 """
 
@@ -130,7 +151,7 @@ class NaviMapTextureRenderer:
 
     source_w, source_h = map(float, cached.size)
     # Fit the complete phone map into the panel. H264 shaders compress complete
-    # rows into a 60%-to-100% trapezoid, so the far edge narrows without crop.
+    # rows into a 60%-to-100% center trapezoid and retain a dim side-map fill.
     source = rl.Rectangle(0.0, 0.0, source_w, source_h)
     rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
     self._draw_cached(cached, source, rect)
