@@ -126,12 +126,7 @@ class AugmentedRoadView(CameraView):
     )
 
     _t = time.monotonic()
-    showing_carrot_navi = timing.call(
-      'carrot_navi_map', self._carrot_navi_map.render, self._content_rect, self._show_carrot_navi_map,
-    )
-    if showing_carrot_navi:
-      pass
-    elif self._suppress_camera_for_cluster:
+    if self._suppress_camera_for_cluster:
       rl.draw_rectangle_rec(self._content_rect, rl.BLACK)
     else:
       # Render the base camera view
@@ -141,11 +136,13 @@ class AugmentedRoadView(CameraView):
     self._overlay_state.update(ui_state, self.client, self.stream_type, self._suppress_camera_for_cluster)
 
     if not self._suppress_camera_for_cluster:
-      if not showing_carrot_navi:
-        # Draw the model overlay only with the camera view
-        _t = time.monotonic()
-        timing.call('model', self.model_renderer.render, self._content_rect)
-        model_ms = (time.monotonic() - _t) * 1000.0
+      # Draw the model overlay only with the camera view
+      _t = time.monotonic()
+      timing.call('model', self.model_renderer.render, self._content_rect)
+      model_ms = (time.monotonic() - _t) * 1000.0
+      timing.call(
+        'carrot_navi_map', self._carrot_navi_map.render, self._content_rect, self._show_carrot_navi_map, ui_state.sm,
+      )
     _t = time.monotonic()
     timing.call('hud', self._hud_renderer.render, self._content_rect)  # includes plot when enabled
     hud_ms = (time.monotonic() - _t) * 1000.0

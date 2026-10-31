@@ -92,7 +92,7 @@ class TogglesLayout(Widget):
       ),
       "CarrotNaviOnroad": (
         lambda: "CarrotNavi Map",
-        "Show the phone map on the driving screen. Speed, driver monitoring, and safety alerts remain visible.",
+        "Show a compact, simplified route map in the upper-right of the driving screen.",
         "carrot_web.png",
         False,
       ),

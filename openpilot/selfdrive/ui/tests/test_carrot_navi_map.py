@@ -1,79 +1,84 @@
-from dataclasses import replace
+from types import SimpleNamespace
 
+import pytest
 import pyray as rl
 
-from openpilot.selfdrive.carrot.cluster.cluster_models import NaviDashboardState, NaviMediaFrame
-from openpilot.selfdrive.ui.onroad.carrot_navi_map import CarrotNaviMapView, map_frame_from_dashboard
+from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
+  GeoPoint,
+  SimpleMapState,
+  carrot_navi_panel_rect,
+  map_state_from_carrot_navi,
+  project_route,
+  route_local_points,
+)
 
 
-def test_map_frame_requires_connected_fresh_dashboard():
-  frame = NaviMediaFrame("render:map_main", 7, True, "image/rgba", 1, 1, b"rgba")
-  connected = NaviDashboardState(True, "ipc://carrotNaviMedia", media=(frame,))
-
-  assert map_frame_from_dashboard(connected) is frame
-  assert map_frame_from_dashboard(replace(connected, connected=False)) is None
-  assert map_frame_from_dashboard(replace(connected, map_stream_stalled=True)) is None
+def meta(present=True, sequence=1):
+  return SimpleNamespace(present=present, sequence=sequence)
 
 
-def test_map_view_decodes_only_when_setting_is_enabled():
-  frame = NaviMediaFrame("render:map_main", 8, True, "image/rgba", 1, 1, b"rgba")
-  dashboard = NaviDashboardState(True, "ipc://carrotNaviMedia", media=(frame,))
+def carrot_navi_message(*, connected=True):
+  return SimpleNamespace(
+    schemaVersion=1,
+    connected=connected,
+    sessionId="test",
+    vehicle=SimpleNamespace(
+      meta=meta(), latitude=37.5, longitude=127.0, headingDeg=0.0, speedKph=30.0, roadName="",
+    ),
+    route=SimpleNamespace(
+      meta=meta(), remainingDistanceM=500, remainingTimeSec=60,
+      polyline=(
+        SimpleNamespace(latitude=37.5, longitude=127.0),
+        SimpleNamespace(latitude=37.5005, longitude=127.0),
+        SimpleNamespace(latitude=37.5010, longitude=127.0003),
+      ),
+    ),
+    navigationStatus=SimpleNamespace(meta=meta(False)),
+    speed=SimpleNamespace(meta=meta(False)),
+    guidanceCurrent=SimpleNamespace(meta=meta(False)),
+    guidanceNext=SimpleNamespace(meta=meta(False)),
+    trafficSignal=SimpleNamespace(meta=meta(False)),
+    laneCurrent=SimpleNamespace(meta=meta(False)),
+  )
 
-  class FakeSource:
-    def __init__(self, *, decode_media):
-      self.decode_media = decode_media
-      self.transitions = []
-      self.closed = False
 
-    def set_decode_media(self, enabled):
-      self.decode_media = enabled
-      self.transitions.append(enabled)
+def test_panel_matches_lower_right_guidance_width_and_x():
+  panel = carrot_navi_panel_rect(rl.Rectangle(0, 0, 2160, 1080))
 
-    def update(self, _navi):
-      return dashboard
+  assert panel.x == 1360
+  assert panel.y == 170
+  assert panel.width == 790
+  assert panel.height == 360
 
-    def close(self):
-      self.closed = True
 
-  class FakeRenderer:
-    def __init__(self):
-      self.frames = []
-      self.closed = False
+def test_map_state_requires_live_connected_vehicle_and_route():
+  state = map_state_from_carrot_navi(carrot_navi_message(), True, True)
 
-    def draw(self, drawn_frame, rect):
-      self.frames.append((drawn_frame, rect))
-      return True
+  assert state is not None
+  assert state.vehicle == GeoPoint(37.5, 127.0)
+  assert len(state.route) == 3
+  assert map_state_from_carrot_navi(carrot_navi_message(), False, True) is None
+  assert map_state_from_carrot_navi(carrot_navi_message(connected=False), True, True) is None
 
-    def close(self):
-      self.closed = True
 
-  source = None
-  renderer = None
+@pytest.mark.parametrize(
+  ("heading", "point"),
+  ((0.0, GeoPoint(37.501, 127.0)), (90.0, GeoPoint(37.5, 127.001))),
+)
+def test_route_is_rotated_heading_up(heading, point):
+  state = SimpleMapState(GeoPoint(37.5, 127.0), heading, (GeoPoint(37.5, 127.0), point))
+  local = route_local_points(state)
 
-  def source_factory(**kwargs):
-    nonlocal source
-    source = FakeSource(**kwargs)
-    return source
+  assert local[-1].forward_m > 80
+  assert local[-1].right_m == pytest.approx(0.0, abs=0.01)
 
-  def renderer_factory():
-    nonlocal renderer
-    renderer = FakeRenderer()
-    return renderer
 
-  bootstrap_requests = []
-  view = CarrotNaviMapView(source_factory, renderer_factory, lambda: bootstrap_requests.append(True))
-  rect = rl.Rectangle(0, 0, 2160, 1080)
+def test_projected_route_stays_inside_panel():
+  state = map_state_from_carrot_navi(carrot_navi_message(), True, True)
+  assert state is not None
+  panel = rl.Rectangle(1360, 170, 790, 360)
+  projected = project_route(route_local_points(state), panel)
 
-  assert view.render(rect, False) is False
-  assert source is None
-  assert renderer.frames == []
-  assert view.render(rect, True) is True
-  assert source.transitions == [True]
-  assert bootstrap_requests == [True]
-  assert renderer.frames == [(frame, rect)]
-  assert view.render(rect, False) is False
-  assert source.transitions == [True, False]
-  assert source.closed is True
-
-  view.close()
-  assert renderer.closed is True
+  assert len(projected) == 3
+  assert all(panel.x <= point.x <= panel.x + panel.width for point in projected)
+  assert all(panel.y <= point.y <= panel.y + panel.height for point in projected)

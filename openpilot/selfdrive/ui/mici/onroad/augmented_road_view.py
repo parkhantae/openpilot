@@ -259,12 +259,7 @@ class AugmentedRoadView(CameraView):
 
     road_view_mode = self._road_view_mode()
     _t = time.monotonic()
-    showing_carrot_navi = timing.call(
-      'carrot_navi_map', self._carrot_navi_map.render, self._content_rect, self._show_carrot_navi_map,
-    )
-    if showing_carrot_navi:
-      pass
-    elif self._suppress_camera_for_cluster or road_view_mode in (2, 3):
+    if self._suppress_camera_for_cluster or road_view_mode in (2, 3):
       rl.draw_rectangle_rec(self._content_rect, rl.BLACK)
     else:
       # Render the base camera view
@@ -273,17 +268,22 @@ class AugmentedRoadView(CameraView):
 
     self._overlay_state.update(ui_state, self.client, self.stream_type, (self._suppress_camera_for_cluster, road_view_mode))
 
-    if not self._suppress_camera_for_cluster and not showing_carrot_navi and road_view_mode in (0, 2):
+    if not self._suppress_camera_for_cluster and road_view_mode in (0, 2):
       # Draw all UI overlays
       _t = time.monotonic()
       timing.call('model', self._model_renderer.render, self._content_rect)
       model_ms = (time.monotonic() - _t) * 1000.0
 
-    if not self._suppress_camera_for_cluster and not showing_carrot_navi:
+    if not self._suppress_camera_for_cluster:
       # Fade out bottom of overlays for looks
       _t = time.monotonic()
       rl.draw_texture_ex(self._fade_texture, rl.Vector2(self._content_rect.x, self._content_rect.y), 0.0, 1.0, rl.WHITE)
       extras_ms += (time.monotonic() - _t) * 1000.0
+
+    if not self._suppress_camera_for_cluster:
+      timing.call(
+        'carrot_navi_map', self._carrot_navi_map.render, self._content_rect, self._show_carrot_navi_map, ui_state.sm,
+      )
 
     _t = time.monotonic()
     alert_to_render, not_animating_out = self._alert_renderer.will_render()
