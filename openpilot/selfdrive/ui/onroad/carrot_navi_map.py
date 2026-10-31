@@ -5,6 +5,7 @@ import math
 import time
 from typing import Any
 
+import numpy as np
 import pyray as rl
 
 from openpilot.selfdrive.carrot.carrot_navi_control import parse_carrot_navi_control
@@ -25,7 +26,7 @@ VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
 MAP_EGO_Y = 192.0
-MAP_METERS_PER_PIXEL = 1000.0 / MAP_EGO_Y
+MAP_METERS_PER_PIXEL = 700.0 / MAP_EGO_Y
 PERSPECTIVE_NEAR_Y = 0.82
 PERSPECTIVE_HORIZON_Y = 0.0
 PERSPECTIVE_DEPTH_M = 120.0
@@ -193,16 +194,17 @@ class RoadMapTexture:
       source = rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y))
       destination = rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75))
       rl.draw_texture_pro(
-        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(225, 235, 248, 145),
+        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE,
       )
     return True
 
   def _upload(self, pixels: bytes) -> None:
+    payload = colorize_map(pixels)
     if self._texture is None:
-      image = rl.Image(None, MAP_SIZE, MAP_SIZE, 1, rl.PixelFormat.PIXELFORMAT_UNCOMPRESSED_GRAYSCALE)
+      image = rl.Image(None, MAP_SIZE, MAP_SIZE, 1, rl.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
       self._texture = rl.load_texture_from_image(image)
       rl.set_texture_filter(self._texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-    data = rl.ffi.cast("void *", rl.ffi.from_buffer("const unsigned char[]", pixels))
+    data = rl.ffi.cast("void *", rl.ffi.from_buffer("const unsigned char[]", payload))
     rl.update_texture(self._texture, data)
 
   def close(self) -> None:
@@ -210,6 +212,20 @@ class RoadMapTexture:
       rl.unload_texture(self._texture)
       self._texture = None
     self._client = None
+
+
+def colorize_map(pixels: bytes) -> bytes:
+  gray = np.frombuffer(pixels, dtype=np.uint8)
+  rgba = np.empty((MAP_SIZE * MAP_SIZE, 4), dtype=np.uint8)
+  rgba[:, :3] = (180, 194, 208)
+  rgba[:, 3] = np.clip(45 + gray.astype(np.uint16) * 3 // 5, 45, 195).astype(np.uint8)
+  background = gray == 0
+  rgba[background] = (8, 14, 22, 45)
+  # mapsd draws the active route at intensity 128. Color that already-aligned
+  # route instead of reprojecting phone coordinates against a snapped map pose.
+  route = (gray >= 105) & (gray <= 175)
+  rgba[route] = (64, 180, 255, 255)
+  return rgba.tobytes()
 
 
 def _draw_route(points: tuple[rl.Vector2, ...], rect: rl.Rectangle) -> None:
@@ -250,12 +266,14 @@ class CarrotNaviMapView:
       return False
     rl.begin_scissor_mode(int(panel.x), int(panel.y), int(panel.width), int(panel.height))
     rl.draw_rectangle_rounded(panel, 0.08, 8, PANEL_COLOR)
-    if not self._road_map.draw(panel):
+    has_aligned_map = self._road_map.draw(panel)
+    if not has_aligned_map:
       _draw_grid(panel)
     # Restore a translucent navy cast over the raster so the roads stay readable
     # without competing with the blue active route and the driving HUD.
     rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 10))
-    _draw_route(projected, panel)
+    if not has_aligned_map:
+      _draw_route(projected, panel)
     _draw_vehicle(panel)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))
     rl.end_scissor_mode()

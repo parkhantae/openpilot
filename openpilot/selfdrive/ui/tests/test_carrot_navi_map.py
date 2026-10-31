@@ -7,6 +7,7 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
   GeoPoint,
   SimpleMapState,
   carrot_navi_panel_rect,
+  colorize_map,
   map_state_from_carrot_navi,
   project_map_point,
   project_route,
@@ -98,3 +99,14 @@ def test_distance_compression_keeps_constant_map_width():
   assert far_left.x == pytest.approx(near_left.x)
   assert near_left.x == pytest.approx(panel.x)
   assert far_center.y == pytest.approx(panel.y)
+
+
+def test_map_colorization_uses_aligned_raster_route_and_transparent_background():
+  pixels = bytearray(256 * 256)
+  pixels[1] = 128
+  pixels[2] = 255
+  rgba = colorize_map(bytes(pixels))
+
+  assert tuple(rgba[0:4]) == (8, 14, 22, 45)
+  assert tuple(rgba[4:8]) == (64, 180, 255, 255)
+  assert tuple(rgba[8:11]) == (180, 194, 208)

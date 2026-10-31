@@ -114,6 +114,10 @@ class TestRendering(unittest.TestCase):
     kilometer = project(points, Position(0, 0, 0), kilometer_scale, 64.0 * kilometer_scale)
     np.testing.assert_allclose(kilometer, [[128, 192], [128, 179.712], [140.288, 192]], atol=1e-5)
 
+    seven_hundred_scale = 700.0 / 192.0
+    seven_hundred = project(points, Position(0, 0, 0), seven_hundred_scale, 64.0 * seven_hundred_scale)
+    np.testing.assert_allclose(seven_hundred, [[128, 192], [128, 174.4457143], [145.5542857, 192]], atol=1e-5)
+
   def test_strokes(self):
     image = np.zeros((SIZE, SIZE), dtype=np.uint8)
     draw_line(image, np.array([[-1000, 128], [1000, 128]]), 255, 8)
