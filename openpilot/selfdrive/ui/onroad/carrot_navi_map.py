@@ -17,17 +17,17 @@ GUIDANCE_TOP_FROM_BOTTOM = 310.0
 EARTH_RADIUS_M = 6_378_137.0
 MAX_ROUTE_DISTANCE_M = 1_200.0
 
-PANEL_COLOR = rl.Color(12, 18, 25, 120)
+PANEL_COLOR = rl.Color(12, 18, 25, 90)
 GRID_COLOR = rl.Color(70, 82, 94, 76)
 ROUTE_BORDER_COLOR = rl.Color(8, 13, 18, 245)
-ROUTE_COLOR = rl.Color(40, 142, 255, 255)
+ROUTE_COLOR = rl.Color(64, 180, 255, 255)
 VEHICLE_COLOR = rl.Color(245, 249, 255, 255)
 VEHICLE_BORDER_COLOR = rl.Color(40, 142, 255, 255)
 MAP_SIZE = 256
 MAP_EGO_Y = 192.0
 PERSPECTIVE_NEAR_Y = 0.82
 PERSPECTIVE_HORIZON_Y = 0.0
-PERSPECTIVE_DEPTH_M = 20.0
+PERSPECTIVE_DEPTH_M = 120.0
 VALID_MAP_HOLD_S = 5.0
 
 
@@ -188,7 +188,7 @@ class RoadMapTexture:
       source = rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y))
       destination = rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75))
       rl.draw_texture_pro(
-        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(210, 222, 235, 210),
+        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(220, 232, 245, 170),
       )
     return True
 
@@ -210,15 +210,15 @@ class RoadMapTexture:
 def _draw_route(points: tuple[rl.Vector2, ...], rect: rl.Rectangle) -> None:
   for start, end in zip(points, points[1:], strict=False):
     depth = min(1.0, max(0.0, ((start.y + end.y) * 0.5 - rect.y) / rect.height))
-    rl.draw_line_ex(start, end, 7.0 + 13.0 * depth, ROUTE_BORDER_COLOR)
-    rl.draw_line_ex(start, end, 3.0 + 9.0 * depth, ROUTE_COLOR)
+    rl.draw_line_ex(start, end, 10.0 + 18.0 * depth, ROUTE_BORDER_COLOR)
+    rl.draw_line_ex(start, end, 5.0 + 13.0 * depth, ROUTE_COLOR)
 
 
 def _draw_vehicle(rect: rl.Rectangle) -> None:
   vehicle = project_map_point(MAP_SIZE * 0.5, MAP_EGO_Y, rect)
   x, y = vehicle.x, vehicle.y
-  outer = (rl.Vector2(x, y - 22), rl.Vector2(x - 17, y + 20), rl.Vector2(x + 17, y + 20))
-  inner = (rl.Vector2(x, y - 15), rl.Vector2(x - 11, y + 14), rl.Vector2(x + 11, y + 14))
+  outer = (rl.Vector2(x, y - 30), rl.Vector2(x - 23, y + 27), rl.Vector2(x + 23, y + 27))
+  inner = (rl.Vector2(x, y - 22), rl.Vector2(x - 16, y + 19), rl.Vector2(x + 16, y + 19))
   rl.draw_triangle(*outer, VEHICLE_BORDER_COLOR)
   rl.draw_triangle(*inner, VEHICLE_COLOR)
 
@@ -249,7 +249,7 @@ class CarrotNaviMapView:
       _draw_grid(panel)
     # Restore a translucent navy cast over the raster so the roads stay readable
     # without competing with the blue active route and the driving HUD.
-    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 25))
+    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 15))
     _draw_route(projected, panel)
     _draw_vehicle(panel)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))
