@@ -194,6 +194,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"ShowCustomBrightness", {PERSISTENT, INT, "100"}},
     {"ShowModelView", {PERSISTENT, INT, "0"}},
     {"ShowCameraWithCluster", {PERSISTENT, INT, "0"}},
+    {"CarrotNaviOnroad", {PERSISTENT, BOOL, "0"}},
     {"ClusterHud", {PERSISTENT, INT, "0"}},
     {"ClusterHudConnected", {CLEAR_ON_MANAGER_START, BOOL}},
     {"ClusterHudDebug", {PERSISTENT, INT, "0"}},
