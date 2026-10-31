@@ -43,13 +43,14 @@ def carrot_navi_message(*, connected=True):
   )
 
 
-def test_panel_matches_lower_right_guidance_width_and_x():
+def test_panel_matches_guidance_width_x_and_top_edge():
   panel = carrot_navi_panel_rect(rl.Rectangle(0, 0, 2160, 1080))
 
   assert panel.x == 1360
   assert panel.y == 10
   assert panel.width == 790
-  assert panel.height == 790
+  assert panel.height == 760
+  assert panel.y + panel.height == 1080 - 310
 
 
 def test_map_state_requires_live_connected_vehicle_and_route():
@@ -77,7 +78,7 @@ def test_route_is_rotated_heading_up(heading, point):
 def test_projected_route_uses_same_perspective_as_road_raster():
   state = map_state_from_carrot_navi(carrot_navi_message(), True, True)
   assert state is not None
-  panel = rl.Rectangle(1360, 10, 790, 790)
+  panel = rl.Rectangle(1360, 10, 790, 760)
   projected = project_route(route_local_points(state), panel)
 
   assert len(projected) == 3
@@ -87,7 +88,7 @@ def test_projected_route_uses_same_perspective_as_road_raster():
 
 
 def test_perspective_compresses_far_distance_and_width_toward_horizon():
-  panel = rl.Rectangle(1360, 10, 790, 790)
+  panel = rl.Rectangle(1360, 10, 790, 760)
   near_left = project_map_point(0, 192, panel)
   far_left = project_map_point(0, 0, panel)
   near_center = project_map_point(128, 192, panel)

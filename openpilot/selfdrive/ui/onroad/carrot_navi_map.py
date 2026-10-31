@@ -11,9 +11,9 @@ from openpilot.selfdrive.carrot.carrot_navi_control import parse_carrot_navi_con
 
 
 PANEL_WIDTH = 790.0
-PANEL_HEIGHT = PANEL_WIDTH
 PANEL_RIGHT_MARGIN = 10.0
 PANEL_TOP = 10.0
+GUIDANCE_TOP_FROM_BOTTOM = 310.0
 EARTH_RADIUS_M = 6_378_137.0
 MAX_ROUTE_DISTANCE_M = 1_200.0
 
@@ -56,12 +56,12 @@ def carrot_navi_panel_rect(rect: rl.Rectangle) -> rl.Rectangle:
       rect.x + rect.width - PANEL_WIDTH - PANEL_RIGHT_MARGIN,
       rect.y + PANEL_TOP,
       PANEL_WIDTH,
-      PANEL_HEIGHT,
+      max(1.0, rect.height - GUIDANCE_TOP_FROM_BOTTOM - PANEL_TOP),
     )
 
   margin = 12.0
   width = max(1.0, rect.width - 2.0 * margin)
-  height = min(PANEL_HEIGHT, max(1.0, rect.height * 0.28))
+  height = max(1.0, rect.height * 0.28)
   return rl.Rectangle(rect.x + margin, rect.y + margin, width, height)
 
 
@@ -180,7 +180,7 @@ class RoadMapTexture:
       source = rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y))
       destination = rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75))
       rl.draw_texture_pro(
-        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(135, 150, 165, 165),
+        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.Color(210, 222, 235, 210),
       )
     return True
 
@@ -241,7 +241,7 @@ class CarrotNaviMapView:
       _draw_grid(panel)
     # Restore a translucent navy cast over the raster so the roads stay readable
     # without competing with the blue active route and the driving HUD.
-    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 42))
+    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 25))
     _draw_route(projected, panel)
     _draw_vehicle(panel)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))
