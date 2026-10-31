@@ -13,6 +13,7 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
   project_route,
   route_local_points,
 )
+from openpilot.selfdrive.ui.onroad.carrot_navi_stream import map_frame_from_dashboard
 
 
 def meta(present=True, sequence=1):
@@ -110,3 +111,15 @@ def test_map_colorization_uses_aligned_raster_route_and_transparent_background()
   assert tuple(rgba[0:4]) == (8, 14, 22, 45)
   assert tuple(rgba[4:8]) == (64, 180, 255, 255)
   assert tuple(rgba[8:11]) == (180, 194, 208)
+
+
+def test_phone_map_requires_connected_fresh_render_stream():
+  frame = SimpleNamespace(key="render:map_main", present=True)
+  dashboard = SimpleNamespace(connected=True, map_stream_stalled=False, media=(frame,))
+
+  assert map_frame_from_dashboard(dashboard) is frame
+  dashboard.connected = False
+  assert map_frame_from_dashboard(dashboard) is None
+  dashboard.connected = True
+  dashboard.map_stream_stalled = True
+  assert map_frame_from_dashboard(dashboard) is None

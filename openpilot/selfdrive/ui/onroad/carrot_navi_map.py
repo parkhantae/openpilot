@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+from pathlib import Path
+import sys
 import time
 from typing import Any
 
@@ -9,6 +11,14 @@ import numpy as np
 import pyray as rl
 
 from openpilot.selfdrive.carrot.carrot_navi_control import parse_carrot_navi_control
+from openpilot.common.params import Params
+
+
+CLUSTER_MODULE_DIR = str(Path(__file__).resolve().parents[2] / "carrot" / "cluster")
+if CLUSTER_MODULE_DIR not in sys.path:
+  sys.path.insert(0, CLUSTER_MODULE_DIR)
+from cluster_navi_source import NaviIpcMediaSource  # noqa: E402
+from openpilot.selfdrive.ui.onroad.carrot_navi_stream import NaviMapTextureRenderer, map_frame_from_dashboard  # noqa: E402
 
 
 PANEL_WIDTH = 790.0
@@ -247,8 +257,30 @@ def _draw_vehicle(rect: rl.Rectangle) -> None:
 class CarrotNaviMapView:
   def __init__(self) -> None:
     self._road_map = RoadMapTexture()
+    self._phone_source: NaviIpcMediaSource | None = None
+    self._phone_renderer = NaviMapTextureRenderer()
+    self._phone_stream_enabled = False
+
+  def _set_phone_stream_enabled(self, enabled: bool) -> None:
+    enabled = bool(enabled)
+    if enabled == self._phone_stream_enabled:
+      return
+    self._phone_stream_enabled = enabled
+    if enabled:
+      self._phone_source = NaviIpcMediaSource()
+      try:
+        Params().put_nonblocking("CarrotNaviWebBootstrapRequest", f"ui-{time.time_ns():x}")
+      except Exception:
+        pass
+    else:
+      if self._phone_source is not None:
+        self._phone_source.close()
+        self._phone_source = None
+      self._phone_renderer.close()
+      self._phone_renderer = NaviMapTextureRenderer()
 
   def render(self, content_rect: rl.Rectangle, enabled: bool, sm: Any) -> bool:
+    self._set_phone_stream_enabled(enabled)
     if not enabled:
       return False
     try:
@@ -261,6 +293,20 @@ class CarrotNaviMapView:
       return False
 
     panel = carrot_navi_panel_rect(content_rect)
+    if self._phone_source is not None:
+      dashboard = self._phone_source.update(None)
+      phone_frame = map_frame_from_dashboard(dashboard)
+      if phone_frame is not None:
+        rl.begin_scissor_mode(int(panel.x), int(panel.y), int(panel.width), int(panel.height))
+        rendered = self._phone_renderer.draw(phone_frame, panel)
+        rl.end_scissor_mode()
+        rl.begin_scissor_mode(
+          int(content_rect.x), int(content_rect.y), int(content_rect.width), int(content_rect.height),
+        )
+        if rendered:
+          rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 180))
+          return True
+
     projected = project_route(route_local_points(state), panel)
     if len(projected) < 2:
       return False
@@ -285,4 +331,5 @@ class CarrotNaviMapView:
     return True
 
   def close(self) -> None:
+    self._set_phone_stream_enabled(False)
     self._road_map.close()

@@ -91,8 +91,8 @@ class TogglesLayout(Widget):
         False,
       ),
       "CarrotNaviOnroad": (
-        lambda: "CarrotNavi Map",
-        "Show a bright translucent 3D map aligned directly above the lower-right guidance panel.",
+        lambda: "CarrotNavi / CarrotNM Map",
+        "Show the streamed phone map in the right panel, with automatic local-map fallback.",
         "carrot_web.png",
         False,
       ),
