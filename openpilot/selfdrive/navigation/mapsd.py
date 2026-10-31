@@ -51,6 +51,7 @@ def main():
   ui_server.start_listener()
   params = Params()
   demand_checked, demand = 0., False
+  phone_map_active = False
   mapbox_token = ''
   archive_created = 0.
   diagnostics = RuntimeDiagnostics('mapsd', cloudlog.event, interval=5.)
@@ -74,6 +75,7 @@ def main():
       fresh_tbt = sm.valid['navInstructionCarrot'] and 0 <= now - sm.recv_time['navInstructionCarrot'] < 2.
       # Navigation without usable position/instruction immediately publishes black.
       if now >= demand_checked:
+        phone_map_active = params.get_bool('CarrotNaviPhoneMapActive')
         demand = (params.get_bool('UsbGpuActive') or params.get_bool('CarrotNaviOnroad') or jetlink_map_demand(now=now) or
                   params.get_int('ClusterHudScreenMode') == 7 or preview_fresh(WEB_DEMAND_PATH))
         token = os.environ.get('MAPBOX_TOKEN') or params.get('MapboxPublicKey') or ''
@@ -99,6 +101,7 @@ def main():
               archive = MapboxTiles(mapbox_token) if mapbox_token else PMTiles(RemoteTiles())
               archive_created = now
               renderer = MapRenderer(archive)
+            if not phone_map_active and ui_renderer is None:
               ui_renderer = MapRenderer(
                 archive, meters_per_pixel=UI_METERS_PER_PIXEL, forward_offset=UI_FORWARD_OFFSET,
               )
@@ -108,7 +111,10 @@ def main():
             if pose is not None:
               lon, lat, bearing = pose
             result = renderer.render(Position(lat, lon, bearing), route) if pose is not None else None
-            ui_result = ui_renderer.render(Position(lat, lon, bearing), route) if pose is not None and ui_renderer is not None else None
+            ui_result = (
+              ui_renderer.render(Position(lat, lon, bearing), route)
+              if pose is not None and ui_renderer is not None and not phone_map_active else None
+            )
             valid = result is not None and result.valid
             reason = 'ready' if valid else 'route_position' if pose is None else 'tiles'
             if valid:

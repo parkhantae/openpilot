@@ -4,6 +4,7 @@ import pytest
 import pyray as rl
 
 from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
+  CarrotNaviMapView,
   GeoPoint,
   SimpleMapState,
   carrot_navi_panel_rect,
@@ -123,3 +124,19 @@ def test_phone_map_requires_connected_fresh_render_stream():
   dashboard.connected = True
   dashboard.map_stream_stalled = True
   assert map_frame_from_dashboard(dashboard) is None
+
+
+def test_phone_map_activity_param_is_only_written_on_transition():
+  writes = []
+  view = object.__new__(CarrotNaviMapView)
+  view._phone_map_active = False
+  view._params = SimpleNamespace(put_bool_nonblocking=lambda key, value: writes.append((key, value)))
+
+  view._set_phone_map_active(True)
+  view._set_phone_map_active(True)
+  view._set_phone_map_active(False)
+
+  assert writes == [
+    ("CarrotNaviPhoneMapActive", True),
+    ("CarrotNaviPhoneMapActive", False),
+  ]

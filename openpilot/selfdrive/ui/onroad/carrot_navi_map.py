@@ -257,9 +257,21 @@ def _draw_vehicle(rect: rl.Rectangle) -> None:
 class CarrotNaviMapView:
   def __init__(self) -> None:
     self._road_map = RoadMapTexture()
+    self._params = Params()
     self._phone_source: NaviIpcMediaSource | None = None
     self._phone_renderer = NaviMapTextureRenderer()
     self._phone_stream_enabled = False
+    self._phone_map_active = False
+
+  def _set_phone_map_active(self, active: bool) -> None:
+    active = bool(active)
+    if active == self._phone_map_active:
+      return
+    self._phone_map_active = active
+    try:
+      self._params.put_bool_nonblocking("CarrotNaviPhoneMapActive", active)
+    except Exception:
+      pass
 
   def _set_phone_stream_enabled(self, enabled: bool) -> None:
     enabled = bool(enabled)
@@ -269,10 +281,11 @@ class CarrotNaviMapView:
     if enabled:
       self._phone_source = NaviIpcMediaSource()
       try:
-        Params().put_nonblocking("CarrotNaviWebBootstrapRequest", f"ui-{time.time_ns():x}")
+        self._params.put_nonblocking("CarrotNaviWebBootstrapRequest", f"ui-{time.time_ns():x}")
       except Exception:
         pass
     else:
+      self._set_phone_map_active(False)
       if self._phone_source is not None:
         self._phone_source.close()
         self._phone_source = None
@@ -283,15 +296,9 @@ class CarrotNaviMapView:
     self._set_phone_stream_enabled(enabled)
     if not enabled:
       return False
-    try:
-      state = map_state_from_carrot_navi(
-        sm["carrotNavi"], bool(sm.alive["carrotNavi"]), bool(sm.valid["carrotNavi"]),
-      )
-    except Exception:
-      state = None
-    if state is None:
-      return False
 
+    # Prefer the decoded phone map before parsing/projecting the local route.
+    # This keeps the common CarrotNM path to one decoder update and one draw.
     panel = carrot_navi_panel_rect(content_rect)
     if self._phone_source is not None:
       dashboard = self._phone_source.update(None)
@@ -304,8 +311,19 @@ class CarrotNaviMapView:
           int(content_rect.x), int(content_rect.y), int(content_rect.width), int(content_rect.height),
         )
         if rendered:
+          self._set_phone_map_active(True)
           rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 180))
           return True
+
+    self._set_phone_map_active(False)
+    try:
+      state = map_state_from_carrot_navi(
+        sm["carrotNavi"], bool(sm.alive["carrotNavi"]), bool(sm.valid["carrotNavi"]),
+      )
+    except Exception:
+      state = None
+    if state is None:
+      return False
 
     projected = project_route(route_local_points(state), panel)
     if len(projected) < 2:
