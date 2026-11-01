@@ -552,13 +552,11 @@ def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, exp
 def test_top_right_carrot_button_is_compact(hud_module):
   module, _ = hud_module
 
-  assert module.UI_CONFIG.button_size == 112
-  assert module.UI_CONFIG.wheel_icon_size == 84
+  assert module.UI_CONFIG.button_size == 144
+  assert module.UI_CONFIG.wheel_icon_size == 108
   button = module.carrot_button_rect(module.rl.Rectangle(10, 50, 1000, 750))
-  assert (button.x, button.y, button.width, button.height) == (828, 120, 112, 112)
+  assert (button.x, button.y, button.width, button.height) == (812, 104, 144, 144)
   assert (button.x + button.width / 2, button.y + button.height / 2) == (884, 176)
-  assert button.x - (885 - 80) > 20
-  assert (885 + 80) - (button.x + button.width) > 20
 
 
 def test_date_text_formats_only_when_minute_key_changes(hud_module, monkeypatch):
@@ -621,7 +619,7 @@ def test_render_keeps_sampling_and_interactions_live(hud_module, monkeypatch, re
   renderer._longitudinal_personality = 3
   renderer._gap_touch = module.GapTouch(lambda: None)
   renderer._font_display = object()
-  renderer._overlay_state = None
+  renderer._overlay_state = SimpleNamespace(key="test", enabled=True, urgent=False)
   renderer._blink_timer = renderer._disp_timer = 0
   renderer._overlay = SimpleNamespace(draw=lambda rect, callback, key, **kwargs: None if reuse else callback(rect))
   calls = []
@@ -645,9 +643,8 @@ def test_render_keeps_sampling_and_interactions_live(hud_module, monkeypatch, re
     "header",
     "plot",
     "date",
-    "tpms",
     "egpu",
-  ]) + ["button", "animation"]
+  ]) + ["button", "tpms", "animation"]
 
 
 def test_vehicle_navigation_profile_does_not_force_speed_with_cruise_off(hud_module):

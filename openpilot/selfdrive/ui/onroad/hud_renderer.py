@@ -32,11 +32,11 @@ class UIConfig:
   header_height: int = 300
   border_size: int = 30
   button_anchor_size: int = 192
-  button_size: int = 112
+  button_size: int = 144
   set_speed_width_metric: int = 200
   set_speed_width_imperial: int = 172
   set_speed_height: int = 204
-  wheel_icon_size: int = 84
+  wheel_icon_size: int = 108
 
 
 @dataclass(frozen=True)
@@ -308,13 +308,18 @@ class HudRenderer(Widget):
     )
     self._plot_renderer.update(self._show_plot_mode)
     state = self._overlay_state
+    hud_enabled = state is not None and state.enabled
     key = (state.key if state else None, self._blink_timer <= 8, self._disp_timer < 32,
            self._show_plot_mode, self._longitudinal_personality)
-    self._overlay.draw(rect, self._paint, key, enabled=state is not None and state.enabled,
+    self._overlay.draw(rect, self._paint, key, enabled=hud_enabled,
                        urgent=state is not None and state.urgent)
 
-    # Input handling and the short speed-change popup remain at camera cadence.
+    # Input handling, TPMS, and the short speed-change popup remain at camera
+    # cadence. TPMS is painted after the button so its original coordinates stay
+    # readable even with the larger top-right mark.
     self._exp_button.render(carrot_button_rect(rect))
+    if hud_enabled:
+      self._draw_tpms(rect)
     self._draw_cruise_speed_animation(rect)
     from openpilot.common.indicator_display import draw as draw_indicator
     badge_width = min(500, rect.width * .62)
@@ -341,7 +346,6 @@ class HudRenderer(Widget):
     self._plot_renderer.paint(rect, self._font_display)
 
     self._draw_date_time(rect)
-    self._draw_tpms(rect)
     self._draw_egpu_badge(rect)
 
   def user_interacting(self, mouse_pos=None) -> bool:

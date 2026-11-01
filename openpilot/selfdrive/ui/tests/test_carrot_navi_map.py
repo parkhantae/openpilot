@@ -129,7 +129,7 @@ def test_map_colorization_uses_aligned_raster_route_and_transparent_background()
   rgba = colorize_map(bytes(pixels))
 
   assert tuple(rgba[0:4]) == (8, 14, 22, 45)
-  assert tuple(rgba[4:8]) == (15, 84, 235, 255)
+  assert tuple(rgba[4:8]) == (255, 110, 0, 255)
   assert tuple(rgba[8:11]) == (180, 194, 208)
 
 
@@ -166,7 +166,7 @@ def test_phone_map_perspective_fills_side_wedges_with_map(shader):
   assert "suppressTrafficGreen" in shader
   assert "smoothstep(0.22, 0.38, blueLead)" in shader
   assert "smoothstep(0.02, 0.10, greenLead)" in shader
-  assert "vec3 routeBlue = vec3(0.06, 0.33, 0.92)" in shader
+  assert "vec3 routeOrange = vec3(1.0, 0.43, 0.0)" in shader
 
 
 def test_phone_map_activity_param_is_only_written_on_transition():

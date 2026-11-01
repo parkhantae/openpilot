@@ -43,8 +43,8 @@ vec3 strengthenRoute(vec3 color) {
   float routeMask = smoothstep(0.22, 0.38, blueLead) * smoothstep(0.45, 0.65, saturation)
                   * smoothstep(0.78, 0.92, color.b) * (1.0 - smoothstep(0.25, 0.42, color.r))
                   * smoothstep(0.20, 0.35, color.g);
-  vec3 routeBlue = vec3(0.06, 0.33, 0.92);
-  return mix(color, routeBlue, routeMask * 0.95);
+  vec3 routeOrange = vec3(1.0, 0.43, 0.0);
+  return mix(color, routeOrange, routeMask * 0.95);
 }
 vec3 suppressTrafficGreen(vec3 color) {
   float greenLead = color.g - max(color.r, color.b);
@@ -107,8 +107,8 @@ vec3 strengthenRoute(vec3 color) {
   float routeMask = smoothstep(0.22, 0.38, blueLead) * smoothstep(0.45, 0.65, saturation)
                   * smoothstep(0.78, 0.92, color.b) * (1.0 - smoothstep(0.25, 0.42, color.r))
                   * smoothstep(0.20, 0.35, color.g);
-  vec3 routeBlue = vec3(0.06, 0.33, 0.92);
-  return mix(color, routeBlue, routeMask * 0.95);
+  vec3 routeOrange = vec3(1.0, 0.43, 0.0);
+  return mix(color, routeOrange, routeMask * 0.95);
 }
 vec3 suppressTrafficGreen(vec3 color) {
   float greenLead = color.g - max(color.r, color.b);
