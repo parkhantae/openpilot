@@ -528,9 +528,9 @@ def test_tpms_legacy_display_boundaries(hud_module, value, expected_text, expect
 
 @pytest.mark.parametrize(("show_tpms", "expected_positions"), (
   (0, []),
-  (1, [(678, 180)]),
+  (1, [(702, 180)]),
   (2, [(885, 675)]),
-  (3, [(678, 180), (885, 675)]),
+  (3, [(702, 180), (885, 675)]),
 ))
 def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, expected_positions):
   module, fake_ui_state = hud_module
@@ -547,6 +547,16 @@ def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, exp
   assert [(call[0], call[1]) for call in calls] == expected_positions
   assert all(call[2] == 80 for call in calls)
   assert all(call[3] == (31.0, 32.0, 33.0, 34.0) for call in calls)
+
+
+def test_top_right_carrot_button_is_compact(hud_module):
+  module, _ = hud_module
+
+  assert module.UI_CONFIG.button_size == 144
+  assert module.UI_CONFIG.wheel_icon_size == 108
+  button = module.carrot_button_rect(module.rl.Rectangle(10, 50, 1000, 750))
+  assert (button.x, button.y, button.width, button.height) == (812, 104, 144, 144)
+  assert (button.x + button.width / 2, button.y + button.height / 2) == (884, 176)
 
 
 def test_date_text_formats_only_when_minute_key_changes(hud_module, monkeypatch):

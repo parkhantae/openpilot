@@ -31,11 +31,12 @@ WEEKDAYS_KO = ("일", "월", "화", "수", "목", "금", "토")
 class UIConfig:
   header_height: int = 300
   border_size: int = 30
-  button_size: int = 192
+  button_anchor_size: int = 192
+  button_size: int = 144
   set_speed_width_metric: int = 200
   set_speed_width_imperial: int = 172
   set_speed_height: int = 204
-  wheel_icon_size: int = 144
+  wheel_icon_size: int = 108
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,16 @@ class Colors:
 UI_CONFIG = UIConfig()
 FONT_SIZES = FontSizes()
 COLORS = Colors()
+
+
+def carrot_button_rect(rect: rl.Rectangle) -> rl.Rectangle:
+  inset = (UI_CONFIG.button_anchor_size - UI_CONFIG.button_size) / 2
+  return rl.Rectangle(
+    rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_anchor_size + inset,
+    rect.y + UI_CONFIG.border_size + inset,
+    UI_CONFIG.button_size,
+    UI_CONFIG.button_size,
+  )
 
 @dataclass(frozen=True)
 class SetSpeedOverrideState:
@@ -303,9 +314,7 @@ class HudRenderer(Widget):
                        urgent=state is not None and state.urgent)
 
     # Input handling and the short speed-change popup remain at camera cadence.
-    button_x = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
-    button_y = rect.y + UI_CONFIG.border_size
-    self._exp_button.render(rl.Rectangle(button_x, button_y, UI_CONFIG.button_size, UI_CONFIG.button_size))
+    self._exp_button.render(carrot_button_rect(rect))
     self._draw_cruise_speed_animation(rect)
 
   def _paint(self, rect: rl.Rectangle) -> None:
@@ -383,7 +392,7 @@ class HudRenderer(Widget):
     text_size = measure_text_cached(font, text, font_size)
     pad_x, pad_y = 18, 8
     badge_w = text_size.x + pad_x * 2
-    exp_button_left = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
+    exp_button_left = carrot_button_rect(rect).x
     badge = rl.Rectangle(
       exp_button_left - badge_w - 24,
       rect.y + 24,
@@ -1135,9 +1144,9 @@ class HudRenderer(Widget):
     dw = 80
 
     if self._show_tpms in (1, 3):
-      # Keep all four top TPMS values left of the 192 px Carrot/drive-mode
+      # Keep all four top TPMS values left of the Carrot/drive-mode
       # button, which is painted after the cached HUD layer.
-      button_left = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
+      button_left = carrot_button_rect(rect).x
       top_bx = button_left - dw - 30
       self._draw_tpms_values(top_bx, rect.y + 130, dw, fl, fr, rl_v, rr)
     if self._show_tpms in (2, 3):
