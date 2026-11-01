@@ -32,11 +32,11 @@ class UIConfig:
   header_height: int = 300
   border_size: int = 30
   button_anchor_size: int = 192
-  button_size: int = 144
+  button_size: int = 96
   set_speed_width_metric: int = 200
   set_speed_width_imperial: int = 172
   set_speed_height: int = 204
-  wheel_icon_size: int = 108
+  wheel_icon_size: int = 72
 
 
 @dataclass(frozen=True)
@@ -1143,15 +1143,12 @@ class HudRenderer(Widget):
 
     dw = 80
 
+    bx = rect.x + rect.width - 125
+
     if self._show_tpms in (1, 3):
-      # Keep all four top TPMS values left of the Carrot/drive-mode
-      # button, which is painted after the cached HUD layer.
-      button_left = carrot_button_rect(rect).x
-      top_bx = button_left - dw - 30
-      self._draw_tpms_values(top_bx, rect.y + 130, dw, fl, fr, rl_v, rr)
+      self._draw_tpms_values(bx, rect.y + 130, dw, fl, fr, rl_v, rr)
     if self._show_tpms in (2, 3):
-      bottom_bx = rect.x + rect.width - 125
-      self._draw_tpms_values(bottom_bx, rect.y + rect.height - 125, dw, fl, fr, rl_v, rr)
+      self._draw_tpms_values(bx, rect.y + rect.height - 125, dw, fl, fr, rl_v, rr)
 
   def _draw_tpms_values(
     self, bx: float, by: float, dw: float,

@@ -528,9 +528,9 @@ def test_tpms_legacy_display_boundaries(hud_module, value, expected_text, expect
 
 @pytest.mark.parametrize(("show_tpms", "expected_positions"), (
   (0, []),
-  (1, [(702, 180)]),
+  (1, [(885, 180)]),
   (2, [(885, 675)]),
-  (3, [(702, 180), (885, 675)]),
+  (3, [(885, 180), (885, 675)]),
 ))
 def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, expected_positions):
   module, fake_ui_state = hud_module
@@ -552,10 +552,10 @@ def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, exp
 def test_top_right_carrot_button_is_compact(hud_module):
   module, _ = hud_module
 
-  assert module.UI_CONFIG.button_size == 144
-  assert module.UI_CONFIG.wheel_icon_size == 108
+  assert module.UI_CONFIG.button_size == 96
+  assert module.UI_CONFIG.wheel_icon_size == 72
   button = module.carrot_button_rect(module.rl.Rectangle(10, 50, 1000, 750))
-  assert (button.x, button.y, button.width, button.height) == (812, 104, 144, 144)
+  assert (button.x, button.y, button.width, button.height) == (836, 128, 96, 96)
   assert (button.x + button.width / 2, button.y + button.height / 2) == (884, 176)
 
 

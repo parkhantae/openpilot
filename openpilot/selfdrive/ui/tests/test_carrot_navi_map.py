@@ -164,7 +164,8 @@ def test_phone_map_perspective_fills_side_wedges_with_map(shader):
   assert "0.82" not in shader
   assert "strengthenRoute" in shader
   assert "suppressTrafficGreen" in shader
-  assert "smoothstep(0.15, 0.32, blueLead)" in shader
+  assert "smoothstep(0.22, 0.38, blueLead)" in shader
+  assert "smoothstep(0.02, 0.10, greenLead)" in shader
   assert "vec3 routeGreen = vec3(0.0, 0.86, 0.31)" in shader
 
 
