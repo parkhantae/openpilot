@@ -32,11 +32,11 @@ class UIConfig:
   header_height: int = 300
   border_size: int = 30
   button_anchor_size: int = 192
-  button_size: int = 96
+  button_size: int = 112
   set_speed_width_metric: int = 200
   set_speed_width_imperial: int = 172
   set_speed_height: int = 204
-  wheel_icon_size: int = 72
+  wheel_icon_size: int = 84
 
 
 @dataclass(frozen=True)

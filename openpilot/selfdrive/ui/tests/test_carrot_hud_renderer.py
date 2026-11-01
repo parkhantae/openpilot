@@ -552,11 +552,13 @@ def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, exp
 def test_top_right_carrot_button_is_compact(hud_module):
   module, _ = hud_module
 
-  assert module.UI_CONFIG.button_size == 96
-  assert module.UI_CONFIG.wheel_icon_size == 72
+  assert module.UI_CONFIG.button_size == 112
+  assert module.UI_CONFIG.wheel_icon_size == 84
   button = module.carrot_button_rect(module.rl.Rectangle(10, 50, 1000, 750))
-  assert (button.x, button.y, button.width, button.height) == (836, 128, 96, 96)
+  assert (button.x, button.y, button.width, button.height) == (828, 120, 112, 112)
   assert (button.x + button.width / 2, button.y + button.height / 2) == (884, 176)
+  assert button.x - (885 - 80) > 20
+  assert (885 + 80) - (button.x + button.width) > 20
 
 
 def test_date_text_formats_only_when_minute_key_changes(hud_module, monkeypatch):
