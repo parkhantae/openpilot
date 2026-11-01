@@ -17,7 +17,9 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
 )
 from openpilot.selfdrive.ui.onroad.carrot_navi_stream import (
   NAVI_EXTERNAL_FRAGMENT_SHADER,
+  NAVI_RGBA_FRAGMENT_SHADER,
   NAVI_YUV_FRAGMENT_SHADER,
+  NaviMapTextureRenderer,
   map_frame_from_dashboard,
 )
 
@@ -157,16 +159,39 @@ def test_yuv_perspective_normalizes_decoder_stride_before_narrowing_map():
   assert "visibleMapCoord.x * textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
 
 
-@pytest.mark.parametrize("shader", (NAVI_YUV_FRAGMENT_SHADER, NAVI_EXTERNAL_FRAGMENT_SHADER))
+@pytest.mark.parametrize(
+  "shader", (NAVI_YUV_FRAGMENT_SHADER, NAVI_EXTERNAL_FRAGMENT_SHADER, NAVI_RGBA_FRAGMENT_SHADER),
+)
 def test_phone_map_perspective_fills_side_wedges_with_map(shader):
   assert ") discard;" not in shader
   assert "insidePerspective ? perspectiveMapCoord" in shader
   assert "0.82" not in shader
   assert "strengthenRoute" in shader
-  assert "suppressTrafficGreen" in shader
-  assert "smoothstep(0.22, 0.38, blueLead)" in shader
+  assert "suppressTrafficColors" in shader
+  assert "smoothstep(0.18, 0.34, blueLead)" in shader
   assert "smoothstep(0.02, 0.10, greenLead)" in shader
+  assert "orangeMask" in shader
+  assert "redMask" in shader
   assert "vec3 routeOrange = vec3(1.0, 0.43, 0.0)" in shader
+
+
+def test_rgba_map_stream_uses_color_filter_shader(monkeypatch):
+  renderer = object.__new__(NaviMapTextureRenderer)
+  cached = SimpleNamespace(mime="image/rgba", texture=object())
+  source = rl.Rectangle(0, 0, 100, 100)
+  dest = rl.Rectangle(10, 20, 200, 200)
+  shader = object()
+  calls = []
+  monkeypatch.setattr(renderer, "_get_rgba_shader", lambda: shader)
+  monkeypatch.setattr(rl, "begin_shader_mode", lambda value: calls.append(("begin", value)))
+  monkeypatch.setattr(rl, "draw_texture_pro", lambda *args: calls.append(("draw", args)))
+  monkeypatch.setattr(rl, "end_shader_mode", lambda: calls.append(("end",)))
+
+  renderer._draw_cached(cached, source, dest)
+
+  assert calls[0] == ("begin", shader)
+  assert calls[1][0] == "draw"
+  assert calls[2] == ("end",)
 
 
 def test_phone_map_activity_param_is_only_written_on_transition():

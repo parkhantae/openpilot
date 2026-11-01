@@ -1150,11 +1150,12 @@ class HudRenderer(Widget):
       return
 
     dw = 80
-
-    bx = rect.x + rect.width - 125
+    button = carrot_button_rect(rect)
+    bx = button.x + button.width / 2
 
     if self._show_tpms in (1, 3):
-      self._draw_tpms_values(bx, rect.y + 130, dw, fl, fr, rl_v, rr)
+      # Keep the four values centered around the original Carrot-button anchor.
+      self._draw_tpms_values(bx, button.y + button.height / 2, dw, fl, fr, rl_v, rr)
     if self._show_tpms in (2, 3):
       self._draw_tpms_values(bx, rect.y + rect.height - 125, dw, fl, fr, rl_v, rr)
 

@@ -26,6 +26,38 @@ void main() {
 }
 """
 
+NAVI_COLOR_FILTER_SHADER = """
+vec3 strengthenRoute(vec3 color) {
+  float blueLead = color.b - max(color.r, color.g);
+  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+  float routeMask = smoothstep(0.18, 0.34, blueLead) * smoothstep(0.35, 0.58, saturation)
+                  * smoothstep(0.52, 0.75, color.b) * (1.0 - smoothstep(0.32, 0.50, color.r))
+                  * smoothstep(0.10, 0.25, color.g);
+  vec3 routeOrange = vec3(1.0, 0.43, 0.0);
+  return mix(color, routeOrange, routeMask * 0.95);
+}
+vec3 suppressTrafficColors(vec3 color) {
+  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+
+  float greenLead = color.g - max(color.r, color.b);
+  float greenMask = smoothstep(0.02, 0.10, greenLead) * smoothstep(0.12, 0.35, saturation)
+                  * smoothstep(0.25, 0.55, color.g);
+
+  float orangeMask = smoothstep(0.10, 0.25, color.r - color.g)
+                   * smoothstep(0.08, 0.20, color.g - color.b)
+                   * smoothstep(0.45, 0.72, color.r)
+                   * smoothstep(0.18, 0.40, saturation);
+
+  float redLead = color.r - max(color.g, color.b);
+  float redMask = smoothstep(0.20, 0.45, redLead) * smoothstep(0.45, 0.70, color.r)
+                * (1.0 - smoothstep(0.28, 0.45, color.g));
+
+  float trafficMask = max(greenMask, max(orangeMask, redMask));
+  float neutral = dot(color, vec3(0.299, 0.587, 0.114));
+  return mix(color, vec3(neutral * 0.92), trafficMask * 0.95);
+}
+"""
+
 NAVI_YUV_FRAGMENT_SHADER = """
 #ifdef GL_ES
 precision mediump float;
@@ -37,23 +69,7 @@ uniform sampler2D texture2;
 uniform float textureScaleX;
 uniform vec2 uvScaleU;
 uniform vec2 uvScaleV;
-vec3 strengthenRoute(vec3 color) {
-  float blueLead = color.b - max(color.r, color.g);
-  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float routeMask = smoothstep(0.22, 0.38, blueLead) * smoothstep(0.45, 0.65, saturation)
-                  * smoothstep(0.78, 0.92, color.b) * (1.0 - smoothstep(0.25, 0.42, color.r))
-                  * smoothstep(0.20, 0.35, color.g);
-  vec3 routeOrange = vec3(1.0, 0.43, 0.0);
-  return mix(color, routeOrange, routeMask * 0.95);
-}
-vec3 suppressTrafficGreen(vec3 color) {
-  float greenLead = color.g - max(color.r, color.b);
-  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float trafficMask = smoothstep(0.02, 0.10, greenLead) * smoothstep(0.12, 0.35, saturation)
-                    * smoothstep(0.25, 0.55, color.g);
-  float neutral = dot(color, vec3(0.299, 0.587, 0.114));
-  return mix(color, vec3(neutral * 0.92), trafficMask * 0.95);
-}
+""" + NAVI_COLOR_FILTER_SHADER + """
 void main() {
   // The software decoder can expose a padded luma stride. Convert its texture
   // coordinate back to a 0..1 visible-map coordinate before applying the
@@ -75,8 +91,28 @@ void main() {
     y - 0.391762 * u - 0.812968 * v,
     y + 2.017232 * u
   );
-  vec3 mapColor = suppressTrafficGreen(clamp(rgb, 0.0, 1.0));
+  vec3 mapColor = suppressTrafficColors(clamp(rgb, 0.0, 1.0));
   gl_FragColor = vec4(strengthenRoute(mapColor), 1.0);
+}
+"""
+
+NAVI_RGBA_FRAGMENT_SHADER = """
+#ifdef GL_ES
+precision mediump float;
+#endif
+varying vec2 fragTexCoord;
+uniform sampler2D texture0;
+""" + NAVI_COLOR_FILTER_SHADER + """
+void main() {
+  float width = mix(0.6, 1.0, fragTexCoord.y);
+  float left = (1.0 - width) * 0.5;
+  bool insidePerspective = fragTexCoord.x >= left && fragTexCoord.x <= left + width;
+  vec2 perspectiveMapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
+  vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
+  vec4 mapColor = texture2D(texture0, mapCoord);
+  mapColor.rgb = suppressTrafficColors(mapColor.rgb);
+  mapColor.rgb = strengthenRoute(mapColor.rgb);
+  gl_FragColor = mapColor;
 }
 """
 
@@ -101,23 +137,7 @@ precision mediump float;
 in vec2 fragTexCoord;
 uniform samplerExternalOES texture0;
 out vec4 fragColor;
-vec3 strengthenRoute(vec3 color) {
-  float blueLead = color.b - max(color.r, color.g);
-  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float routeMask = smoothstep(0.22, 0.38, blueLead) * smoothstep(0.45, 0.65, saturation)
-                  * smoothstep(0.78, 0.92, color.b) * (1.0 - smoothstep(0.25, 0.42, color.r))
-                  * smoothstep(0.20, 0.35, color.g);
-  vec3 routeOrange = vec3(1.0, 0.43, 0.0);
-  return mix(color, routeOrange, routeMask * 0.95);
-}
-vec3 suppressTrafficGreen(vec3 color) {
-  float greenLead = color.g - max(color.r, color.b);
-  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float trafficMask = smoothstep(0.02, 0.10, greenLead) * smoothstep(0.12, 0.35, saturation)
-                    * smoothstep(0.25, 0.55, color.g);
-  float neutral = dot(color, vec3(0.299, 0.587, 0.114));
-  return mix(color, vec3(neutral * 0.92), trafficMask * 0.95);
-}
+""" + NAVI_COLOR_FILTER_SHADER + """
 void main() {
   float width = mix(0.6, 1.0, fragTexCoord.y);
   float left = (1.0 - width) * 0.5;
@@ -125,7 +145,7 @@ void main() {
   vec2 perspectiveMapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
   vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
   fragColor = texture(texture0, mapCoord);
-  fragColor.rgb = suppressTrafficGreen(fragColor.rgb);
+  fragColor.rgb = suppressTrafficColors(fragColor.rgb);
   fragColor.rgb = strengthenRoute(fragColor.rgb);
 }
 """
@@ -161,6 +181,7 @@ class NaviMapTextureRenderer:
     self._cached: CachedNaviTexture | None = None
     self._yuv_shader = None
     self._yuv_locations: dict[str, int] = {}
+    self._rgba_shader = None
     self._external_shader = None
     self._egl_images: OrderedDict[tuple[int, int], object] = OrderedDict()
 
@@ -177,7 +198,7 @@ class NaviMapTextureRenderer:
       return False
 
     source_w, source_h = map(float, cached.size)
-    # Fit the complete phone map into the panel. H264 shaders compress complete
+    # Fit the complete phone map into the panel. Stream shaders compress complete
     # rows into a 60%-to-100% center trapezoid and fill both sides at full brightness.
     source = rl.Rectangle(0.0, 0.0, source_w, source_h)
     rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
@@ -376,7 +397,12 @@ class NaviMapTextureRenderer:
         rl.end_shader_mode()
       return
     if cached.mime != "image/yuv420p":
-      rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
+      shader = self._get_rgba_shader()
+      rl.begin_shader_mode(shader)
+      try:
+        rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
+      finally:
+        rl.end_shader_mode()
       return
     if cached.u_texture is None or cached.v_texture is None:
       return
@@ -415,6 +441,13 @@ class NaviMapTextureRenderer:
         raise RuntimeError("failed to load navigation external shader")
     return self._external_shader
 
+  def _get_rgba_shader(self):
+    if self._rgba_shader is None:
+      self._rgba_shader = rl.load_shader_from_memory(NAVI_YUV_VERTEX_SHADER, NAVI_RGBA_FRAGMENT_SHADER)
+      if not rl.is_shader_valid(self._rgba_shader):
+        raise RuntimeError("failed to load navigation RGBA shader")
+    return self._rgba_shader
+
   def _discard_other_generations(self, generation: int) -> None:
     for token in tuple(self._egl_images):
       if token[0] != generation:
@@ -448,6 +481,9 @@ class NaviMapTextureRenderer:
     if self._external_shader is not None:
       rl.unload_shader(self._external_shader)
       self._external_shader = None
+    if self._rgba_shader is not None:
+      rl.unload_shader(self._rgba_shader)
+      self._rgba_shader = None
     if self._yuv_shader is not None:
       rl.unload_shader(self._yuv_shader)
       self._yuv_shader = None

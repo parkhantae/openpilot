@@ -528,9 +528,9 @@ def test_tpms_legacy_display_boundaries(hud_module, value, expected_text, expect
 
 @pytest.mark.parametrize(("show_tpms", "expected_positions"), (
   (0, []),
-  (1, [(885, 180)]),
-  (2, [(885, 675)]),
-  (3, [(885, 180), (885, 675)]),
+  (1, [(884, 176)]),
+  (2, [(884, 675)]),
+  (3, [(884, 176), (884, 675)]),
 ))
 def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, expected_positions):
   module, fake_ui_state = hud_module
@@ -557,6 +557,23 @@ def test_top_right_carrot_button_is_compact(hud_module):
   button = module.carrot_button_rect(module.rl.Rectangle(10, 50, 1000, 750))
   assert (button.x, button.y, button.width, button.height) == (812, 104, 144, 144)
   assert (button.x + button.width / 2, button.y + button.height / 2) == (884, 176)
+
+
+def test_top_tpms_values_share_carrot_button_center(hud_module, monkeypatch):
+  module, fake_ui_state = hud_module
+  renderer = object.__new__(module.HudRenderer)
+  renderer._show_tpms = 1
+  fake_ui_state.sm = {
+    "carState": SimpleNamespace(tpms=SimpleNamespace(fl=31, fr=32, rl=33, rr=34)),
+  }
+  positions = []
+  monkeypatch.setattr(renderer, "_draw_tpms_values", lambda bx, by, *_: positions.append((bx, by)))
+  rect = module.rl.Rectangle(10, 50, 1000, 750)
+
+  renderer._draw_tpms(rect)
+
+  button = module.carrot_button_rect(rect)
+  assert positions == [(button.x + button.width / 2, button.y + button.height / 2)]
 
 
 def test_date_text_formats_only_when_minute_key_changes(hud_module, monkeypatch):
