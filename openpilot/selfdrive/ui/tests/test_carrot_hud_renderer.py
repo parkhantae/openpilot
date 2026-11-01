@@ -526,13 +526,13 @@ def test_tpms_legacy_display_boundaries(hud_module, value, expected_text, expect
   assert renderer._get_tpms_color(value) == getattr(module.COLORS, expected_color_name)
 
 
-@pytest.mark.parametrize(("show_tpms", "expected_y"), (
+@pytest.mark.parametrize(("show_tpms", "expected_positions"), (
   (0, []),
-  (1, [180]),
-  (2, [675]),
-  (3, [180, 675]),
+  (1, [(678, 180)]),
+  (2, [(885, 675)]),
+  (3, [(678, 180), (885, 675)]),
 ))
-def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, expected_y):
+def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, expected_positions):
   module, fake_ui_state = hud_module
   renderer = object.__new__(module.HudRenderer)
   renderer._show_tpms = show_tpms
@@ -544,8 +544,8 @@ def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, exp
 
   renderer._draw_tpms(module.rl.Rectangle(10, 50, 1000, 750))
 
-  assert [call[1] for call in calls] == expected_y
-  assert all(call[0] == 885 and call[2] == 80 for call in calls)
+  assert [(call[0], call[1]) for call in calls] == expected_positions
+  assert all(call[2] == 80 for call in calls)
   assert all(call[3] == (31.0, 32.0, 33.0, 34.0) for call in calls)
 
 

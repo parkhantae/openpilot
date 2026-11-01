@@ -1132,13 +1132,17 @@ class HudRenderer(Widget):
     except Exception:
       return
 
-    bx = rect.x + rect.width - 125
     dw = 80
 
     if self._show_tpms in (1, 3):
-      self._draw_tpms_values(bx, rect.y + 130, dw, fl, fr, rl_v, rr)
+      # Keep all four top TPMS values left of the 192 px Carrot/drive-mode
+      # button, which is painted after the cached HUD layer.
+      button_left = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
+      top_bx = button_left - dw - 30
+      self._draw_tpms_values(top_bx, rect.y + 130, dw, fl, fr, rl_v, rr)
     if self._show_tpms in (2, 3):
-      self._draw_tpms_values(bx, rect.y + rect.height - 125, dw, fl, fr, rl_v, rr)
+      bottom_bx = rect.x + rect.width - 125
+      self._draw_tpms_values(bottom_bx, rect.y + rect.height - 125, dw, fl, fr, rl_v, rr)
 
   def _draw_tpms_values(
     self, bx: float, by: float, dw: float,

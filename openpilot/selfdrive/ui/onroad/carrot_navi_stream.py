@@ -40,9 +40,17 @@ uniform vec2 uvScaleV;
 vec3 strengthenRoute(vec3 color) {
   float blueLead = color.b - max(color.r, color.g);
   float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float routeMask = smoothstep(0.08, 0.24, blueLead) * smoothstep(0.20, 0.50, saturation);
+  float routeMask = smoothstep(0.15, 0.32, blueLead) * smoothstep(0.30, 0.55, saturation)
+                  * smoothstep(0.55, 0.78, color.b) * (1.0 - smoothstep(0.45, 0.65, color.r));
   vec3 routeGreen = vec3(0.0, 0.86, 0.31);
   return mix(color, routeGreen, routeMask * 0.95);
+}
+vec3 suppressTrafficGreen(vec3 color) {
+  float greenLead = color.g - max(color.r, color.b);
+  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+  float trafficMask = smoothstep(0.12, 0.28, greenLead) * smoothstep(0.35, 0.62, saturation);
+  float neutral = dot(color, vec3(0.299, 0.587, 0.114));
+  return mix(color, vec3(neutral * 0.92), trafficMask * 0.95);
 }
 void main() {
   // The software decoder can expose a padded luma stride. Convert its texture
@@ -65,7 +73,8 @@ void main() {
     y - 0.391762 * u - 0.812968 * v,
     y + 2.017232 * u
   );
-  gl_FragColor = vec4(strengthenRoute(clamp(rgb, 0.0, 1.0)), 1.0);
+  vec3 mapColor = suppressTrafficGreen(clamp(rgb, 0.0, 1.0));
+  gl_FragColor = vec4(strengthenRoute(mapColor), 1.0);
 }
 """
 
@@ -93,9 +102,17 @@ out vec4 fragColor;
 vec3 strengthenRoute(vec3 color) {
   float blueLead = color.b - max(color.r, color.g);
   float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float routeMask = smoothstep(0.08, 0.24, blueLead) * smoothstep(0.20, 0.50, saturation);
+  float routeMask = smoothstep(0.15, 0.32, blueLead) * smoothstep(0.30, 0.55, saturation)
+                  * smoothstep(0.55, 0.78, color.b) * (1.0 - smoothstep(0.45, 0.65, color.r));
   vec3 routeGreen = vec3(0.0, 0.86, 0.31);
   return mix(color, routeGreen, routeMask * 0.95);
+}
+vec3 suppressTrafficGreen(vec3 color) {
+  float greenLead = color.g - max(color.r, color.b);
+  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+  float trafficMask = smoothstep(0.12, 0.28, greenLead) * smoothstep(0.35, 0.62, saturation);
+  float neutral = dot(color, vec3(0.299, 0.587, 0.114));
+  return mix(color, vec3(neutral * 0.92), trafficMask * 0.95);
 }
 void main() {
   float width = mix(0.6, 1.0, fragTexCoord.y);
@@ -104,6 +121,7 @@ void main() {
   vec2 perspectiveMapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
   vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
   fragColor = texture(texture0, mapCoord);
+  fragColor.rgb = suppressTrafficGreen(fragColor.rgb);
   fragColor.rgb = strengthenRoute(fragColor.rgb);
 }
 """
