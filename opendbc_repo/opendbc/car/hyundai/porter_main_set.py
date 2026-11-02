@@ -50,7 +50,10 @@ class PorterMainSet:
     if not clock_ok:
       self.armed = False
     if not configured:
-      self.armed = self.main = False
+      # Disabling automatic SET revokes permission, not the vehicle's MAIN
+      # state. Erasing MAIN here also inverts subsequent physical MAIN edges
+      # and leaves a known-OFF latch after the option is enabled again.
+      self.armed = False
     tx_fresh = key is not None and key != self.sent_key
 
     def send(button):
@@ -98,7 +101,7 @@ class PorterMainSet:
         self.main_known = True
         self.main = not self.main
         self.armed = self.main and configured
-        self.main_since = now if self.armed else None
+        self.main_since = now if self.main else None
       self.previous_main = main_pressed
       if manual_button == 4:
         self.armed = False

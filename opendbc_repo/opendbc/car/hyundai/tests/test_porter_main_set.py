@@ -110,6 +110,52 @@ class TestPorterMainSet(unittest.TestCase):
       for t in range(7, 90):
         self.assertIsNone(self.tick(t))
 
+  def test_option_off_preserves_main_but_requires_new_pedal_after_enable(self):
+    self.arm()
+    for t in range(4, 80):
+      self.assertIsNone(self.tick(t, configured=False))
+      self.assertTrue(self.state.main)
+      self.assertTrue(self.state.main_known)
+      self.assertFalse(self.state.armed)
+    for t in range(80, 130):
+      self.assertIsNone(self.tick(t, gas_pressed=t>=100, request=t<100))
+    self.assertEqual(self.tick(130), 2)
+
+  def test_main_buttons_still_track_on_and_off_while_option_disabled(self):
+    self.arm()
+    self.tick(4, configured=False)
+    self.tick(6, configured=False, main_pressed=True)
+    self.assertFalse(self.state.main)
+    self.tick(8, configured=False)
+    self.tick(10, configured=False, main_pressed=True)
+    self.tick(12, configured=False)
+    self.assertTrue(self.state.main)
+    self.assertFalse(self.state.armed)
+    for t in range(13, 130):
+      self.assertIsNone(self.tick(t, gas_pressed=t>=100, request=t<100))
+    self.assertEqual(self.tick(130), 2)
+
+  def test_option_cycle_cannot_override_explicit_main_off(self):
+    self.arm()
+    self.tick(4, main_pressed=True)
+    for t in range(5, 250):
+      self.assertIsNone(self.tick(t, configured=not 20<=t<80,
+                                 gas_pressed=100<=t<130, request=not 100<=t<130))
+    self.assertFalse(self.state.main)
+    self.assertFalse(self.state.armed)
+
+  def test_option_off_during_set_releases_and_preserves_native_wait(self):
+    self.arm()
+    for t in range(3, 53):
+      self.tick(t)
+    self.assertEqual(self.tick(54, configured=False), 0)
+    self.assertTrue(self.state.main)
+    self.assertFalse(self.state.armed)
+    self.assertEqual(self.state.response, 'interrupted')
+    self.assertGreaterEqual(self.state.next_request, self.state.unknown_retry_at)
+    for t in range(55, 130):
+      self.assertIsNone(self.tick(t, configured=False))
+
   def test_gas_or_low_speed_request_loss_resets_confirmation(self):
     self.arm()
     for t in range(3, 60):

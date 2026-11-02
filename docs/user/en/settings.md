@@ -105,13 +105,13 @@ Ignoring `x0.01`, `x0.001`, `cm`, `km/h`, or `%` can make a value appear one hun
 
 ## Settings map
 
-The `c3-pht-porter` catalog contains **212 parameters**. These counts describe the catalog entries registered under each menu:
+The `c3-pht-porter` catalog contains **213 parameters**. These counts describe the catalog entries registered under each menu:
 
 | Category | Count | Groups |
 |---|---:|---|
 | Driving control | 141 | Startup and auto, buttons and presets, steering, speed and deceleration, cruise and following gap |
 | Vehicle and hardware | 28 | Hyundai/Kia, CAN FD/HDA, radar, driver monitoring, vehicle assistance, Porter Only, device hardware |
-| Display | 34 | Information, path, brightness/on-road view, external HUD |
+| Display | 35 | Information, path, brightness/on-road view, external HUD |
 | System | 9 | Recording/power, network/map, sound, software |
 
 ## Driving control
@@ -308,7 +308,7 @@ In modes `EnableRadarTracks=1`–`3`, a confirmed departing front lead can recei
 <a id="display"></a>
 ## Display
 
-Display contains 34 settings. External-HUD settings control the layout and output of separate display hardware.
+Display contains 35 settings. External-HUD settings control the layout and output of separate display hardware.
 
 `ClusterHud` (External HUD Display) switches a **direct USB HUD** on or off. A HUD connected to Jetson starts automatically even when this value is `0`, and normally turns its display off with ignition. Use the existing always-on `ClusterHudDebug` modes to keep it visible offroad. Brightness and layout settings also apply to the Jetson HUD.
 
@@ -487,7 +487,7 @@ The manual lane-change indicator can request again after at least three seconds,
 
 Porter II EV: `PorterAutoCancelBelow30` is OFF by default. Enable it in Porter Only to request stock-cruise cancellation for a valid sub-30 km/h target held for 0.3s in SpeedFromPCM=0. This does not brake, stop or automatically re-engage. See [Porter button controls](buttons-presets.md#button-spam).
 
-Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and verify CRUISE standby; target and dashboard speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby).
+Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and verify CRUISE standby; target and dashboard speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby). Automatic SET OFF revokes transmission permission without overwriting tracked MAIN state; enabling again still requires existing MAIN and fresh-pedal authorization.
 
 
 With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby requests SET− at current speed on the next available sample without extra release-confirmation delay. All other authorization and revocation guards remain.

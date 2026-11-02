@@ -3,6 +3,34 @@ from hyundai_porter_testlib import lib, packet, data, seed, init
 
 
 class TestPorterMainSetSafety(unittest.TestCase):
+  def test_option_cycle_preserves_main_without_bypassing_native_guards(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for profile, initial_main in ((9217, False), (60417, True)):
+      init(profile)
+      pulse = PorterMainSet(initial_main=initial_main, allow_startup_gas=profile == 60417)
+      starts = []
+      for tick in range(210):
+        counter, stock = tick // 2, tick >= 175
+        gas = tick < 100 or 140 <= tick < 170
+        main = tick == 20 or (initial_main and tick == 0)
+        held_main = 20 <= tick < 22 or (initial_main and tick < 2)
+        lib.set_timer(21000 + tick * 10000)
+        if tick % 2 == 0:
+          seed(counter=counter, main=main, target=40 if stock else 0, speed=40, gas=gas)
+        before = pulse.requests
+        button = pulse.update(tick * .01, counter, main_pressed=held_main, manual_button=0,
+                              blocked=False, request=not gas, stock_enabled=stock,
+                              configured=not 80 <= tick < 120, gas_pressed=gas)
+        if pulse.requests != before:
+          starts.append(tick)
+        if button is not None:
+          self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter + 1))),
+                          (profile, tick, button))
+        if 80 <= tick < 120:
+          self.assertFalse(pulse.armed)
+      self.assertEqual(starts, [170])
+      self.assertEqual(pulse.acks, 1)
+
   def startup_pedal(self, param=58369, **overrides):
     init(param)
     for tick in range(91):
