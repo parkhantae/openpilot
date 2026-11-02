@@ -79,7 +79,10 @@ class PorterMainSet:
         self.response = "interrupted"
         self.next_request = max(self.next_request, self.unknown_retry_at)
       self.awaiting_stock = False
-    if manual_button or main_pressed or blocked or not configured or not clock_ok:
+    # A new accelerator press interrupts the pending SET observation too.
+    # The pulse stops below, but retaining awaiting_stock would count the
+    # driver's interruption as an ECU timeout or attribute a later ON to it.
+    if manual_button or main_pressed or blocked or gas_pressed or not configured or not clock_ok:
       if self.awaiting_stock:
         self.response = "interrupted"
         self.next_request = max(self.next_request, self.unknown_retry_at)

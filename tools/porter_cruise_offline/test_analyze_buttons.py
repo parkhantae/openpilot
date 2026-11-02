@@ -49,3 +49,54 @@ class TestButtonAnalysis:
     result = analyze([], [frame(0, 1, 1)], [frame(.01, 0, 1)], [])
     assert result['unmatched_intended_frames'] == 1
     assert result['unmatched_echo_frames'] == 1
+
+  def test_unanswered_standby_set_is_not_a_cruise_off_edge(self):
+    # Repeated zero set speeds in the uploaded standby failures never went ON.
+    tx = [frame(.005, 2, 1), frame(.025, 0, 2)]
+    result = analyze([], tx, tx, [(0, 0), (.02, 0), (.04, 0)])
+    trial = result['injected_requests'][0]
+    assert trial['outcome'] == 'no_engagement'
+    assert trial['response_latency_ms'] is None
+    assert trial['cruise_off_seconds'] is None
+    assert not trial['cruise_off_after_response']
+
+  def test_engagement_then_off_retains_the_observed_response(self):
+    tx = [frame(10.005, 2, 1), frame(10.025, 0, 2)]
+    trial = analyze([], tx, tx, [(10, 0), (10.05, 48), (10.2, 0)], origin=10)['injected_requests'][0]
+    assert trial['outcome'] == 'setting_appeared'
+    assert trial['response_latency_ms'] == 45
+    assert trial['response_speed_kph'] == 48
+    assert trial['cruise_off_seconds'] == .2
+    assert trial['cruise_off_after_response']
+
+  def test_speed_step_then_off_is_not_misreported_as_an_unanswered_step(self):
+    for button, speed in ((1, 41), (2, 39)):
+      tx = [frame(.005, button, 1), frame(.025, 0, 2)]
+      trial = analyze([], tx, tx, [(0, 40), (.04, speed), (.1, 0)])['injected_requests'][0]
+      assert trial['outcome'] == 'directional_setting_change'
+      assert trial['response_latency_ms'] == 35
+      assert trial['response_speed_kph'] == speed
+      assert trial['cruise_off_after_response']
+
+  def test_engagement_after_a_disengagement_does_not_acknowledge_old_step(self):
+    tx = [frame(.005, 2, 1), frame(.025, 0, 2)]
+    trial = analyze([], tx, tx, [(0, 40), (.02, 0), (.1, 35)])['injected_requests'][0]
+    assert trial['outcome'] == 'cruise_off'
+    assert trial['response_latency_ms'] is None
+    assert trial['cruise_off_seconds'] == .02
+
+  def test_next_request_bounds_feedback_attribution(self):
+    tx = [frame(.005, 2, 1), frame(.025, 0, 2), frame(.1, 2, 3), frame(.12, 0, 4)]
+    trials = analyze([], tx, tx, [(0, 0), (.04, 0), (.15, 48)])['injected_requests']
+    assert [trial['outcome'] for trial in trials] == ['no_engagement', 'setting_appeared']
+    assert [trial['response_latency_ms'] for trial in trials] == [None, 50]
+
+  def test_physical_overlap_retains_causal_uncertainty_despite_response(self):
+    tx = [frame(.005, 2, 1)]
+    trial = analyze([frame(.02, 2, 2)], tx, tx, [(0, 0), (.05, 48)])['injected_requests'][0]
+    assert trial['outcome'] == 'physical_button_overlap'
+    assert trial['response_speed_kph'] == 48
+
+  def test_missing_standby_feedback_is_not_classified_as_no_engagement(self):
+    trial = analyze([], [frame(.005, 2, 1)], [], [(0, 0)])['injected_requests'][0]
+    assert trial['outcome'] == 'insufficient_speed_data'

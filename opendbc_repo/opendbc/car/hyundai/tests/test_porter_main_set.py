@@ -126,6 +126,47 @@ class TestPorterMainSet(unittest.TestCase):
     for t in range(55, 100):
       self.assertIsNone(self.tick(t, stock_enabled=True))
 
+  def test_accelerator_interrupt_is_not_an_ecu_timeout(self):
+    self.arm()
+    for t in range(3, 53):
+      self.tick(t)
+    self.assertTrue(self.state.awaiting_stock)
+    self.assertEqual(self.tick(54), 2)
+    # Uploaded drive: the pedal returns about 30 ms into an automatic pulse.
+    self.assertIsNone(self.tick(55, gas_pressed=True, request=False))
+    self.assertFalse(self.state.awaiting_stock)
+    self.assertEqual(self.state.response, 'interrupted')
+    self.assertEqual(self.tick(56, gas_pressed=True, request=False), 0)
+    wait = self.state.unknown_retry_at
+    for t in range(57, 120):
+      self.assertIsNone(self.tick(t, gas_pressed=True, request=False))
+    self.assertEqual(self.state.timeouts, 0)
+    self.assertEqual(self.state.requests, 1)
+    self.assertGreaterEqual(self.state.next_request, wait)
+
+  def test_accelerator_during_feedback_wait_cannot_ack_a_later_stock_on(self):
+    self.arm()
+    for t in range(3, 70):
+      self.tick(t)
+    self.assertFalse(self.state.pressing)
+    self.assertTrue(self.state.awaiting_stock)
+    self.tick(70, gas_pressed=True, request=False)
+    self.tick(72, stock_enabled=True)
+    self.assertEqual(self.state.acks, 0)
+    self.assertEqual(self.state.timeouts, 0)
+    self.assertEqual(self.state.response, 'interrupted')
+
+  def test_accelerator_interruption_keeps_unknown_native_quiet_period(self):
+    self.arm()
+    for t in range(3, 53):
+      self.tick(t)
+    self.tick(54, gas_pressed=True, request=False)
+    wait = self.state.unknown_retry_at
+    for t in range(55, 320):
+      self.assertIsNone(self.tick(t))
+    self.assertEqual(self.state.requests, 1)
+    self.assertGreaterEqual(self.state.next_request, wait)
+
   def test_stream_gap_requires_new_main(self):
     self.arm()
     self.assertIsNone(self.tick(50))
@@ -513,7 +554,10 @@ class TestPorterMainSet(unittest.TestCase):
       button = self.tick(t, gas_pressed=90 <= t < 101)
       if button == 2:
         self.assertEqual(t % 2, 0)
-    self.assertGreaterEqual(self.state.timeouts, 2)
+    # The pedal interrupts one observation; only the unanswered complete
+    # attempt is an ECU timeout.
+    self.assertGreaterEqual(self.state.requests, 2)
+    self.assertEqual(self.state.timeouts, 1)
 
   def test_actual_controller_diagnostics_format_response_counts(self):
     import ast
