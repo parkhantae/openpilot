@@ -4,7 +4,7 @@ from opendbc.car.hyundai.porter import porter_auto_set_speed_valid
 
 
 class TestPorterMainSet(unittest.TestCase):
-  def test_actual_interface_and_controller_select_versioned_startup_profile(self):
+  def test_actual_interface_state_and_controller_start_main_off_independent_of_auto_engage(self):
     import ast
     from pathlib import Path
     from types import SimpleNamespace as NS
@@ -14,7 +14,7 @@ class TestPorterMainSet(unittest.TestCase):
     block = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
                  ast.unparse(n.test) == 'candidate == CAR.HYUNDAI_PORTER_II_EV')
     code = compile(ast.Module(body=[block], type_ignores=[]), 'actual_porter_profile', 'exec')
-    for enabled, engage, expected in ((False,2,1025), (True,0,11265), (True,2,60417)):
+    for enabled, engage, expected in ((False,2,1025), (True,0,11265), (True,1,11265), (True,2,11265)):
       ret = NS(flags=0)
       exec(code, dict(candidate='porter', CAR=NS(HYUNDAI_PORTER_II_EV='porter'), ret=ret,
                       params=NS(get_bool=lambda key,e=enabled:e, get_int=lambda key,e=engage:e),
@@ -31,6 +31,21 @@ class TestPorterMainSet(unittest.TestCase):
       exec(code, dict(self=obj, CP=NS(safetyConfigs=[NS(safetyParam=profile)]), PorterMainSet=PorterMainSet))
       self.assertEqual(obj.porter_main_set.allow_startup_gas, profile in (58369,60417))
       self.assertEqual(obj.porter_main_set.main, profile in (25601,58369,60417))
+    tree = ast.parse((root / 'carstate.py').read_text())
+    initial = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
+                   ast.unparse(n.targets[0]) == 'self.main_enabled')
+    versioned = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                     'CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV' in ast.unparse(n.test) and
+                     'CP.safetyConfigs' in ast.unparse(n.test))
+    edge = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                ast.unparse(n.test) == 'prev_main_buttons == 0 and self.main_buttons[-1] != 0')
+    obj = NS(op_params=NS(get_int=lambda key:2), main_buttons=[1])
+    env = dict(self=obj, CP=NS(carFingerprint='porter', safetyConfigs=[NS(safetyParam=11265)]),
+               CAR=NS(HYUNDAI_PORTER_II_EV='porter'), prev_main_buttons=0)
+    exec(compile(ast.Module(body=[initial,versioned], type_ignores=[]), 'actual_porter_main_initial', 'exec'), env)
+    self.assertFalse(obj.main_enabled)
+    exec(compile(ast.Module(body=[edge], type_ignores=[]), 'actual_porter_later_main_on', 'exec'), env)
+    self.assertTrue(obj.main_enabled)
 
   def test_startup_gas_is_one_attempt_per_fresh_pedal_cycle_without_main_proof(self):
     self.state = PorterMainSet(initial_main=True, allow_startup_gas=True)

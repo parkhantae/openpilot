@@ -228,10 +228,10 @@ class CarInterface(CarInterfaceBase):
       ret.flags &= ~HyundaiFlags.CAMERA_SCC.value
       ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.hyundai, HyundaiSafetyFlags.PORTER_CC.value)]
       if params.get_bool("PorterAutoSetMain"):
+        # Start MAIN tracking OFF in CarState, CarController and Panda. A later
+        # physical MAIN-ON edge must not invert an AutoEngage=2 synthetic ON.
         ret.safetyConfigs[-1].safetyParam |= (
           HyundaiSafetyFlags.PORTER_MAIN_SET.value | HyundaiSafetyFlags.PORTER_CLUSTER_SET.value)
-        if params.get_int("AutoEngage") == 2:
-          ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.PORTER_MAIN_INITIAL_ON.value | HyundaiSafetyFlags.PORTER_STARTUP_GAS.value
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot

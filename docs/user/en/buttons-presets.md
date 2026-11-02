@@ -254,7 +254,7 @@ Remember that SET/- in custom mode 3 does not walk backward through the preset t
 
 ### Porter automatic SET from MAIN standby
 
-Settings > Vehicle & Hardware > Porter Only includes **Porter: automatic SET from MAIN standby** (`PorterAutoSetMain`), default OFF. After turning ON, restart to apply the dedicated Panda configuration and verify CRUISE standby on the dash. The synthetic startup ON value from `AutoEngage=2` is not authorization. Turning OFF immediately inhibits new requests but does not cancel already engaged stock cruise.
+Settings > Vehicle & Hardware > Porter Only includes **Porter: automatic SET from MAIN standby** (`PorterAutoSetMain`), default OFF. After turning ON, restart to apply the dedicated Panda configuration and verify CRUISE standby on the dash. `AutoEngage=2` no longer seeds Porter MAIN tracking ON. Turning OFF immediately inhibits new requests but does not cancel already engaged stock cruise.
 
 Turning automatic SET OFF preserves the tracked MAIN state and confirmation history. Physical MAIN-button changes are still tracked while the option is OFF, but transmission permission stays revoked. Enabling the option alone cannot start cruise; existing MAIN confirmation and fresh-pedal authorization conditions must qualify again. Explicit MAIN OFF remains blocking.
 
@@ -276,7 +276,7 @@ Initial cruise-engagement SET now allows up to six frames/120ms instead of three
 
 If a lead/planner constraint briefly blocks the request at gas release, retain the release observation for at most 0.1s of blocking. Recovery within that window requests SET on the next available sample without an extra confirmation dwell. Longer blocking discards the observation; dashboard/target speed floors and brake/invalid-input guards are never bypassed.
 
-Enabling automatic SET no longer forces MAIN tracking to start OFF. With AutoEngage=2, CarState, the button controller and Panda share initial ON parity, but that seed never authorizes SET by itself. Before MAIN confirmation, the fresh-pedal path below grants only one trial; actual stock ON confirms MAIN tracking. Wheel-speed, brake, CANCEL and MAIN OFF guards remain. This does not decode an absolute OEM MAIN-status signal; a mismatch between the dash and initial configuration still requires confirmation. Restart after updating.
+Porter automatic SET starts MAIN tracking OFF independently of `AutoEngage`. While parked, switch CRUISE MAIN OFF before updating/restarting, then turn MAIN ON after boot to establish standby. CarState, the button controller and Panda use the same initial state and physical MAIN transitions. Gas release without MAIN activation cannot request automatic SET.
 
 While stock cruise is OFF, automatic SET transmits only on the control tick that observes a new CLU11 sample. It does not use a 10ms delayed slot; pedal release or a retry deadline between samples waits for the next new sample. Six-frame/120ms pulses, retry spacing and brake/MAIN guards remain. Engaged speed matching keeps its independent 0/10ms retries and acknowledged timing memory; automatic SET does not overwrite them.
 
@@ -286,9 +286,7 @@ The retry quiet period is reserved from the first SET frame even if a pedal or t
 
 On Porter, hold CANCEL to cycle the GAP level. The stock cruise cancel still occurs; a short press remains cancel. The hold threshold follows `CruiseButtonLongDelay`.
 
-In initial `AutoEngage=2` standby without MAIN confirmation, first observe released gas, then a fresh press of at least 0.1s and release at 30 km/h or above can authorize one SET trial. Initial valid observations must span 0.5s and the trial must start within 0.1s of release. Failure cannot retry without another pedal cycle. Gas held across restart must first be released and pressed again.
-
-This trial does not decode absolute OEM MAIN state; verify CRUISE standby on the dash. A new Panda safety profile is required too, so restart after updating. Previous profiles do not permit this new grant. `PorterMainSet` diagnostics record MAIN confirmation, grant and pedal-observation state on changes and once per second.
+This setting does not decode absolute OEM MAIN state. Restarting comma while CRUISE standby is already ON can leave the initial state mismatched. Use the MAIN-OFF restart sequence, or synchronize tracking through actual stock ON from a physical SET. `PorterMainSet` logs MAIN, permission and response state on changes and once per second.
 
 The new Panda profile evaluates the automatic SET speed range of 30–160 km/h using dashboard CLU11 speed. Front-left and rear-right wheel speeds must each be 25–160 km/h. When both are at least 30 km/h, retain the original wheel-speed admission. If either is below 30 km/h, both must be within 5 km/h of the dashboard to qualify the added lower-speed range. Thus dashboard 31 km/h with wheels at 29 km/h can qualify; low speeds, unit mismatch, invalid or stale signals cannot. The below-30 target block remains. Restart after updating to apply the new Panda profile.
 

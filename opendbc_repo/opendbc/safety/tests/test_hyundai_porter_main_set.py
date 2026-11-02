@@ -3,6 +3,52 @@ from hyundai_porter_testlib import lib, packet, data, seed, init
 
 
 class TestPorterMainSetSafety(unittest.TestCase):
+  def test_selected_profile_allows_later_main_on_with_auto_engage_two(self):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    from opendbc.car.hyundai.values import HyundaiFlags, HyundaiSafetyFlags
+    path = Path(__file__).resolve().parents[2] / 'car/hyundai/interface.py'
+    tree = ast.parse(path.read_text())
+    block = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                 ast.unparse(n.test) == 'candidate == CAR.HYUNDAI_PORTER_II_EV')
+    ret = NS(flags=0)
+    exec(compile(ast.Module(body=[block], type_ignores=[]), 'actual_porter_profile', 'exec'),
+         dict(candidate='porter', CAR=NS(HYUNDAI_PORTER_II_EV='porter'), ret=ret,
+              params=NS(get_bool=lambda key:True, get_int=lambda key:2),
+              HyundaiFlags=HyundaiFlags, HyundaiSafetyFlags=HyundaiSafetyFlags,
+              structs=NS(CarParams=NS(SafetyModel=NS(hyundai='hyundai'))),
+              get_safety_config=lambda model,param:NS(safetyParam=param)))
+    profile = ret.safetyConfigs[0].safetyParam | HyundaiSafetyFlags.EV_GAS
+    init(profile)
+    pulse = PorterMainSet(initial_main=bool(profile & HyundaiSafetyFlags.PORTER_MAIN_INITIAL_ON),
+                          allow_startup_gas=bool(profile & HyundaiSafetyFlags.PORTER_STARTUP_GAS))
+    starts = []
+    for tick in range(350):
+      counter, stock = tick // 2, 185 <= tick < 200
+      gas = 30 <= tick < 180 or 240 <= tick < 290
+      main = tick in (20, 220)
+      held_main = 20 <= tick < 22 or 220 <= tick < 222
+      lib.set_timer(21000 + tick * 10000)
+      if tick % 2 == 0:
+        seed(counter=counter, main=main, target=40 if stock else 0, speed=40, gas=gas)
+      before = pulse.requests
+      button = pulse.update(tick * .01, counter, main_pressed=held_main, manual_button=0,
+                            blocked=False, request=not gas, stock_enabled=stock,
+                            configured=True, gas_pressed=gas)
+      if pulse.requests != before:
+        starts.append(tick)
+      if button is not None:
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=counter + 1))),
+                        (tick, button))
+      if tick < 185:
+        self.assertFalse(lib.get_controls_allowed())
+    self.assertEqual(starts, [180])
+    self.assertEqual(pulse.acks, 1)
+    self.assertFalse(pulse.main)
+    self.assertFalse(pulse.armed)
+
   def test_option_cycle_preserves_main_without_bypassing_native_guards(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
     for profile, initial_main in ((9217, False), (60417, True)):

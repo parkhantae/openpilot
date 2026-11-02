@@ -517,7 +517,7 @@ ATC 세부 설정의 `AutoTurnControlRightLaneChange`는 1·2번 모드에서 �
 
 포터2 EV: `PorterAutoCancelBelow30`는 기본 OFF입니다. 포터 전용에서 켜면 SpeedFromPCM=0의 유효한 30km/h 미만 목표가 0.3초 유지될 때 순정 크루즈 취소를 요청합니다. 제동·정차·자동 재시작 기능이 아닙니다. [포터 버튼 제어](buttons-presets.md#button-spam)를 참고하세요.
 
-포터 전용 `PorterAutoSetMain`은 기본 OFF인 MAIN 대기 자동 SET 기능입니다. ON 후 재시작하고 계기판 CRUISE 대기를 확인해야 하며 목표·계기판 속도 모두 30km/h 이상에서만 요청합니다. [동작·해제 조건](buttons-presets.md#포터-main-대기-자동-set)을 확인하세요. 자동 SET OFF는 송신 허가를 해제하며 추적 중인 MAIN 상태를 OFF로 덮어쓰지 않습니다. 다시 ON으로 바꿔도 기존 MAIN·새 페달 허가 조건을 충족해야 합니다.
+포터 전용 `PorterAutoSetMain`은 기본 OFF인 MAIN 대기 자동 SET 기능입니다. ON 후 재시작하고 계기판 CRUISE 대기를 확인해야 하며 목표·계기판 속도 모두 30km/h 이상에서만 요청합니다. [동작·해제 조건](buttons-presets.md#포터-main-대기-자동-set)을 확인하세요. 자동 SET OFF는 송신 허가를 해제하며 추적 중인 MAIN 상태를 OFF로 덮어쓰지 않습니다. 다시 ON으로 바꿔도 기존 MAIN·새 페달 허가 조건을 충족해야 합니다. 포터 MAIN 추적은 AutoEngage와 별개로 OFF에서 시작합니다. MAIN OFF 상태로 재시작한 뒤 부팅 후 MAIN ON 버튼을 눌러 대기를 설정하세요.
 
 
 `PorterAutoSetMain` ON에서는 MAIN 대기 중 30km/h 이상 가속 후 엑셀 해제를 확인하면 추가 대기 없이 다음 송신 가능한 주기에 현재 속도로 SET−를 요청합니다. 나머지 허가·해제 조건은 유지합니다.
