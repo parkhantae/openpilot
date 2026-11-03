@@ -90,6 +90,7 @@ class HyundaiSafetyFlags(IntFlag):
   PORTER_CLUSTER_SET = 2048  # Classic Porter only; CAN-FD interprets this bit separately.
   CANFD_CLUSTER_DIRECT_TX = 2048
   CANFD_SPAS_BLINKERS = 4096
+  PORTER_SET_PAIR = 4096  # Classic Porter only; CAN-FD uses a separate hook.
 
 
 class HyundaiFlags(IntFlag):

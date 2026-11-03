@@ -3,7 +3,7 @@ import math
 
 
 class PorterMainSet:
-  def __init__(self, initial_main=False, allow_startup_gas=False):
+  def __init__(self, initial_main=False, allow_startup_gas=False, two_press=False):
     self.main = bool(initial_main)
     self.main_known = False
     self.previous_main = False
@@ -39,9 +39,18 @@ class PorterMainSet:
     self.startup_valid_since = None
     self.startup_grant = False
     self.startup_grant_since = None
+    self.two_press = two_press
+    self.pair_remaining = 0
+    self.pair_deadline = None
+    self.pair_index = 0
+    self.pair_gas_since = None
+    self.response_started = 0.
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured,
              gas_pressed=False, pedal_only=False, release_eligible=True):
+    # The production two-press policy always needs a fresh pedal cue, including
+    # while lateral control is active. Legacy profiles/tests retain their path.
+    pedal_only = pedal_only or self.two_press
     fresh = key is not None and key != self.last_key
     if fresh:
       self.last_key = key
@@ -64,17 +73,20 @@ class PorterMainSet:
       self.unknown_retry_at = now + 3.
       if self.response in ("no_response", "interrupted"):
         self.next_request = max(self.next_request, self.unknown_retry_at)
+      if self.two_press and button == 0:
+        self.next_request = max(self.next_request, now + .08 if self.pair_remaining else self.unknown_retry_at)
       return button
 
     stock_rising = stock_enabled and not self.previous_stock
     self.previous_stock = stock_enabled
-    if self.awaiting_stock and clock_ok and now - self.started > .5 + 1e-9:
+    observation_started = self.response_started if self.two_press else self.started
+    if self.awaiting_stock and clock_ok and now - observation_started > .5 + 1e-9:
       self.awaiting_stock = False
       self.timeouts += 1
       self.response = "no_response"
       self.next_request = max(self.next_request, self.unknown_retry_at)
     if stock_rising:
-      if (self.awaiting_stock and clock_ok and configured and now - self.started <= .5 + 1e-9 and
+      if (self.awaiting_stock and clock_ok and configured and now - observation_started <= .5 + 1e-9 and
           not manual_button and not main_pressed and not blocked and not gas_pressed):
         self.acks += 1
         self.response = "engaged"
@@ -160,8 +172,28 @@ class PorterMainSet:
           self.rearm_release_since = None
     self.raw_previous_gas = gas_pressed
     eligible = (self.armed or self.startup_grant) and configured and clock_ok and not blocked and not main_pressed and not manual_button
+    pair_continuing = self.two_press and (self.pressing or self.pair_remaining > 0)
+    qualified_pair_release = False
+    if self.two_press:
+      if not eligible or stock_enabled:
+        self.pair_gas_since = None
+      elif gas_pressed:
+        if not self.previous_gas:
+          self.pair_gas_since = now
+      elif self.previous_gas:
+        qualified_pair_release = self.pair_gas_since is not None and now - self.pair_gas_since >= .1 - 1e-9
+        self.pair_gas_since = None
+    if self.two_press and (not eligible or gas_pressed or not request or
+                           not release_eligible or key is None or
+                           (self.pair_deadline is not None and now > self.pair_deadline + 1e-9)):
+      # A second press is a bounded continuation of this release, never a cue
+      # retained through a new pedal, driver override, target loss or RX gap.
+      if self.pair_remaining or self.pressing:
+        self.next_request = max(self.next_request, self.unknown_retry_at)
+      self.pair_remaining = 0
+      self.pair_deadline = None
     if eligible and not stock_enabled and self.previous_gas and not gas_pressed:
-      self.gas_release_since = now
+      self.gas_release_since = now if not self.two_press or qualified_pair_release else None
     self.previous_gas = gas_pressed if eligible and not stock_enabled else False
     if not eligible or stock_enabled or gas_pressed:
       self.gas_release_since = None
@@ -173,7 +205,7 @@ class PorterMainSet:
         now - self.gas_release_since > .1 + 1e-9):
       # Inactive controls must not queue a later engagement behind retry limits.
       self.gas_release_since = None
-    if (not eligible or stock_enabled or not request or gas_pressed or
+    if (not eligible or (stock_enabled and not pair_continuing) or not request or gas_pressed or
         (pedal_only and self.pressing and not self.pedal_started)):
       self.since = None
       if self.pressing:
@@ -192,11 +224,11 @@ class PorterMainSet:
         return send(0)
       return None
     if self.pressing:
-      if now - self.started >= .12 - 1e-9 or self.frames >= 6:
+      if now - self.started >= (.06 if self.two_press else .12) - 1e-9 or self.frames >= (3 if self.two_press else 6):
         self.pressing = False
         self.startup_grant = False
         self.pending_release = True
-        self.next_request = now + self.retry_wait
+        self.next_request = now + (.08 if self.two_press and self.pair_remaining else self.retry_wait)
         if tx_fresh:
           self.pending_release = False
           return send(0)
@@ -215,16 +247,28 @@ class PorterMainSet:
     # Native MAIN settling, retry quiet periods and fresh-sample timing remain.
     release_ready = (self.gas_release_since is not None and self.main_since is not None and
                      now - self.main_since >= .5 - 1e-9)
-    if now >= self.next_request and (release_ready or (not pedal_only and now - self.since >= .5 - 1e-9)):
+    pair_ready = (self.two_press and self.main_known and self.pair_remaining > 0 and
+                  self.pair_deadline is not None and now <= self.pair_deadline - .06 + 1e-9)
+    start_ready = release_ready or pair_ready or (not pedal_only and now - self.since >= .5 - 1e-9)
+    if now + (1e-9 if self.two_press else 0.) >= self.next_request and start_ready:
       # A pedal release or retry deadline between RX updates must wait for
       # the next sample, rather than sending its predecessor late. Normal
       # engaged speed matching keeps its independent timing policy.
       if not fresh or not tx_fresh:
         return None
-      self.pedal_started = release_ready
-      self.awaiting_stock = True
+      second_press = pair_ready and not release_ready
+      self.pedal_started = release_ready or second_press
+      if not second_press:
+        self.response_started = now
+      if self.two_press:
+        self.pair_index = 2 if second_press else 1
+        self.pair_remaining = int(not second_press and self.main_known)
+        # New versioned Panda profile: two <=60ms/3-frame presses separated by
+        # an explicit release and 80ms gap, at most six SET frames in 240ms.
+        self.pair_deadline = now + .24 if self.pair_remaining else None
+      self.awaiting_stock = not stock_enabled
       self.requests += 1
-      self.response = "pending"
+      self.response = "engaged" if stock_enabled else "pending"
       self.gas_release_since = None
       self.pressing = True
       self.started = now

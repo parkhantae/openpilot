@@ -72,7 +72,7 @@ def pcm_cruise_min_kph(CP):
 
 def porter_auto_set_speed_valid(CP, CS):
   """Versioned dashboard-speed eligibility with independent wheel plausibility."""
-  if not any(c.safetyParam in (11265, 60417) for c in getattr(CP, "safetyConfigs", ())):
+  if not any(c.safetyParam in (11265, 15361, 60417) for c in getattr(CP, "safetyConfigs", ())):
     return math.isfinite(CS.vEgo) and 30 <= CS.vEgo * 3.6 <= 160
   cluster = getattr(CS, "vEgoCluster", float("nan")) * 3.6
   wheels = getattr(CS, "wheelSpeeds", None)
@@ -244,7 +244,7 @@ def update_porter_state(ret, cp, main_enabled, is_metric):
 def supports_porter_button_cruise(CP):
   return (CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
           CP.pcmCruise and not CP.openpilotLongitudinalControl and
-          any(str(config.safetyModel) == "hyundai" and config.safetyParam in (1025, 9217, 11265, 25601, 58369, 60417) for config in CP.safetyConfigs))
+          any(str(config.safetyModel) == "hyundai" and config.safetyParam in (1025, 9217, 11265, 15361, 25601, 58369, 60417) for config in CP.safetyConfigs))
 
 
 class PorterCruiseButtons:

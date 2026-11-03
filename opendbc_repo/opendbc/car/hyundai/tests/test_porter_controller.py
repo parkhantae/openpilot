@@ -131,6 +131,40 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.cp.ts_nanos["CLU11"]["counter"] = self.cs.cp._last_update_nanos
     return self.function(self.controller, self.cc, self.cs, True)
 
+  def test_rapid_pair_continues_after_stock_on_without_normal_button_overlap(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for cancel in (False, True):
+      self.setUp()
+      self.controller.porter_main_set = PorterMainSet(two_press=True)
+      self.controller.porter_main_params = NS(get_bool=lambda key:True)
+      self.controller.CP.safetyConfigs = [NS(safetyParam=15361)]
+      self.cs.out.wheelSpeeds = NS(fl=50/3.6, rr=50/3.6)
+      outputs = []
+      for frame in range(180):
+        stock = frame >= 103
+        gas = 20 <= frame < 100
+        self.controller.frame = frame
+        self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
+        self.cs.cp.ts_nanos['CLU11']['counter'] = 1_000_000_000 + (frame // 2) * 20_000_000
+        self.cs.clu11['CF_Clu_AliveCnt1'] = frame // 2 % 16
+        self.cs.clu11['CF_Clu_CruiseSwMain'] = int(frame < 2)
+        self.cs.main_buttons = [int(frame < 2)]
+        self.cs.out.gasPressed = gas
+        self.cs.out.cruiseState.enabled = stock
+        self.cs.out.cruiseState.speed = 50/3.6 if stock else 0
+        self.cc.enabled = stock
+        self.cc.cruiseControl.resume = not stock and not gas
+        self.cc.cruiseControl.cancel = cancel and frame >= 108
+        for button in self.function(self.controller, self.cc, self.cs, True):
+          outputs.append((frame, button))
+      if cancel:
+        self.assertEqual([t for t,b in outputs if b==2], [100,102,104])
+        self.assertTrue(any(b==4 for _,b in outputs))
+      else:
+        self.assertEqual([(t,b) for t,b in outputs if t<150],
+                         [(100,2),(102,2),(104,2),(106,0),(114,2),(116,2),(118,2),(120,0)])
+        self.assertTrue(any(b==1 for t,b in outputs if t>=150))
+
   def test_delayed_retry_slot_reaches_packer_once_per_stock_sample(self):
     self.controller.porter_buttons.retry_sample_delay = .01
     outputs = []

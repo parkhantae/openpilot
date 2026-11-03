@@ -198,7 +198,8 @@ class CarController(CarControllerBase):
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
     self.porter_main_set = PorterMainSet(initial_main=any(c.safetyParam in (25601, 58369, 60417) for c in CP.safetyConfigs),
-                                         allow_startup_gas=any(c.safetyParam in (58369, 60417) for c in CP.safetyConfigs))
+                                         allow_startup_gas=any(c.safetyParam in (58369, 60417) for c in CP.safetyConfigs),
+                                         two_press=any(c.safetyParam == 15361 for c in CP.safetyConfigs))
     self.porter_cancel_buttons = PorterCancelButtons()
     self.porter_main_params = Params()
 
@@ -709,11 +710,14 @@ class CarController(CarControllerBase):
         valid=fresh and CS.is_metric and CS.out.canValid, manual=manual,
         preferred_delay=self.porter_buttons.preferred_sample_delay)
       cancel_busy = self.porter_cancel_buttons.busy or cancel_button is not None
+      pair_busy = (self.porter_main_set.two_press and
+                   (self.porter_main_set.pressing or self.porter_main_set.pair_remaining > 0 or
+                    self.porter_main_set.pending_release))
       button = self.porter_buttons.update(
         self.frame * DT_CTRL, CC.hudControl.setSpeed * CV.MS_TO_KPH, CS.out.cruiseState.speed * CV.MS_TO_KPH,
         (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
-        enabled=CC.enabled and CS.out.cruiseState.enabled and not cancel_busy,
-        blocked=blocked or cancel_busy, manual=manual, cancel=False,
+        enabled=CC.enabled and CS.out.cruiseState.enabled and not cancel_busy and not pair_busy,
+        blocked=blocked or cancel_busy or pair_busy, manual=manual, cancel=False,
         acceleration_ready=getattr(CC.hudControl, "porterAccelReady", False),
         press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL)
       porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
@@ -733,13 +737,14 @@ class CarController(CarControllerBase):
         manual_button=CS.cruise_buttons[-1],
         blocked=(not fresh or not CS.out.canValid or CS.out.accFaulted or CS.out.brakePressed or
                  CS.out.brakeHoldActive or CS.out.parkingBrake or self.speed_from_pcm != 0),
-        request=(CC.cruiseControl.resume and not CC.cruiseControl.cancel and not cancel_busy and
+        request=((CC.cruiseControl.resume or (pair_busy and CS.out.cruiseState.enabled and CC.enabled)) and
+                 not CC.cruiseControl.cancel and not cancel_busy and
                  not CS.out.gasPressed and main_set_vehicle_ready),
         release_eligible=main_set_vehicle_ready,
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
-                    any(c.safetyParam in (9217, 11265, 25601, 58369, 60417) for c in self.CP.safetyConfigs)))
+                    any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in self.CP.safetyConfigs)))
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
       if cancel_status != getattr(self, "porter_cancel_status", None):
         self.porter_cancel_status = cancel_status
@@ -748,18 +753,20 @@ class CarController(CarControllerBase):
                      self.porter_main_set.main_known, self.porter_main_set.startup_grant,
                      self.porter_main_set.requests, self.porter_main_set.acks, self.porter_main_set.timeouts,
                      self.porter_main_set.response)
-      if (any(c.safetyParam in (9217, 11265, 25601, 58369, 60417) for c in self.CP.safetyConfigs) and
+      if (any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in self.CP.safetyConfigs) and
           (main_status != getattr(self, "porter_main_status", None) or self.frame % 100 == 0)):
         self.porter_main_status = main_status
         cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s "
                       "startup=%s grant=%s pedal_ready=%s gas=%s fresh=%s manual=%s "
-                      "req=%d ack=%d noack=%d response=%s awaiting=%s cluster_kph=%.2f speed_ok=%s retry_ms=%.0f",
+                      "req=%d ack=%d noack=%d response=%s awaiting=%s cluster_kph=%.2f speed_ok=%s retry_ms=%.0f "
+                      + "pair_try=%d pair_pending=%d",
                       *main_status[:3], CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
                       self.porter_main_set.main_known, self.porter_main_set.allow_startup_gas,
                       self.porter_main_set.startup_grant, self.porter_main_set.startup_released, CS.out.gasPressed, fresh, manual,
                       *main_status[5:], self.porter_main_set.awaiting_stock, CS.out.vEgoCluster * CV.MS_TO_KPH,
                       porter_auto_set_speed_valid(self.CP, CS.out),
-                      max(0., self.porter_main_set.next_request - self.frame * DT_CTRL) * 1000)
+                      max(0., self.porter_main_set.next_request - self.frame * DT_CTRL) * 1000,
+                      getattr(self.porter_main_set, 'pair_index', 0), getattr(self.porter_main_set, 'pair_remaining', 0))
       if cancel_busy:
         button = cancel_button
       elif button is None:

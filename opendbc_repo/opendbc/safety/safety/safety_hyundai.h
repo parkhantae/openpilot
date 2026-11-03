@@ -2,6 +2,7 @@
 
 #include "safety_declarations.h"
 #include "safety_hyundai_common.h"
+#include "safety_hyundai_porter_pair.h"
 
 #define HYUNDAI_LIMITS(steer, rate_up, rate_down) { \
   .max_steer = (steer), \
@@ -58,6 +59,7 @@ static bool hyundai_cruise_buttons_alt = false;
 static bool hyundai_porter_cc = false;
 // Optional driver-authorized SET: never enabled by the old 1025 configuration.
 static bool hyundai_porter_main_set = false;
+static bool hyundai_porter_set_pair = false;
 static bool hyundai_porter_main = false;
 static bool hyundai_porter_main_known = false;
 // New profile only: one fresh pedal cycle can grant a bounded startup trial
@@ -232,6 +234,13 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
                            !hyundai_porter_rearm_manual && !cruise_engaged_prev &&
                            hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
                            !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed && !hyundai_porter_limiter;
+        if (hyundai_porter_set_pair) {
+          if (!cruise_engaged_prev) {
+            hyundai_porter_pair_pedal(now, raw_gas, rearm_ready && hyundai_porter_main_known, hyundai_porter_speed_ok);
+          } else if (raw_gas) {
+            hyundai_porter_pair_cancel();
+          }
+        }
         if (!rearm_ready) {
           hyundai_porter_rearm_gas = false;
           hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
@@ -264,6 +273,10 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
       int target = (GET_BYTES(to_push, 2, 2) >> 7) & 0xffU;
       bool engaged = target >= 30 && target <= 160;
       if (hyundai_porter_main_set && engaged) {
+        if (hyundai_porter_set_pair) {
+          hyundai_porter_pair.grant = false;
+          hyundai_porter_pair.pedal = false;
+        }
         hyundai_porter_startup_grant = false;
         hyundai_porter_set_active = false;
         // Synchronize parity once on actual engagement; never rearm on feedback.
@@ -335,6 +348,11 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     if (!hyundai_porter_drive || hyundai_porter_hold || hyundai_porter_park || hyundai_porter_fault || !hyundai_porter_inputs_valid()) {
       hyundai_porter_startup_grant = hyundai_porter_startup_released = hyundai_porter_startup_valid = false;
       controls_allowed = false;
+    }
+    if (hyundai_porter_set_pair && (!hyundai_porter_main || !hyundai_porter_main_known ||
+        hyundai_porter_rearm_manual || brake_pressed || !hyundai_porter_drive || hyundai_porter_hold ||
+        hyundai_porter_park || hyundai_porter_fault || hyundai_porter_limiter || !hyundai_porter_inputs_valid())) {
+      hyundai_porter_pair_cancel();
     }
   }
 
@@ -436,6 +454,7 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
     hyundai_porter_main_armed = false;
     hyundai_porter_rearm_gas = false;
     hyundai_porter_set_active = false;
+    if (hyundai_porter_set_pair) hyundai_porter_pair_cancel();
   }
 
   // FCA11: Block any potential actuation
@@ -510,11 +529,32 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
                      hyundai_porter_drive && !hyundai_porter_hold && !hyundai_porter_park &&
                      !hyundai_porter_fault && !brake_pressed && !gas_pressed;
     bool main_set = false;
-    if (hyundai_porter_main_set && button == HYUNDAI_BTN_NONE) {
+    if (hyundai_porter_set_pair) {
+      uint32_t now = microsecond_timer_get();
+      int counter = GET_BYTE(to_send, 3) >> 4;
+      bool fresh = hyundai_porter_clu_ts != hyundai_porter_set_rx_ts &&
+                   counter == ((hyundai_porter_clu_counter + 1) & 15);
+      bool allowed = (!cruise_engaged_prev || controls_allowed) && hyundai_porter_main && hyundai_porter_main_known &&
+                     hyundai_porter_main_armed && hyundai_porter_speed_ok && !hyundai_porter_limiter &&
+                     hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
+                     !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed && !gas_pressed &&
+                     !GET_BIT(to_send, 3U) && !GET_BIT(to_send, 4U);
+      if (!GET_BIT(to_send, 3U)) {
+        main_set = hyundai_porter_pair_tx(now, button, fresh, allowed,
+                                        get_ts_elapsed(now, hyundai_porter_main_ts) >= 500000U, !cruise_engaged_prev);
+      }
+      if (main_set && button == HYUNDAI_BTN_SET) {
+        hyundai_porter_set_rx_ts = hyundai_porter_clu_ts;
+        hyundai_porter_enable_button_seen = true;
+        hyundai_porter_enable_button_ts = now;
+      }
+      permitted = permitted && hyundai_porter_pair_normal_steps(now);
+    }
+    if (!hyundai_porter_set_pair && hyundai_porter_main_set && button == HYUNDAI_BTN_NONE) {
       hyundai_porter_set_active = false;
       hyundai_porter_startup_grant = false;
     }
-    if (hyundai_porter_main_set && !cruise_engaged_prev && button == HYUNDAI_BTN_SET &&
+    if (!hyundai_porter_set_pair && hyundai_porter_main_set && !cruise_engaged_prev && button == HYUNDAI_BTN_SET &&
         hyundai_porter_main && ((hyundai_porter_main_known && hyundai_porter_main_armed) || hyundai_porter_startup_grant) &&
         hyundai_porter_speed_ok && !hyundai_porter_limiter &&
         hyundai_porter_inputs_valid() && hyundai_porter_drive && !hyundai_porter_hold &&
@@ -754,6 +794,8 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_common_init(param);
   hyundai_porter_cc = GET_FLAG(param, 1024U);
   hyundai_porter_main_set = hyundai_porter_cc && GET_FLAG(param, 8192U);
+  hyundai_porter_set_pair = hyundai_porter_main_set && GET_FLAG(param, 4096U);
+  hyundai_porter_pair = (HyundaiPorterPair){0};
   hyundai_porter_main = hyundai_porter_main_prev = hyundai_porter_main_armed = false;
   hyundai_porter_main = hyundai_porter_main_set && GET_FLAG(param, 16384U);
   hyundai_porter_startup_gas = hyundai_porter_main && GET_FLAG(param, 32768U);
@@ -789,7 +831,7 @@ static safety_config hyundai_init(uint16_t param) {
       {.msg = {{0x507, 0, 4, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, {0}, {0}}},
     };
     // Never combine conventional cruise with direct longitudinal or camera SCC mode.
-    if (param != 1025U && param != 9217U && param != 11265U && param != 25601U && param != 58369U && param != 60417U) {
+    if (param != 1025U && param != 9217U && param != 11265U && param != 15361U && param != 25601U && param != 58369U && param != 60417U) {
       safety_config invalid = {0};
       return invalid;
     }

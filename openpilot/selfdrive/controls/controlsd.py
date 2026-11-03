@@ -111,7 +111,7 @@ class Controls:
 
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
     auto_set = (self.params.get_bool("PorterAutoSetMain") and
-                any(c.safetyParam in (9217, 11265, 25601, 58369, 60417) for c in getattr(self.CP, 'safetyConfigs', ())))
+                any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in getattr(self.CP, 'safetyConfigs', ())))
     # MAIN standby plus a fresh pedal release may request stock SET even when
     # lateral control is inactive. The controller requires a pedal cue in that
     # state; this candidate alone never grants MAIN or pedal authorization.

@@ -23,7 +23,8 @@ class TestPorterMainSetSafety(unittest.TestCase):
     profile = ret.safetyConfigs[0].safetyParam | HyundaiSafetyFlags.EV_GAS
     init(profile)
     pulse = PorterMainSet(initial_main=bool(profile & HyundaiSafetyFlags.PORTER_MAIN_INITIAL_ON),
-                          allow_startup_gas=bool(profile & HyundaiSafetyFlags.PORTER_STARTUP_GAS))
+                          allow_startup_gas=bool(profile & HyundaiSafetyFlags.PORTER_STARTUP_GAS),
+                          two_press=bool(profile & HyundaiSafetyFlags.PORTER_SET_PAIR))
     starts = []
     for tick in range(350):
       counter, stock = tick // 2, 185 <= tick < 200
@@ -44,7 +45,7 @@ class TestPorterMainSetSafety(unittest.TestCase):
                         (tick, button))
       if tick < 185:
         self.assertFalse(lib.get_controls_allowed())
-    self.assertEqual(starts, [180])
+    self.assertEqual(starts, [180, 194])
     self.assertEqual(pulse.acks, 1)
     self.assertFalse(pulse.main)
     self.assertFalse(pulse.armed)
