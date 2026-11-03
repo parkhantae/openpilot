@@ -32,11 +32,12 @@ class UIConfig:
   header_height: int = 300
   border_size: int = 30
   button_anchor_size: int = 192
-  button_size: int = 144
+  button_offset_x: int = 12
+  button_size: int = 156
   set_speed_width_metric: int = 200
   set_speed_width_imperial: int = 172
   set_speed_height: int = 204
-  wheel_icon_size: int = 108
+  wheel_icon_size: int = 117
 
 
 @dataclass(frozen=True)
@@ -91,7 +92,7 @@ COLORS = Colors()
 def carrot_button_rect(rect: rl.Rectangle) -> rl.Rectangle:
   inset = (UI_CONFIG.button_anchor_size - UI_CONFIG.button_size) / 2
   return rl.Rectangle(
-    rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_anchor_size + inset,
+    rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_anchor_size + inset + UI_CONFIG.button_offset_x,
     rect.y + UI_CONFIG.border_size + inset,
     UI_CONFIG.button_size,
     UI_CONFIG.button_size,
@@ -1146,12 +1147,13 @@ class HudRenderer(Widget):
       return
 
     dw = 80
-    button = carrot_button_rect(rect)
-    bx = button.x + button.width / 2
+    bx = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_anchor_size / 2
+    by = rect.y + UI_CONFIG.border_size + UI_CONFIG.button_anchor_size / 2
 
     if self._show_tpms in (1, 3):
-      # Keep the four values centered around the original Carrot-button anchor.
-      self._draw_tpms_values(bx, button.y + button.height / 2, dw, fl, fr, rl_v, rr)
+      # Keep the four values at their original anchor while visually centering
+      # the asymmetric Carrot mark with a small right offset.
+      self._draw_tpms_values(bx, by, dw, fl, fr, rl_v, rr)
     if self._show_tpms in (2, 3):
       self._draw_tpms_values(bx, rect.y + rect.height - 125, dw, fl, fr, rl_v, rr)
 

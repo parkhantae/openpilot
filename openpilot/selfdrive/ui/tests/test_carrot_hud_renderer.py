@@ -552,14 +552,15 @@ def test_tpms_position_follows_show_tpms(hud_module, monkeypatch, show_tpms, exp
 def test_top_right_carrot_button_is_compact(hud_module):
   module, _ = hud_module
 
-  assert module.UI_CONFIG.button_size == 144
-  assert module.UI_CONFIG.wheel_icon_size == 108
+  assert module.UI_CONFIG.button_offset_x == 12
+  assert module.UI_CONFIG.button_size == 156
+  assert module.UI_CONFIG.wheel_icon_size == 117
   button = module.carrot_button_rect(module.rl.Rectangle(10, 50, 1000, 750))
-  assert (button.x, button.y, button.width, button.height) == (812, 104, 144, 144)
-  assert (button.x + button.width / 2, button.y + button.height / 2) == (884, 176)
+  assert (button.x, button.y, button.width, button.height) == (818, 98, 156, 156)
+  assert (button.x + button.width / 2, button.y + button.height / 2) == (896, 176)
 
 
-def test_top_tpms_values_share_carrot_button_center(hud_module, monkeypatch):
+def test_top_tpms_values_keep_original_anchor_behind_right_shifted_button(hud_module, monkeypatch):
   module, fake_ui_state = hud_module
   renderer = object.__new__(module.HudRenderer)
   renderer._show_tpms = 1
@@ -573,7 +574,8 @@ def test_top_tpms_values_share_carrot_button_center(hud_module, monkeypatch):
   renderer._draw_tpms(rect)
 
   button = module.carrot_button_rect(rect)
-  assert positions == [(button.x + button.width / 2, button.y + button.height / 2)]
+  assert positions == [(884, 176)]
+  assert button.x + button.width / 2 == positions[0][0] + module.UI_CONFIG.button_offset_x
 
 
 def test_date_text_formats_only_when_minute_key_changes(hud_module, monkeypatch):
