@@ -82,9 +82,21 @@ class CarrotNaviWebBridge:
       self._stream_allowed = False
     return self._stream_allowed
 
+  def direct_map_demand(self, stream_allowed: bool | None = None) -> bool:
+    """Report the onroad UI as a map consumer even without a web media client."""
+    if stream_allowed is None:
+      stream_allowed = self.stream_allowed()
+    if not stream_allowed:
+      return False
+    try:
+      return bool(self._params is not None and self._params.get_bool("CarrotNaviOnroad"))
+    except Exception:
+      return False
+
   def status(self) -> dict[str, Any]:
     now = time.monotonic()
     stream_allowed = self.stream_allowed(force=True)
+    direct_map_demand = self.direct_map_demand(stream_allowed)
     for peer, (received_at, _diagnostic) in tuple(self._client_diagnostics.items()):
       if now - received_at > CLIENT_DIAGNOSTIC_TTL_SECONDS:
         self._client_diagnostics.pop(peer, None)
@@ -96,10 +108,14 @@ class CarrotNaviWebBridge:
     media_status = self._media.status(now)
     return {
       "stateClients": self._clients.state_count,
-      "mediaClients": self._clients.media_count,
+      # CarrotNM starts map capture only when this status reports an active
+      # consumer. The native onroad UI reads the Cereal/IPC stream directly and
+      # therefore is not represented in the web-client count.
+      "mediaClients": self._clients.media_count + int(direct_map_demand),
       "streamAllowed": stream_allowed,
       "readerActive": self._poll_task is not None and not self._poll_task.done(),
-      "connected": bool(state.get("connected", False)),
+      "connected": bool(state.get("connected", False)) or direct_map_demand,
+      "directMapDemand": direct_map_demand,
       "guidanceActive": bool(navigation.get("guidanceActive", False)),
       "routePresent": bool(navigation.get("routePresent", False)),
       "stateFresh": state_age_ms is not None and state_age_ms <= int(STATE_STALE_SECONDS * 1000),
