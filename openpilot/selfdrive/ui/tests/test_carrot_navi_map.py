@@ -17,7 +17,6 @@ from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
 )
 from openpilot.selfdrive.ui.onroad.carrot_navi_stream import (
   NAVI_EXTERNAL_FRAGMENT_SHADER,
-  NAVI_RGBA_FRAGMENT_SHADER,
   NAVI_YUV_FRAGMENT_SHADER,
   NaviMapTextureRenderer,
   map_frame_from_dashboard,
@@ -160,44 +159,52 @@ def test_phone_map_never_falls_back_to_simplified_map_while_connected():
   assert not phone_map_hold_active(100.0, 99.0, connected=True)
 
 
-def test_yuv_perspective_normalizes_decoder_stride_before_narrowing_map():
-  assert "fragTexCoord.x / textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
-  assert "visibleMapCoord.x * textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
+def test_yuv_stream_samples_visible_stride_without_changing_map_colors():
+  assert "vec2 mapCoord = fragTexCoord" in NAVI_YUV_FRAGMENT_SHADER
+  assert "textureScaleX" not in NAVI_YUV_FRAGMENT_SHADER
+  assert "gl_FragColor = vec4(clamp(rgb, 0.0, 1.0), 1.0)" in NAVI_YUV_FRAGMENT_SHADER
 
 
-@pytest.mark.parametrize(
-  "shader", (NAVI_YUV_FRAGMENT_SHADER, NAVI_EXTERNAL_FRAGMENT_SHADER, NAVI_RGBA_FRAGMENT_SHADER),
-)
-def test_phone_map_perspective_fills_side_wedges_with_map(shader):
-  assert ") discard;" not in shader
-  assert "insidePerspective ? perspectiveMapCoord" in shader
-  assert "0.82" not in shader
-  assert "strengthenRoute" in shader
-  assert "suppressTrafficColors" in shader
-  assert "smoothstep(0.18, 0.34, blueLead)" in shader
-  assert "smoothstep(0.02, 0.10, greenLead)" in shader
-  assert "orangeMask" in shader
-  assert "redMask" in shader
-  assert "vec3 routeOrange = vec3(1.0, 0.43, 0.0)" in shader
+@pytest.mark.parametrize("shader", (NAVI_YUV_FRAGMENT_SHADER, NAVI_EXTERNAL_FRAGMENT_SHADER))
+def test_phone_map_stream_does_not_apply_perspective_or_color_filters(shader):
+  assert "insidePerspective" not in shader
+  assert "perspectiveMapCoord" not in shader
+  assert "strengthenRoute" not in shader
+  assert "suppressTrafficColors" not in shader
+  assert "routeOrange" not in shader
 
 
-def test_rgba_map_stream_uses_color_filter_shader(monkeypatch):
+def test_rgba_map_stream_draws_original_texture_without_shader(monkeypatch):
   renderer = object.__new__(NaviMapTextureRenderer)
   cached = SimpleNamespace(mime="image/rgba", texture=object())
   source = rl.Rectangle(0, 0, 100, 100)
   dest = rl.Rectangle(10, 20, 200, 200)
-  shader = object()
   calls = []
-  monkeypatch.setattr(renderer, "_get_rgba_shader", lambda: shader)
   monkeypatch.setattr(rl, "begin_shader_mode", lambda value: calls.append(("begin", value)))
   monkeypatch.setattr(rl, "draw_texture_pro", lambda *args: calls.append(("draw", args)))
   monkeypatch.setattr(rl, "end_shader_mode", lambda: calls.append(("end",)))
 
   renderer._draw_cached(cached, source, dest)
 
-  assert calls[0] == ("begin", shader)
-  assert calls[1][0] == "draw"
-  assert calls[2] == ("end",)
+  assert [call[0] for call in calls] == ["draw"]
+
+
+def test_phone_map_preserves_source_aspect_ratio(monkeypatch):
+  renderer = object.__new__(NaviMapTextureRenderer)
+  cached = SimpleNamespace(size=(1920, 1080))
+  rect = rl.Rectangle(1360, 10, 790, 760)
+  draws = []
+  monkeypatch.setattr(rl, "draw_rectangle_rec", lambda *_: None)
+  monkeypatch.setattr(renderer, "_draw_cached", lambda _, source, dest: draws.append((source, dest)))
+
+  assert renderer._draw_texture(cached, rect)
+  source, dest = draws[0]
+  assert source.width == 1920
+  assert source.height == 1080
+  assert dest.x == pytest.approx(rect.x)
+  assert dest.y == pytest.approx(rect.y + (rect.height - dest.height) / 2)
+  assert dest.width == pytest.approx(rect.width)
+  assert dest.height == pytest.approx(rect.width * 1080 / 1920)
 
 
 def test_phone_map_activity_param_is_only_written_on_transition():

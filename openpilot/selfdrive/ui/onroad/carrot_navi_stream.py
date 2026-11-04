@@ -26,38 +26,6 @@ void main() {
 }
 """
 
-NAVI_COLOR_FILTER_SHADER = """
-vec3 strengthenRoute(vec3 color) {
-  float blueLead = color.b - max(color.r, color.g);
-  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-  float routeMask = smoothstep(0.18, 0.34, blueLead) * smoothstep(0.35, 0.58, saturation)
-                  * smoothstep(0.52, 0.75, color.b) * (1.0 - smoothstep(0.32, 0.50, color.r))
-                  * smoothstep(0.10, 0.25, color.g);
-  vec3 routeOrange = vec3(1.0, 0.43, 0.0);
-  return mix(color, routeOrange, routeMask * 0.95);
-}
-vec3 suppressTrafficColors(vec3 color) {
-  float saturation = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
-
-  float greenLead = color.g - max(color.r, color.b);
-  float greenMask = smoothstep(0.02, 0.10, greenLead) * smoothstep(0.12, 0.35, saturation)
-                  * smoothstep(0.25, 0.55, color.g);
-
-  float orangeMask = smoothstep(0.10, 0.25, color.r - color.g)
-                   * smoothstep(0.08, 0.20, color.g - color.b)
-                   * smoothstep(0.45, 0.72, color.r)
-                   * smoothstep(0.18, 0.40, saturation);
-
-  float redLead = color.r - max(color.g, color.b);
-  float redMask = smoothstep(0.20, 0.45, redLead) * smoothstep(0.45, 0.70, color.r)
-                * (1.0 - smoothstep(0.28, 0.45, color.g));
-
-  float trafficMask = max(greenMask, max(orangeMask, redMask));
-  float neutral = dot(color, vec3(0.299, 0.587, 0.114));
-  return mix(color, vec3(neutral * 0.92), trafficMask * 0.95);
-}
-"""
-
 NAVI_YUV_FRAGMENT_SHADER = """
 #ifdef GL_ES
 precision mediump float;
@@ -66,23 +34,12 @@ varying vec2 fragTexCoord;
 uniform sampler2D texture0;
 uniform sampler2D texture1;
 uniform sampler2D texture2;
-uniform float textureScaleX;
 uniform vec2 uvScaleU;
 uniform vec2 uvScaleV;
-""" + NAVI_COLOR_FILTER_SHADER + """
 void main() {
-  // The software decoder can expose a padded luma stride. Convert its texture
-  // coordinate back to a 0..1 visible-map coordinate before applying the
-  // perspective, otherwise the padded columns clip the far left/right edges.
-  vec2 displayCoord = vec2(fragTexCoord.x / textureScaleX, fragTexCoord.y);
-  float width = mix(0.6, 1.0, displayCoord.y);
-  float left = (1.0 - width) * 0.5;
-  bool insidePerspective = displayCoord.x >= left && displayCoord.x <= left + width;
-  // Keep the original side map in the wedges instead of discarding it. The
-  // central region still contains the complete map compressed to 60% at top.
-  vec2 perspectiveMapCoord = vec2((displayCoord.x - left) / width, displayCoord.y);
-  vec2 visibleMapCoord = insidePerspective ? perspectiveMapCoord : displayCoord;
-  vec2 mapCoord = vec2(visibleMapCoord.x * textureScaleX, visibleMapCoord.y);
+  // draw_texture_pro already limits the source rectangle to the visible map,
+  // excluding any padded decoder columns. Preserve those texture coordinates.
+  vec2 mapCoord = fragTexCoord;
   float y = 1.164383 * (texture2D(texture0, mapCoord).r - 0.062745);
   float u = texture2D(texture1, mapCoord * uvScaleU).r - 0.501961;
   float v = texture2D(texture2, mapCoord * uvScaleV).r - 0.501961;
@@ -91,28 +48,7 @@ void main() {
     y - 0.391762 * u - 0.812968 * v,
     y + 2.017232 * u
   );
-  vec3 mapColor = suppressTrafficColors(clamp(rgb, 0.0, 1.0));
-  gl_FragColor = vec4(strengthenRoute(mapColor), 1.0);
-}
-"""
-
-NAVI_RGBA_FRAGMENT_SHADER = """
-#ifdef GL_ES
-precision mediump float;
-#endif
-varying vec2 fragTexCoord;
-uniform sampler2D texture0;
-""" + NAVI_COLOR_FILTER_SHADER + """
-void main() {
-  float width = mix(0.6, 1.0, fragTexCoord.y);
-  float left = (1.0 - width) * 0.5;
-  bool insidePerspective = fragTexCoord.x >= left && fragTexCoord.x <= left + width;
-  vec2 perspectiveMapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
-  vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
-  vec4 mapColor = texture2D(texture0, mapCoord);
-  mapColor.rgb = suppressTrafficColors(mapColor.rgb);
-  mapColor.rgb = strengthenRoute(mapColor.rgb);
-  gl_FragColor = mapColor;
+  gl_FragColor = vec4(clamp(rgb, 0.0, 1.0), 1.0);
 }
 """
 
@@ -137,16 +73,8 @@ precision mediump float;
 in vec2 fragTexCoord;
 uniform samplerExternalOES texture0;
 out vec4 fragColor;
-""" + NAVI_COLOR_FILTER_SHADER + """
 void main() {
-  float width = mix(0.6, 1.0, fragTexCoord.y);
-  float left = (1.0 - width) * 0.5;
-  bool insidePerspective = fragTexCoord.x >= left && fragTexCoord.x <= left + width;
-  vec2 perspectiveMapCoord = vec2((fragTexCoord.x - left) / width, fragTexCoord.y);
-  vec2 mapCoord = insidePerspective ? perspectiveMapCoord : fragTexCoord;
-  fragColor = texture(texture0, mapCoord);
-  fragColor.rgb = suppressTrafficColors(fragColor.rgb);
-  fragColor.rgb = strengthenRoute(fragColor.rgb);
+  fragColor = texture(texture0, fragTexCoord);
 }
 """
 
@@ -164,7 +92,6 @@ class CachedNaviTexture:
   uv_scale_u: object | None = None
   uv_scale_v: object | None = None
   hardware_token: tuple[int, int] | None = None
-  texture_scale_x: object | None = None
 
 
 def map_frame_from_dashboard(dashboard) -> NaviMediaFrame | None:
@@ -181,7 +108,6 @@ class NaviMapTextureRenderer:
     self._cached: CachedNaviTexture | None = None
     self._yuv_shader = None
     self._yuv_locations: dict[str, int] = {}
-    self._rgba_shader = None
     self._external_shader = None
     self._egl_images: OrderedDict[tuple[int, int], object] = OrderedDict()
 
@@ -198,11 +124,17 @@ class NaviMapTextureRenderer:
       return False
 
     source_w, source_h = map(float, cached.size)
-    # Fit the complete phone map into the panel. Stream shaders compress complete
-    # rows into a 60%-to-100% center trapezoid and fill both sides at full brightness.
+    scale = min(rect.width / source_w, rect.height / source_h)
+    draw_w, draw_h = source_w * scale, source_h * scale
     source = rl.Rectangle(0.0, 0.0, source_w, source_h)
+    dest = rl.Rectangle(
+      rect.x + (rect.width - draw_w) * 0.5,
+      rect.y + (rect.height - draw_h) * 0.5,
+      draw_w,
+      draw_h,
+    )
     rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
-    self._draw_cached(cached, source, rect)
+    self._draw_cached(cached, source, dest)
     return True
 
   def _texture_for(self, frame: NaviMediaFrame) -> CachedNaviTexture | None:
@@ -314,7 +246,6 @@ class NaviMapTextureRenderer:
           self._new_plane_texture(v_stride, chroma_height, rl.TextureFilter.TEXTURE_FILTER_POINT),
           rl.ffi.new("float[]", [y_stride / (2.0 * u_stride), 1.0]),
           rl.ffi.new("float[]", [y_stride / (2.0 * v_stride), 1.0]),
-          texture_scale_x=rl.ffi.new("float[]", [width / y_stride]),
         )
       except Exception:
         if replacement is not cached and replacement is not None:
@@ -397,24 +328,15 @@ class NaviMapTextureRenderer:
         rl.end_shader_mode()
       return
     if cached.mime != "image/yuv420p":
-      shader = self._get_rgba_shader()
-      rl.begin_shader_mode(shader)
-      try:
-        rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
-      finally:
-        rl.end_shader_mode()
+      rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
       return
     if cached.u_texture is None or cached.v_texture is None:
-      return
-    if cached.texture_scale_x is None:
       return
     shader = self._get_yuv_shader()
     rl.begin_shader_mode(shader)
     try:
       rl.set_shader_value_texture(shader, self._yuv_locations["texture1"], cached.u_texture)
       rl.set_shader_value_texture(shader, self._yuv_locations["texture2"], cached.v_texture)
-      rl.set_shader_value(shader, self._yuv_locations["textureScaleX"], cached.texture_scale_x,
-                          rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
       rl.set_shader_value(shader, self._yuv_locations["uvScaleU"], cached.uv_scale_u,
                           rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
       rl.set_shader_value(shader, self._yuv_locations["uvScaleV"], cached.uv_scale_v,
@@ -430,7 +352,7 @@ class NaviMapTextureRenderer:
         raise RuntimeError("failed to load navigation YUV shader")
       self._yuv_locations = {
         name: rl.get_shader_location(self._yuv_shader, name)
-        for name in ("texture1", "texture2", "textureScaleX", "uvScaleU", "uvScaleV")
+        for name in ("texture1", "texture2", "uvScaleU", "uvScaleV")
       }
     return self._yuv_shader
 
@@ -440,13 +362,6 @@ class NaviMapTextureRenderer:
       if not rl.is_shader_valid(self._external_shader):
         raise RuntimeError("failed to load navigation external shader")
     return self._external_shader
-
-  def _get_rgba_shader(self):
-    if self._rgba_shader is None:
-      self._rgba_shader = rl.load_shader_from_memory(NAVI_YUV_VERTEX_SHADER, NAVI_RGBA_FRAGMENT_SHADER)
-      if not rl.is_shader_valid(self._rgba_shader):
-        raise RuntimeError("failed to load navigation RGBA shader")
-    return self._rgba_shader
 
   def _discard_other_generations(self, generation: int) -> None:
     for token in tuple(self._egl_images):
@@ -481,9 +396,6 @@ class NaviMapTextureRenderer:
     if self._external_shader is not None:
       rl.unload_shader(self._external_shader)
       self._external_shader = None
-    if self._rgba_shader is not None:
-      rl.unload_shader(self._rgba_shader)
-      self._rgba_shader = None
     if self._yuv_shader is not None:
       rl.unload_shader(self._yuv_shader)
       self._yuv_shader = None
