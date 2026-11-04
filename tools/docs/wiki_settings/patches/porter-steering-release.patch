@@ -1,0 +1,186 @@
+--- a/KO-_CustomSteerDeltaDown(0).md
++++ b/KO-_CustomSteerDeltaDown(0).md
+@@ -27,7 +27,27 @@
+ <!-- CARROT:AUTO:END CustomSteerDeltaDown -->
+ 
+ <!-- CARROT:MANUAL:BEGIN CustomSteerDeltaDown -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="7b2680b5b1f5ab961afaafa6ef2c4f2fe80b3e07c7171fdd448f5af27df33c88" reviewed-at="2026-11-04T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++높이면 조향 토크를 더 빨리 줄이고, 낮추면 더 천천히 줄입니다. 0은 차종별 기본 감소율을 사용합니다.
++
++포터2 EV는 운전자 반대 토크로 이전 명령이 Panda의 운전자 허용 범위를 벗어나면 별도 보호 감소율을 우선합니다. 최대 조향 토크와 일반 경로 추종의 설정값은 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 저장값을 자동으로 바꾸지 않습니다. 소프트웨어를 업데이트한 뒤 재시작해 적용합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++이 처리는 운전자에게 조향을 더 빨리 넘기는 기능이며 조향 힘이나 자동 회전 능력을 늘리지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END CustomSteerDeltaDown -->
+ 
+ <!-- CARROT:SETTING:END CustomSteerDeltaDown -->
+--- a/EN-_CustomSteerDeltaDown(0).md
++++ b/EN-_CustomSteerDeltaDown(0).md
+@@ -27,7 +27,27 @@
+ <!-- CARROT:AUTO:END CustomSteerDeltaDown -->
+ 
+ <!-- CARROT:MANUAL:BEGIN CustomSteerDeltaDown -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="7b2680b5b1f5ab961afaafa6ef2c4f2fe80b3e07c7171fdd448f5af27df33c88" reviewed-at="2026-11-04T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Higher values reduce steering torque faster; lower values release it more slowly. Zero uses the vehicle’s default release rate.
++
++On Porter II EV, a protective release rate takes priority when opposing driver torque puts the previous command outside Panda’s driver-torque envelope. Maximum steering torque and normal tracking settings are retained.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Existing saved values are not changed automatically. Restart after updating the software.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++This yields steering authority to the driver faster; it does not increase steering strength or automatic-turn capability.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END CustomSteerDeltaDown -->
+ 
+ <!-- CARROT:SETTING:END CustomSteerDeltaDown -->
+--- a/ZH-自定义转向减小斜率(0).md
++++ b/ZH-自定义转向减小斜率(0).md
+@@ -27,7 +27,27 @@
+ <!-- CARROT:AUTO:END CustomSteerDeltaDown -->
+ 
+ <!-- CARROT:MANUAL:BEGIN CustomSteerDeltaDown -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="7b2680b5b1f5ab961afaafa6ef2c4f2fe80b3e07c7171fdd448f5af27df33c88" reviewed-at="2026-11-04T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++数值越高，转向力矩减小越快；数值越低，释放越慢。 0使用车型默认释放速率。
++
++Porter II EV在驾驶员反向施力使之前的指令超出Panda驾驶员力矩允许范围时，优先采用保护性释放速率。最大转向力矩和正常路径跟踪设置保持不变。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++不会自动修改已保存的值。更新软件后请重启。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++此处理更快地将转向控制权交给驾驶员，不会提高转向力度或自动转弯能力。
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END CustomSteerDeltaDown -->
+ 
+ <!-- CARROT:SETTING:END CustomSteerDeltaDown -->
+--- a/KO-_CustomSteerDeltaDownLC(0).md
++++ b/KO-_CustomSteerDeltaDownLC(0).md
+@@ -27,7 +27,27 @@
+ <!-- CARROT:AUTO:END CustomSteerDeltaDownLC -->
+ 
+ <!-- CARROT:MANUAL:BEGIN CustomSteerDeltaDownLC -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="67d9465484581e4caecdff305beeee1c481498efbdc0de5fd207c47063b4b7b4" reviewed-at="2026-11-04T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++높이면 조향 토크를 더 빨리 줄이고, 낮추면 더 천천히 줄입니다. 0은 일반 감소율 설정을 따릅니다.
++
++포터2 EV는 운전자 반대 토크로 이전 명령이 Panda의 운전자 허용 범위를 벗어나면 별도 보호 감소율을 우선합니다. 최대 조향 토크와 일반 경로 추종의 설정값은 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 저장값을 자동으로 바꾸지 않습니다. 소프트웨어를 업데이트한 뒤 재시작해 적용합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++이 처리는 운전자에게 조향을 더 빨리 넘기는 기능이며 조향 힘이나 자동 회전 능력을 늘리지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END CustomSteerDeltaDownLC -->
+ 
+ <!-- CARROT:SETTING:END CustomSteerDeltaDownLC -->
+--- a/EN-_CustomSteerDeltaDownLC(0).md
++++ b/EN-_CustomSteerDeltaDownLC(0).md
+@@ -27,7 +27,27 @@
+ <!-- CARROT:AUTO:END CustomSteerDeltaDownLC -->
+ 
+ <!-- CARROT:MANUAL:BEGIN CustomSteerDeltaDownLC -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="67d9465484581e4caecdff305beeee1c481498efbdc0de5fd207c47063b4b7b4" reviewed-at="2026-11-04T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Higher values reduce steering torque faster; lower values release it more slowly. Zero follows the normal release setting.
++
++On Porter II EV, a protective release rate takes priority when opposing driver torque puts the previous command outside Panda’s driver-torque envelope. Maximum steering torque and normal tracking settings are retained.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Existing saved values are not changed automatically. Restart after updating the software.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++This yields steering authority to the driver faster; it does not increase steering strength or automatic-turn capability.
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END CustomSteerDeltaDownLC -->
+ 
+ <!-- CARROT:SETTING:END CustomSteerDeltaDownLC -->
+--- a/ZH-变道自定义转向减小斜率(0).md
++++ b/ZH-变道自定义转向减小斜率(0).md
+@@ -27,7 +27,27 @@
+ <!-- CARROT:AUTO:END CustomSteerDeltaDownLC -->
+ 
+ <!-- CARROT:MANUAL:BEGIN CustomSteerDeltaDownLC -->
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="67d9465484581e4caecdff305beeee1c481498efbdc0de5fd207c47063b4b7b4" reviewed-at="2026-11-04T00:00:00Z" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++数值越高，转向力矩减小越快；数值越低，释放越慢。 0沿用正常释放速率设置。
++
++Porter II EV在驾驶员反向施力使之前的指令超出Panda驾驶员力矩允许范围时，优先采用保护性释放速率。最大转向力矩和正常路径跟踪设置保持不变。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++不会自动修改已保存的值。更新软件后请重启。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++此处理更快地将转向控制权交给驾驶员，不会提高转向力度或自动转弯能力。
++<!-- CARROT:SECTION:END REFERENCE -->
+ <!-- CARROT:MANUAL:END CustomSteerDeltaDownLC -->
+ 
+ <!-- CARROT:SETTING:END CustomSteerDeltaDownLC -->

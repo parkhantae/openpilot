@@ -116,3 +116,11 @@ screen. Generate from the current c3-pht-porter catalog and apply this patch
 with `git apply --unidiff-zero` **after** `porter-dedicated-gap.patch`; regenerate
 and validate. The zero-context format requires the same flag for `--check`. This is a staged
 branch-specific explanation, with no live upstream Wiki publication.
+
+## Porter driver-torque release
+
+`porter-steering-release.patch` documents the Porter-specific protective release
+for `CustomSteerDeltaDown` and `CustomSteerDeltaDownLC` in Korean, English and
+Chinese. Generate initial pages from the current c3-pht-porter catalog, apply
+with `git apply --check` and `git apply`, then regenerate and validate. It changes
+only those manual regions and is staged for this branch, not published upstream.

@@ -10,6 +10,7 @@ from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
 from opendbc.car.hyundai.porter_main_set import PorterMainSet
 from opendbc.car.hyundai.porter import PorterCruiseButtons, porter_steer_request_frames, porter_auto_set_speed_valid
+from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits
 from opendbc.car.hyundai.stopping import CanfdStopping
 from opendbc.car.hyundai.steering_handover import SteeringHandover
 from opendbc.car.carlog import carlog
@@ -331,7 +332,10 @@ class CarController(CarControllerBase):
 
     # steering torque
     new_torque = int(round(actuators.torque * self.params.STEER_MAX))
-    apply_torque = apply_driver_steer_torque_limits(new_torque, self.apply_torque_last, CS.out.steeringTorque, self.params)
+    if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
+      apply_torque = apply_porter_steer_torque_limits(new_torque, self.apply_torque_last, CS.out.steeringTorque, self.params)
+    else:
+      apply_torque = apply_driver_steer_torque_limits(new_torque, self.apply_torque_last, CS.out.steeringTorque, self.params)
 
     # >90 degree steering fault prevention
     self.angle_limit_counter, apply_steer_req = common_fault_avoidance(abs(CS.out.steeringAngleDeg) >= MAX_ANGLE, CC.latActive,

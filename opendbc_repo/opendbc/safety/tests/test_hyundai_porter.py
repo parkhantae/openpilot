@@ -3,6 +3,92 @@ from hyundai_porter_testlib import lib, packet, data, rx, seed, init, engage
 
 
 class TestNativePorter(unittest.TestCase):
+    def test_driver_release_matches_native_envelope_across_both_directions(self):
+        from types import SimpleNamespace as NS
+        from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits
+
+        for sign in (-1, 1):
+            for magnitude in (10, 100, 250, 339, 409):
+                for driver in (51, 100, 130, 144, 180, 207, 300, 500):
+                    for down in (1, 4, 5, 10):
+                        with self.subTest(sign=sign, last=magnitude, driver=driver, down=down):
+                            init(15361)
+                            last = sign * magnitude
+                            lib.set_desired_torque_last(last)
+                            lib.set_rt_torque_last(last)
+                            lib.set_torque_driver(-sign * driver, -sign * driver)
+                            limits = NS(STEER_MAX=409, STEER_DELTA_UP=3, STEER_DELTA_DOWN=down,
+                                        STEER_DRIVER_ALLOWANCE=50, STEER_DRIVER_FACTOR=1, STEER_DRIVER_MULTIPLIER=2)
+                            torque = apply_porter_steer_torque_limits(sign * 409, last, -sign * driver, limits)
+                            payload = ((1024 + torque) << 16 | (1 << 27)).to_bytes(8, 'little')
+                            self.assertTrue(lib.safety_tx_hook(packet(0x340, payload)), torque)
+
+    def test_driver_override_and_return_pass_native_limits_with_slow_release_settings(self):
+        from types import SimpleNamespace as NS
+        from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits
+
+        for sign in (-1, 1):
+            for down in (1, 4, 5, 7, 10, 20):
+                with self.subTest(sign=sign, down=down):
+                    init(15361)
+                    last = sign * 339
+                    lib.set_desired_torque_last(last)
+                    lib.set_rt_torque_last(last)
+                    samples = [-sign * v for v in (144, 177, 186, 191, 203, 207)]
+                    limits = NS(STEER_MAX=409, STEER_DELTA_UP=3, STEER_DELTA_DOWN=down,
+                                STEER_DRIVER_ALLOWANCE=50, STEER_DRIVER_FACTOR=1, STEER_DRIVER_MULTIPLIER=2)
+                    for tick, driver in enumerate([207, 215, 300, 400, 500] + [500] * 45 + [0] * 180):
+                        lib.set_timer(2000 + tick * 10000)
+                        seed(counter=tick + 1)
+                        driver *= -sign
+                        samples = samples[1:] + [driver]
+                        lib.set_torque_driver(min(samples), max(samples))
+                        torque = apply_porter_steer_torque_limits(sign * 409, last, driver, limits)
+                        payload = ((1024 + torque) << 16 | (1 << 27)).to_bytes(8, 'little')
+                        self.assertTrue(lib.safety_tx_hook(packet(0x340, payload)), (tick, driver, torque))
+                        last = torque
+                    self.assertEqual(last, sign * 409)
+
+    def test_actual_controller_yields_without_starting_a_native_rejection_chain(self):
+        import ast
+        from pathlib import Path
+        from types import SimpleNamespace as NS
+        from opendbc.car import apply_driver_steer_torque_limits
+        from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits
+
+        path = Path(__file__).parents[2] / 'car/hyundai/carcontroller.py'
+        tree = ast.parse(path.read_text())
+        cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'CarController')
+        update = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == 'update')
+        start = next(i for i, n in enumerate(update.body) if isinstance(n, ast.Assign) and
+                     any(isinstance(t, ast.Name) and t.id == 'new_torque' for t in n.targets))
+        end = next(i for i in range(start, len(update.body)) if isinstance(update.body[i], ast.Assign) and
+                   'self.angle_limit_counter' in ast.unparse(update.body[i].targets))
+        code = compile(ast.Module(body=update.body[start:end], type_ignores=[]), str(path), 'exec')
+        for sign in (-1, 1):
+            with self.subTest(sign=sign):
+                init(15361)
+                lib.set_desired_torque_last(sign * 339)
+                lib.set_rt_torque_last(sign * 339)
+                lib.set_torque_driver(144, 207) if sign < 0 else lib.set_torque_driver(-207, -144)
+                limits = NS(STEER_MAX=409, STEER_DELTA_UP=3, STEER_DELTA_DOWN=5,
+                            STEER_DRIVER_ALLOWANCE=50, STEER_DRIVER_FACTOR=1, STEER_DRIVER_MULTIPLIER=2)
+                env = {
+                    'self': NS(CP=NS(carFingerprint='porter'), params=limits, apply_torque_last=sign * 339),
+                    'actuators': NS(torque=sign), 'CS': NS(out=NS(steeringTorque=-sign * 207)),
+                    'CAR': NS(HYUNDAI_PORTER_II_EV='porter'),
+                    'apply_driver_steer_torque_limits': apply_driver_steer_torque_limits,
+                    'apply_porter_steer_torque_limits': apply_porter_steer_torque_limits,
+                }
+                exec(code, env)
+                torque = env['apply_torque']
+                payload = ((1024 + torque) << 16 | (1 << 27)).to_bytes(8, 'little')
+                self.assertTrue(lib.safety_tx_hook(packet(0x340, payload)), torque)
+                self.assertEqual(torque, sign * 329)
+                env['self'].CP.carFingerprint = 'other'
+                exec(code, env)
+                self.assertEqual(env['apply_torque'], sign * 334)
+
     def test_pedal_profile_cannot_replace_porter_stock_gas_after_reinitialization(self):
         for param in (1025, 9217, 11265, 15361, 25601, 58369, 60417):
             with self.subTest(param=param):
