@@ -512,7 +512,7 @@ Porter automatic SET tolerates at most 0.1s of request blocking at gas release. 
 
 Porter automatic SET initializes MAIN parity consistently with AutoEngage while separately requiring physical-input confirmation. Initial ON alone cannot start cruise; restart after updating.
 
-Porter automatic SET transmits only on a newly observed CLU11 sample, without a 10ms delayed slot. It checks actual stock ON within 0.5s and records missing responses; pulse bounds, retry spacing and safety guards remain. Engaged speed matching retains its independent timing and acknowledgement memory.
+The first Porter automatic SET pair transmits on a newly observed CLU11 sample. If actual stock ON is absent for 0.5s, the next fresh-pedal pair alternates between that immediate slot and a 10ms delayed slot; an actual ON acknowledgement remembers the slot for the same controller session. One transmission per sample, pulse bounds, retry spacing and safety guards remain, and `phase_delay_ms` reports the current slot. Engaged speed matching retains its independent timing and acknowledgement memory.
 
 In Settings > Vehicle & Hardware > Porter Only, enable **Porter: dedicated GAP** (`PorterGapUse`) to share `PorterGap1`–`PorterGap4` between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Default OFF uses common `TFollowGap1`–`TFollowGap4`. Existing GAP selection buttons remain; switching modes never copies or resets either set of saved values.
 

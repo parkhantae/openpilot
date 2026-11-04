@@ -11,6 +11,12 @@ class PorterMainSet:
     self.armed = False
     self.last_time = None
     self.last_key = None
+    self.sample_key = None
+    self.sample_seen = 0.
+    self.retry_sample_delay = 0.
+    self.preferred_sample_delay = 0.
+    self.request_sample_delay = 0.
+    self.slot_wait_since = None
     self.since = None
     self.pressing = False
     self.pedal_started = False
@@ -51,7 +57,32 @@ class PorterMainSet:
     # The production two-press policy always needs a fresh pedal cue, including
     # while lateral control is active. Legacy profiles/tests retain their path.
     pedal_only = pedal_only or self.two_press
+    if key is not None and key != self.sample_key:
+      self.sample_key = key
+      self.sample_seen = now
     fresh = key is not None and key != self.last_key
+    # The stock ECU did not acknowledge the immediate RX-relative slot in a
+    # vehicle log. Try the other 10 ms control slot after an unanswered pair,
+    # while retaining one transmission at most for each received CLU11 sample.
+    # Driver input, invalid state and release frames always bypass this trial.
+    pair_continuing = self.pressing or self.pair_remaining > 0
+    bypass_delay = (not self.two_press or main_pressed or manual_button or blocked or not configured or
+                    not request or (stock_enabled and not pair_continuing) or gas_pressed or self.pending_release or
+                    key is None or not math.isfinite(now))
+    if self.retry_sample_delay and not bypass_delay:
+      if fresh and now - self.sample_seen < self.retry_sample_delay - 1e-9:
+        self.slot_wait_since = now if self.slot_wait_since is None else self.slot_wait_since
+        if now - self.slot_wait_since >= .1 - 1e-9:
+          # Scheduling must not starve automatic SET when the delayed slot is
+          # unavailable. Fall back to the original immediate slot.
+          self.retry_sample_delay = 0.
+          self.slot_wait_since = None
+        else:
+          fresh = False
+      elif fresh:
+        self.slot_wait_since = None
+    else:
+      self.slot_wait_since = None
     if fresh:
       self.last_key = key
     clock_ok = math.isfinite(now) and (self.last_time is None or 0 <= now - self.last_time <= .1 + 1e-9)
@@ -85,11 +116,18 @@ class PorterMainSet:
       self.timeouts += 1
       self.response = "no_response"
       self.next_request = max(self.next_request, self.unknown_retry_at)
+      if self.two_press:
+        # Change only the next qualified pedal cycle's RX-relative phase. The
+        # pair bounds, native quiet period and fresh-pedal requirement remain.
+        self.retry_sample_delay = .01 - self.request_sample_delay
     if stock_rising:
       if (self.awaiting_stock and clock_ok and configured and now - observation_started <= .5 + 1e-9 and
           not manual_button and not main_pressed and not blocked and not gas_pressed):
         self.acks += 1
         self.response = "engaged"
+        if self.two_press:
+          self.preferred_sample_delay = self.request_sample_delay
+          self.retry_sample_delay = self.preferred_sample_delay
       elif self.awaiting_stock:
         self.response = "interrupted"
         self.next_request = max(self.next_request, self.unknown_retry_at)
@@ -98,6 +136,8 @@ class PorterMainSet:
     # The pulse stops below, but retaining awaiting_stock would count the
     # driver's interruption as an ECU timeout or attribute a later ON to it.
     if manual_button or main_pressed or blocked or gas_pressed or not configured or not clock_ok:
+      if manual_button or main_pressed or not configured:
+        self.retry_sample_delay = self.preferred_sample_delay
       if self.awaiting_stock:
         self.response = "interrupted"
         self.next_request = max(self.next_request, self.unknown_retry_at)
@@ -233,8 +273,9 @@ class PorterMainSet:
           self.pending_release = False
           return send(0)
       elif fresh and tx_fresh:
-        # Off-cruise SET has a strict native latest-counter guard. Never reuse
-        # an older unsent sample on the next 10ms control tick.
+        # The alternate timing trial may consume one still-current sample on
+        # the following 10 ms control tick. sent_key still prevents a second
+        # transmission from that sample, and Panda checks the latest counter.
         self.frames += 1
         return send(2)
       return None
@@ -260,6 +301,7 @@ class PorterMainSet:
       self.pedal_started = release_ready or second_press
       if not second_press:
         self.response_started = now
+        self.request_sample_delay = self.retry_sample_delay
       if self.two_press:
         self.pair_index = 2 if second_press else 1
         self.pair_remaining = int(not second_press and self.main_known)

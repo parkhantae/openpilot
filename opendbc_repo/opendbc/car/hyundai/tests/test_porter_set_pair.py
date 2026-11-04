@@ -114,6 +114,26 @@ class TestPorterSetPair(unittest.TestCase):
     self.assertFalse(self.state.main_known)
 
   def test_new_qualified_pedal_cycle_can_start_another_pair(self):
-    starts, _ = self.run_pair(gas_pressed=lambda t:20 <= t < 100 or 760 <= t < 800,
-                              request=lambda t:not (20 <= t < 100 or 760 <= t < 800))
-    self.assertEqual(starts, [100, 114, 800, 814])
+    starts, outputs = self.run_pair(gas_pressed=lambda t:20 <= t < 100 or 760 <= t < 800,
+                                    request=lambda t:not (20 <= t < 100 or 760 <= t < 800))
+    self.assertEqual(starts, [100, 114, 801, 815])
+    self.assertEqual(outputs[-8:], [(801, 2), (803, 2), (805, 2), (806, 0),
+                                    (815, 2), (817, 2), (819, 2), (820, 0)])
+
+  def test_unanswered_pair_tries_delayed_slot_and_ack_remembers_it(self):
+    starts, outputs = [], []
+    for tick in range(900):
+      gas = 20 <= tick < 100 or 760 <= tick < 800
+      before = self.state.requests
+      button = self.tick(tick, gas_pressed=gas, request=not gas, stock_enabled=tick >= 803)
+      if self.state.requests != before:
+        starts.append(tick)
+      if button is not None:
+        outputs.append((tick, button))
+
+    self.assertEqual(starts, [100, 114, 801, 815])
+    self.assertEqual(outputs[-8:], [(801, 2), (803, 2), (805, 2), (806, 0),
+                                    (815, 2), (817, 2), (819, 2), (820, 0)])
+    self.assertEqual(self.state.acks, 1)
+    self.assertEqual(self.state.preferred_sample_delay, .01)
+    self.assertEqual(self.state.retry_sample_delay, .01)

@@ -178,3 +178,27 @@ class TestPorterPairSafety(unittest.TestCase):
           self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=tick // 2 + 1))),
                           (engage_at,tick,button))
       self.assertEqual(starts, [100,114])
+
+  def test_real_host_delayed_retry_frames_pass_production_native_safety(self):
+    init(15361)
+    pulse = PorterMainSet(two_press=True)
+    starts, outputs = [], []
+    for tick in range(900):
+      gas = 20 <= tick < 100 or 760 <= tick < 800
+      lib.set_timer(21000 + tick * 10000)
+      if tick % 2 == 0:
+        seed(counter=tick // 2, speed=40, main=tick == 0, gas=gas)
+      before = pulse.requests
+      button = pulse.update(tick * .01, tick // 2, main_pressed=tick < 2, manual_button=0,
+                            blocked=False, request=not gas, stock_enabled=False,
+                            configured=True, gas_pressed=gas)
+      if pulse.requests != before:
+        starts.append(tick)
+      if button is not None:
+        outputs.append((tick, button))
+        self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=tick // 2 + 1))),
+                        (tick, button))
+
+    self.assertEqual(starts, [100,114,801,815])
+    self.assertEqual(outputs[-8:], [(801,2),(803,2),(805,2),(806,0),
+                                    (815,2),(817,2),(819,2),(820,0)])

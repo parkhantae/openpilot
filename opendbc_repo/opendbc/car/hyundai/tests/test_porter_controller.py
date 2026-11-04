@@ -165,6 +165,34 @@ class TestPorterMessagePath(unittest.TestCase):
                          [(100,2),(102,2),(104,2),(106,0),(114,2),(116,2),(118,2),(120,0)])
         self.assertTrue(any(b==1 for t,b in outputs if t>=150))
 
+  def test_unanswered_auto_set_pair_uses_delayed_packer_slot_on_next_pedal(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    self.controller.porter_main_set = PorterMainSet(two_press=True)
+    self.controller.porter_main_params = NS(get_bool=lambda key:True)
+    self.controller.CP.safetyConfigs = [NS(safetyParam=15361)]
+    self.cs.out.cruiseState.enabled = False
+    self.cs.out.cruiseState.speed = 0
+    self.cs.out.wheelSpeeds = NS(fl=50/3.6, rr=50/3.6)
+    self.cc.enabled = False
+    outputs = []
+    for frame in range(900):
+      gas = 20 <= frame < 100 or 760 <= frame < 800
+      self.controller.frame = frame
+      self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
+      self.cs.cp.ts_nanos['CLU11']['counter'] = 1_000_000_000 + (frame // 2) * 20_000_000
+      self.cs.clu11['CF_Clu_AliveCnt1'] = frame // 2 % 16
+      self.cs.clu11['CF_Clu_CruiseSwMain'] = int(frame < 2)
+      self.cs.main_buttons = [int(frame < 2)]
+      self.cs.out.gasPressed = gas
+      self.cc.cruiseControl.resume = not gas
+      for button in self.function(self.controller, self.cc, self.cs, True):
+        outputs.append((frame,button))
+
+    self.assertEqual(outputs[:8], [(100,2),(102,2),(104,2),(106,0),
+                                   (114,2),(116,2),(118,2),(120,0)])
+    self.assertEqual(outputs[-8:], [(801,2),(803,2),(805,2),(806,0),
+                                    (815,2),(817,2),(819,2),(820,0)])
+
   def test_delayed_retry_slot_reaches_packer_once_per_stock_sample(self):
     self.controller.porter_buttons.retry_sample_delay = .01
     outputs = []
