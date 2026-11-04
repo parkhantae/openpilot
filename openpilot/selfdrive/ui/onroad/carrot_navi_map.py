@@ -82,8 +82,11 @@ def carrot_navi_panel_rect(rect: rl.Rectangle) -> rl.Rectangle:
   return rl.Rectangle(rect.x + margin, rect.y + margin, width, height)
 
 
-def phone_map_hold_active(last_update_at: float, now: float) -> bool:
-  return last_update_at > 0.0 and 0.0 <= now - last_update_at <= PHONE_MAP_HOLD_S
+def phone_map_hold_active(last_update_at: float, now: float, connected: bool = False) -> bool:
+  """Keep the real phone map selected while its navigation session is alive."""
+  if last_update_at <= 0.0 or now < last_update_at:
+    return False
+  return connected or now - last_update_at <= PHONE_MAP_HOLD_S
 
 
 def map_state_from_carrot_navi(message: Any, alive: bool, valid: bool) -> SimpleMapState | None:
@@ -310,14 +313,17 @@ class CarrotNaviMapView:
     if not enabled:
       return False
 
-    # Prefer the decoded phone map before parsing/projecting the local route.
-    # This keeps the common CarrotNM path to one decoder update and one draw.
+    # CarrotNavi and CarrotNM share this exact decoded-phone-map path. Once a
+    # session has produced a real map frame, keep that map selected for the
+    # whole connected session instead of falling back to the simplified local
+    # road raster during a sender/decoder stall.
     panel = carrot_navi_panel_rect(content_rect)
     if self._phone_source is not None:
       dashboard = self._phone_source.update(None)
       phone_frame = map_frame_from_dashboard(dashboard)
       now = time.monotonic()
-      if phone_frame is not None or phone_map_hold_active(self._phone_map_updated_at, now):
+      phone_connected = bool(dashboard is not None and dashboard.connected)
+      if phone_frame is not None or phone_map_hold_active(self._phone_map_updated_at, now, phone_connected):
         rl.begin_scissor_mode(int(panel.x), int(panel.y), int(panel.width), int(panel.height))
         rendered = (
           self._phone_renderer.draw(phone_frame, panel)

@@ -154,6 +154,12 @@ def test_phone_map_holds_last_frame_across_short_stream_stall():
   assert not phone_map_hold_active(0.0, 1.0)
 
 
+def test_phone_map_never_falls_back_to_simplified_map_while_connected():
+  assert phone_map_hold_active(100.0, 1_000.0, connected=True)
+  assert not phone_map_hold_active(100.0, 1_000.0, connected=False)
+  assert not phone_map_hold_active(100.0, 99.0, connected=True)
+
+
 def test_yuv_perspective_normalizes_decoder_stride_before_narrowing_map():
   assert "fragTexCoord.x / textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
   assert "visibleMapCoord.x * textureScaleX" in NAVI_YUV_FRAGMENT_SHADER
