@@ -397,7 +397,8 @@ class TestPorterMainSet(unittest.TestCase):
         cs = NS(out=out,is_metric=metric,main_buttons=[0],cruise_buttons=[0],
                 clu11={'CF_Clu_AliveCnt1': 0,'CF_Clu_CruiseSwMain': 0})
         exec(code,dict(self=obj,CS=cs,CC=NS(enabled=False,latActive=False,cruiseControl=NS(resume=target,cancel=False)),
-                       fresh=True,timestamp=1,cancel_busy=False,pair_busy=False,DT_CTRL=.01,
+                       fresh=True,timestamp=1,parser=NS(_last_update_nanos=4_000_001),
+                       cancel_busy=False,pair_busy=False,DT_CTRL=.01,
                        structs=NS(CarState=NS(GearShifter=NS(drive='drive'))),
                        porter_auto_set_speed_valid=porter_auto_set_speed_valid))
         self.assertEqual((calls[0]['release_eligible'],calls[0]['request']),expected)

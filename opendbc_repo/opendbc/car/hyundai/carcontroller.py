@@ -759,6 +759,7 @@ class CarController(CarControllerBase):
                  not CC.cruiseControl.cancel and not cancel_busy and
                  not CS.out.gasPressed and main_set_vehicle_ready),
         release_eligible=main_set_vehicle_ready,
+        sample_age_s=(parser._last_update_nanos - timestamp) * 1e-9 if fresh else float("inf"),
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
         configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
@@ -777,7 +778,7 @@ class CarController(CarControllerBase):
         cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s "
                       "startup=%s grant=%s pedal_ready=%s gas=%s fresh=%s manual=%s "
                       "req=%d ack=%d noack=%d response=%s awaiting=%s cluster_kph=%.2f speed_ok=%s retry_ms=%.0f "
-                      + "pair_try=%d pair_pending=%d phase_delay_ms=%.0f",
+                      + "pair_try=%d pair_pending=%d sample_age_ms=%.1f late_samples=%d",
                       *main_status[:3], CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
                       self.porter_main_set.main_known, self.porter_main_set.allow_startup_gas,
                       self.porter_main_set.startup_grant, self.porter_main_set.startup_released, CS.out.gasPressed, fresh, manual,
@@ -785,7 +786,7 @@ class CarController(CarControllerBase):
                       porter_auto_set_speed_valid(self.CP, CS.out),
                       max(0., self.porter_main_set.next_request - self.frame * DT_CTRL) * 1000,
                       getattr(self.porter_main_set, 'pair_index', 0), getattr(self.porter_main_set, 'pair_remaining', 0),
-                      self.porter_main_set.retry_sample_delay * 1000)
+                      self.porter_main_set.sample_age_s * 1000, self.porter_main_set.late_samples)
       if cancel_busy:
         button = cancel_button
       elif button is None:

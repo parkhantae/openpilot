@@ -116,11 +116,11 @@ class TestPorterSetPair(unittest.TestCase):
   def test_new_qualified_pedal_cycle_can_start_another_pair(self):
     starts, outputs = self.run_pair(gas_pressed=lambda t:20 <= t < 100 or 760 <= t < 800,
                                     request=lambda t:not (20 <= t < 100 or 760 <= t < 800))
-    self.assertEqual(starts, [100, 114, 801, 815])
-    self.assertEqual(outputs[-8:], [(801, 2), (803, 2), (805, 2), (806, 0),
-                                    (815, 2), (817, 2), (819, 2), (820, 0)])
+    self.assertEqual(starts, [100, 114, 800, 814])
+    self.assertEqual(outputs[-8:], [(800, 2), (802, 2), (804, 2), (806, 0),
+                                    (814, 2), (816, 2), (818, 2), (820, 0)])
 
-  def test_unanswered_pair_tries_delayed_slot_and_ack_remembers_it(self):
+  def test_unanswered_pair_and_ack_keep_next_pedal_on_fresh_samples(self):
     starts, outputs = [], []
     for tick in range(900):
       gas = 20 <= tick < 100 or 760 <= tick < 800
@@ -131,9 +131,44 @@ class TestPorterSetPair(unittest.TestCase):
       if button is not None:
         outputs.append((tick, button))
 
-    self.assertEqual(starts, [100, 114, 801, 815])
-    self.assertEqual(outputs[-8:], [(801, 2), (803, 2), (805, 2), (806, 0),
-                                    (815, 2), (817, 2), (819, 2), (820, 0)])
+    self.assertEqual(starts, [100, 114, 800, 814])
+    self.assertEqual(outputs[-8:], [(800, 2), (802, 2), (804, 2), (806, 0),
+                                    (814, 2), (816, 2), (818, 2), (820, 0)])
     self.assertEqual(self.state.acks, 1)
-    self.assertEqual(self.state.preferred_sample_delay, .01)
-    self.assertEqual(self.state.retry_sample_delay, .01)
+    self.assertEqual(self.state.late_samples, 0)
+
+  def test_old_stock_samples_cannot_start_or_extend_automatic_set(self):
+    for age in (.008001, .014, .03, float("nan"), float("inf"), -.001):
+      with self.subTest(age=age):
+        self.setUp()
+        outputs = []
+        for tick in range(180):
+          button = self.tick(tick, sample_age_s=age if tick >= 100 else 0.)
+          if button is not None:
+            outputs.append(button)
+        self.assertEqual(outputs, [])
+
+  def test_late_release_sample_waits_for_new_sample_within_original_cue(self):
+    starts = []
+    for tick in range(180):
+      before = self.state.requests
+      self.tick(tick, sample_age_s=.014 if 100 <= tick < 102 else .004)
+      if self.state.requests != before:
+        starts.append(tick)
+    self.assertEqual(starts, [102, 116])
+
+  def test_sample_age_deadline_includes_eight_ms_and_keeps_legacy_policy(self):
+    for pair, age in ((True, .008), (False, .014)):
+      self.setUp()
+      self.state = PorterMainSet(two_press=pair)
+      outputs = [self.tick(tick, sample_age_s=age) for tick in range(180)]
+      self.assertIn(2, outputs)
+
+  def test_late_sample_during_press_does_not_extend_the_press(self):
+    outputs = []
+    for tick in range(180):
+      button = self.tick(tick, sample_age_s=.014 if tick == 102 else .004)
+      if button is not None:
+        outputs.append((tick, button))
+    self.assertEqual(outputs, [(100, 2), (104, 2), (106, 0),
+                               (114, 2), (116, 2), (118, 2), (120, 0)])

@@ -179,7 +179,7 @@ class TestPorterPairSafety(unittest.TestCase):
                           (engage_at,tick,button))
       self.assertEqual(starts, [100,114])
 
-  def test_real_host_delayed_retry_frames_pass_production_native_safety(self):
+  def test_real_host_retry_keeps_current_counter_without_delaying(self):
     init(15361)
     pulse = PorterMainSet(two_press=True)
     starts, outputs = [], []
@@ -199,6 +199,43 @@ class TestPorterPairSafety(unittest.TestCase):
         self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=tick // 2 + 1))),
                         (tick, button))
 
-    self.assertEqual(starts, [100,114,801,815])
-    self.assertEqual(outputs[-8:], [(801,2),(803,2),(805,2),(806,0),
-                                    (815,2),(817,2),(819,2),(820,0)])
+    self.assertEqual(starts, [100,114,800,814])
+    self.assertEqual(outputs[-8:], [(800,2),(802,2),(804,2),(806,0),
+                                    (814,2),(816,2),(818,2),(820,0)])
+
+  def test_host_pairs_with_can_poll_and_usb_latency_keep_current_native_counter(self):
+    # A 50 Hz CLU11 arrives before the host's 100 Hz control tick. Transport
+    # delay may let another OEM frame reach Panda before the queued command.
+    # Exercise production host and native code in their actual event order.
+    import heapq
+
+    for poll_us, usb_us in ((4000, 0), (4000, 7000), (6000, 10000)):
+      with self.subTest(poll_us=poll_us, usb_us=usb_us):
+        init(15361)
+        pulse = PorterMainSet(two_press=True)
+        events, transmitted = [], []
+        for tick in range(900):
+          if tick % 2 == 0:
+            heapq.heappush(events, (tick * 10000, 0, tick, None))
+          heapq.heappush(events, (tick * 10000 + poll_us, 1, tick, None))
+        while events:
+          time_us, kind, tick, command = heapq.heappop(events)
+          lib.set_timer(21000 + time_us)
+          gas = 20 <= tick < 100 or 760 <= tick < 800
+          if kind == 0:
+            seed(counter=tick // 2, speed=40, main=tick == 0, gas=gas)
+          elif kind == 1:
+            button = pulse.update(tick * .01, tick // 2, main_pressed=tick < 2, manual_button=0,
+                                  blocked=False, request=not gas, stock_enabled=False,
+                                  configured=True, gas_pressed=gas,
+                                  sample_age_s=(time_us - (tick // 2) * 20000) * 1e-6)
+            if button is not None:
+              heapq.heappush(events, (time_us + usb_us, 2, tick, button))
+          else:
+            self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=command,
+                                                                 counter=tick // 2 + 1))),
+                            (poll_us, usb_us, tick, command))
+            transmitted.append(command)
+        self.assertEqual(transmitted.count(2), 12)
+        self.assertEqual(transmitted.count(0), 4)
+        self.assertFalse(lib.get_controls_allowed())
