@@ -189,7 +189,7 @@ def test_rgba_map_stream_draws_original_texture_without_shader(monkeypatch):
   assert [call[0] for call in calls] == ["draw"]
 
 
-def test_phone_map_preserves_source_aspect_ratio(monkeypatch):
+def test_phone_map_crops_to_fill_panel_without_distorting_source(monkeypatch):
   renderer = object.__new__(NaviMapTextureRenderer)
   cached = SimpleNamespace(size=(1920, 1080))
   rect = rl.Rectangle(1360, 10, 790, 760)
@@ -199,12 +199,32 @@ def test_phone_map_preserves_source_aspect_ratio(monkeypatch):
 
   assert renderer._draw_texture(cached, rect)
   source, dest = draws[0]
-  assert source.width == 1920
+  assert source.x == pytest.approx((1920 - source.width) / 2)
+  assert source.y == 0
+  assert source.width == pytest.approx(1080 * rect.width / rect.height)
   assert source.height == 1080
   assert dest.x == pytest.approx(rect.x)
-  assert dest.y == pytest.approx(rect.y + (rect.height - dest.height) / 2)
+  assert dest.y == pytest.approx(rect.y)
   assert dest.width == pytest.approx(rect.width)
-  assert dest.height == pytest.approx(rect.width * 1080 / 1920)
+  assert dest.height == pytest.approx(rect.height)
+  assert source.width / source.height == pytest.approx(dest.width / dest.height)
+
+
+def test_phone_map_tall_source_also_fills_panel(monkeypatch):
+  renderer = object.__new__(NaviMapTextureRenderer)
+  cached = SimpleNamespace(size=(1080, 1920))
+  rect = rl.Rectangle(1360, 10, 790, 760)
+  draws = []
+  monkeypatch.setattr(rl, "draw_rectangle_rec", lambda *_: None)
+  monkeypatch.setattr(renderer, "_draw_cached", lambda _, source, dest: draws.append((source, dest)))
+
+  assert renderer._draw_texture(cached, rect)
+  source, dest = draws[0]
+  assert source.x == 0
+  assert source.y == pytest.approx((1920 - source.height) / 2)
+  assert source.width == 1080
+  assert source.height == pytest.approx(1080 * rect.height / rect.width)
+  assert (dest.x, dest.y, dest.width, dest.height) == (rect.x, rect.y, rect.width, rect.height)
 
 
 def test_phone_map_activity_param_is_only_written_on_transition():

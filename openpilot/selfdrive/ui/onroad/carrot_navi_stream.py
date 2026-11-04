@@ -124,17 +124,16 @@ class NaviMapTextureRenderer:
       return False
 
     source_w, source_h = map(float, cached.size)
-    scale = min(rect.width / source_w, rect.height / source_h)
-    draw_w, draw_h = source_w * scale, source_h * scale
-    source = rl.Rectangle(0.0, 0.0, source_w, source_h)
-    dest = rl.Rectangle(
-      rect.x + (rect.width - draw_w) * 0.5,
-      rect.y + (rect.height - draw_h) * 0.5,
-      draw_w,
-      draw_h,
-    )
+    source_aspect = source_w / source_h
+    panel_aspect = rect.width / rect.height
+    if source_aspect > panel_aspect:
+      crop_w = source_h * panel_aspect
+      source = rl.Rectangle((source_w - crop_w) * 0.5, 0.0, crop_w, source_h)
+    else:
+      crop_h = source_w / panel_aspect
+      source = rl.Rectangle(0.0, (source_h - crop_h) * 0.5, source_w, crop_h)
     rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
-    self._draw_cached(cached, source, dest)
+    self._draw_cached(cached, source, rect)
     return True
 
   def _texture_for(self, frame: NaviMediaFrame) -> CachedNaviTexture | None:
