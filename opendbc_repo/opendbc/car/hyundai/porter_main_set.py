@@ -42,6 +42,7 @@ class PorterMainSet:
     self.acks = 0
     self.timeouts = 0
     self.response = "idle"
+    self.response_reason = "idle"
     self.allow_startup_gas = allow_startup_gas
     self.startup_released = False
     self.startup_gas_since = None
@@ -101,26 +102,39 @@ class PorterMainSet:
     stock_rising = stock_enabled and not self.previous_stock
     self.previous_stock = stock_enabled
     observation_started = self.response_started if self.two_press else self.started
+    # Actuation already stops on these conditions below. Revoke the pending
+    # response observation as well, before processing a timeout or stock ON.
+    # Otherwise a cancelled pair is reported as ECU non-response, or an ON
+    # after lost authorization is credited to that cancelled request.
+    interruption = (
+      "main_button" if main_pressed else
+      "driver_button" if manual_button else
+      "input_blocked" if blocked else
+      "gas_override" if gas_pressed else
+      "option_off" if not configured else
+      "clock_gap" if not clock_ok else
+      "release_ineligible" if self.two_press and not release_eligible else
+      "request_withdrawn" if self.two_press and not request and not stock_enabled else None)
+    if self.awaiting_stock and interruption is not None:
+      self.awaiting_stock = False
+      self.response = "interrupted"
+      self.response_reason = interruption
+      self.next_request = max(self.next_request, self.unknown_retry_at)
     if self.awaiting_stock and clock_ok and now - observation_started > .5 + 1e-9:
       self.awaiting_stock = False
       self.timeouts += 1
       self.response = "no_response"
+      self.response_reason = "ack_deadline"
       self.next_request = max(self.next_request, self.unknown_retry_at)
     if stock_rising:
       if (self.awaiting_stock and clock_ok and configured and now - observation_started <= .5 + 1e-9 and
           not manual_button and not main_pressed and not blocked and not gas_pressed):
         self.acks += 1
         self.response = "engaged"
+        self.response_reason = "stock_on"
       elif self.awaiting_stock:
         self.response = "interrupted"
-        self.next_request = max(self.next_request, self.unknown_retry_at)
-      self.awaiting_stock = False
-    # A new accelerator press interrupts the pending SET observation too.
-    # The pulse stops below, but retaining awaiting_stock would count the
-    # driver's interruption as an ECU timeout or attribute a later ON to it.
-    if manual_button or main_pressed or blocked or gas_pressed or not configured or not clock_ok:
-      if self.awaiting_stock:
-        self.response = "interrupted"
+        self.response_reason = "stock_on_interrupted"
         self.next_request = max(self.next_request, self.unknown_retry_at)
       self.awaiting_stock = False
     if configured and stock_rising and not main_pressed:
@@ -289,6 +303,7 @@ class PorterMainSet:
       self.awaiting_stock = not stock_enabled
       self.requests += 1
       self.response = "engaged" if stock_enabled else "pending"
+      self.response_reason = "stock_on" if stock_enabled else "awaiting_stock"
       self.gas_release_since = None
       self.pressing = True
       self.started = now

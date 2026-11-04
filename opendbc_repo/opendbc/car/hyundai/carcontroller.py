@@ -771,22 +771,23 @@ class CarController(CarControllerBase):
       main_status = (self.porter_main_set.main, self.porter_main_set.armed, self.porter_main_set.pressing,
                      self.porter_main_set.main_known, self.porter_main_set.startup_grant,
                      self.porter_main_set.requests, self.porter_main_set.acks, self.porter_main_set.timeouts,
-                     self.porter_main_set.response)
+                     self.porter_main_set.response, self.porter_main_set.response_reason)
       if (any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in self.CP.safetyConfigs) and
           (main_status != getattr(self, "porter_main_status", None) or self.frame % 100 == 0)):
         self.porter_main_status = main_status
         cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s "
                       "startup=%s grant=%s pedal_ready=%s gas=%s fresh=%s manual=%s "
                       "req=%d ack=%d noack=%d response=%s awaiting=%s cluster_kph=%.2f speed_ok=%s retry_ms=%.0f "
-                      + "pair_try=%d pair_pending=%d sample_age_ms=%.1f late_samples=%d",
+                      + "pair_try=%d pair_pending=%d sample_age_ms=%.1f late_samples=%d response_reason=%s",
                       *main_status[:3], CC.cruiseControl.resume, CS.out.cruiseState.enabled, CS.out.vEgo * CV.MS_TO_KPH,
                       self.porter_main_set.main_known, self.porter_main_set.allow_startup_gas,
                       self.porter_main_set.startup_grant, self.porter_main_set.startup_released, CS.out.gasPressed, fresh, manual,
-                      *main_status[5:], self.porter_main_set.awaiting_stock, CS.out.vEgoCluster * CV.MS_TO_KPH,
+                      *main_status[5:9], self.porter_main_set.awaiting_stock, CS.out.vEgoCluster * CV.MS_TO_KPH,
                       porter_auto_set_speed_valid(self.CP, CS.out),
                       max(0., self.porter_main_set.next_request - self.frame * DT_CTRL) * 1000,
                       getattr(self.porter_main_set, 'pair_index', 0), getattr(self.porter_main_set, 'pair_remaining', 0),
-                      self.porter_main_set.sample_age_s * 1000, self.porter_main_set.late_samples)
+                      self.porter_main_set.sample_age_s * 1000, self.porter_main_set.late_samples,
+                      self.porter_main_set.response_reason)
       if cancel_busy:
         button = cancel_button
       elif button is None:

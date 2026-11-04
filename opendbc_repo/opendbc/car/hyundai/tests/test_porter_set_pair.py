@@ -172,3 +172,40 @@ class TestPorterSetPair(unittest.TestCase):
         outputs.append((tick, button))
     self.assertEqual(outputs, [(100, 2), (104, 2), (106, 0),
                                (114, 2), (116, 2), (118, 2), (120, 0)])
+
+  def test_withdrawn_target_revokes_response_observation_and_does_not_retry(self):
+    for loss_tick in (103, 110, 125, 151):
+      with self.subTest(loss_tick=loss_tick):
+        self.setUp()
+        outputs = []
+        for tick in range(500):
+          request = not 20 <= tick < 100 and tick != loss_tick
+          button = self.tick(tick, request=request)
+          if button is not None:
+            outputs.append((tick, button))
+          if tick == loss_tick:
+            self.assertFalse(self.state.awaiting_stock)
+        self.assertEqual(self.state.timeouts, 0)
+        self.assertEqual(self.state.response, "interrupted")
+        self.assertEqual(self.state.response_reason, "request_withdrawn")
+        self.assertTrue(all(tick <= 120 for tick, button in outputs if button == 2))
+
+  def test_lost_release_eligibility_revokes_response_without_false_ack(self):
+    for tick in range(300):
+      self.tick(tick, release_eligible=tick != 108, stock_enabled=tick >= 130)
+    self.assertEqual(self.state.timeouts, 0)
+    self.assertEqual(self.state.acks, 0)
+    self.assertEqual(self.state.response, "interrupted")
+    self.assertEqual(self.state.response_reason, "release_ineligible")
+
+  def test_stock_on_may_remove_resume_request_without_losing_valid_ack(self):
+    for tick in range(300):
+      self.tick(tick, request=not 20 <= tick < 100 and tick < 103, stock_enabled=tick >= 103)
+    self.assertEqual(self.state.acks, 1)
+    self.assertEqual(self.state.timeouts, 0)
+    self.assertEqual(self.state.response_reason, "stock_on")
+
+  def test_uninterrupted_unanswered_pair_still_counts_one_timeout(self):
+    self.run_pair()
+    self.assertEqual(self.state.timeouts, 1)
+    self.assertEqual(self.state.response_reason, "ack_deadline")
