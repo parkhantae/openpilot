@@ -45,6 +45,25 @@ PERSPECTIVE_FAR_STRENGTH = 1.8
 PERSPECTIVE_TOP_WIDTH = 0.60
 VALID_MAP_HOLD_S = 5.0
 PHONE_MAP_HOLD_S = 10.0
+ONROAD_MAP_MEDIA_KEYS = frozenset(("render:map_main",))
+ONROAD_H264_QUEUE_MAX = 4
+PHONE_PANEL_BORDER_COLOR = rl.Color(92, 112, 132, 180)
+LOCAL_PANEL_BORDER_COLOR = rl.Color(92, 112, 132, 150)
+LOCAL_MAP_CAST_COLOR = rl.Color(8, 14, 22, 10)
+TEXTURE_ORIGIN = rl.Vector2(0.0, 0.0)
+
+
+def _build_map_color_lut() -> np.ndarray:
+  values = np.arange(256, dtype=np.uint16)
+  lut = np.empty((256, 4), dtype=np.uint8)
+  lut[:, :3] = (180, 194, 208)
+  lut[:, 3] = np.clip(45 + values * 3 // 5, 45, 195).astype(np.uint8)
+  lut[0] = (8, 14, 22, 45)
+  lut[105:176] = (255, 110, 0, 255)
+  return lut
+
+
+MAP_COLOR_LUT = _build_map_color_lut()
 
 
 @dataclass(frozen=True)
@@ -183,6 +202,9 @@ class RoadMapTexture:
     self._retry_at = 0.0
     self._updated_at = 0.0
     self._has_roads = False
+    self._rgba = np.empty((MAP_SIZE * MAP_SIZE, 4), dtype=np.uint8)
+    self._strip_key: tuple[float, float, float, float] | None = None
+    self._strips: tuple[tuple[rl.Rectangle, rl.Rectangle], ...] = ()
 
   def draw(self, rect: rl.Rectangle) -> bool:
     now = time.monotonic()
@@ -195,10 +217,10 @@ class RoadMapTexture:
     if self._client.is_connected():
       buffer = self._client.recv(0)
       if buffer is not None and (buffer.width, buffer.height) == (MAP_SIZE, MAP_SIZE) and len(buffer.data) >= MAP_SIZE ** 2:
-        pixels = bytes(buffer.data[:MAP_SIZE ** 2])
+        pixels = np.frombuffer(buffer.data, dtype=np.uint8, count=MAP_SIZE ** 2)
         # mapsd deliberately sends black while a tile/instruction update is in
         # flight. Retain the last valid frame instead of flashing to fallback.
-        if any(pixels):
+        if np.any(pixels):
           self._has_roads = True
           self._updated_at = int(self._client.timestamp_eof) * 1e-9
           self._upload(pixels)
@@ -206,8 +228,18 @@ class RoadMapTexture:
     if self._texture is None or not self._has_roads or not 0.0 <= now - self._updated_at < VALID_MAP_HOLD_S:
       return False
 
-    # Four-pixel strips approximate vertical road-plane perspective without
-    # adding a shader or GPU render target.
+    for source, destination in self._perspective_strips(rect):
+      rl.draw_texture_pro(self._texture, source, destination, TEXTURE_ORIGIN, 0.0, rl.WHITE)
+    return True
+
+  def _perspective_strips(self, rect: rl.Rectangle) -> tuple[tuple[rl.Rectangle, rl.Rectangle], ...]:
+    key = (float(rect.x), float(rect.y), float(rect.width), float(rect.height))
+    if key == self._strip_key:
+      return self._strips
+    strips = []
+    # Cache the fixed 4-pixel road-plane tessellation. This removes hundreds of
+    # Python/raylib object allocations from every UI frame without changing the
+    # existing projection or number of GPU draws.
     for source_y in range(0, MAP_SIZE, 4):
       next_y = min(MAP_SIZE, source_y + 4)
       middle_y = (source_y + next_y) * 0.5
@@ -215,20 +247,21 @@ class RoadMapTexture:
       right = project_map_point(float(MAP_SIZE), middle_y, rect)
       top = project_map_point(MAP_SIZE * 0.5, float(source_y), rect).y
       bottom = project_map_point(MAP_SIZE * 0.5, float(next_y), rect).y
-      source = rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y))
-      destination = rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75))
-      rl.draw_texture_pro(
-        self._texture, source, destination, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE,
-      )
-    return True
+      strips.append((
+        rl.Rectangle(0.0, float(source_y), float(MAP_SIZE), float(next_y - source_y)),
+        rl.Rectangle(left.x, top, right.x - left.x, max(1.0, bottom - top + 0.75)),
+      ))
+    self._strip_key = key
+    self._strips = tuple(strips)
+    return self._strips
 
-  def _upload(self, pixels: bytes) -> None:
-    payload = colorize_map(pixels)
+  def _upload(self, pixels: np.ndarray) -> None:
+    np.take(MAP_COLOR_LUT, pixels, axis=0, out=self._rgba)
     if self._texture is None:
       image = rl.Image(None, MAP_SIZE, MAP_SIZE, 1, rl.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
       self._texture = rl.load_texture_from_image(image)
       rl.set_texture_filter(self._texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-    data = rl.ffi.cast("void *", rl.ffi.from_buffer("const unsigned char[]", payload))
+    data = rl.ffi.cast("void *", rl.ffi.from_buffer("const unsigned char[]", self._rgba))
     rl.update_texture(self._texture, data)
 
   def close(self) -> None:
@@ -236,19 +269,16 @@ class RoadMapTexture:
       rl.unload_texture(self._texture)
       self._texture = None
     self._client = None
+    self._strips = ()
+    self._strip_key = None
 
 
 def colorize_map(pixels: bytes) -> bytes:
   gray = np.frombuffer(pixels, dtype=np.uint8)
-  rgba = np.empty((MAP_SIZE * MAP_SIZE, 4), dtype=np.uint8)
-  rgba[:, :3] = (180, 194, 208)
-  rgba[:, 3] = np.clip(45 + gray.astype(np.uint16) * 3 // 5, 45, 195).astype(np.uint8)
-  background = gray == 0
-  rgba[background] = (8, 14, 22, 45)
-  # mapsd draws the active route at intensity 128. Color that already-aligned
-  # route instead of reprojecting phone coordinates against a snapped map pose.
-  route = (gray >= 105) & (gray <= 175)
-  rgba[route] = (255, 110, 0, 255)
+  rgba = np.empty((gray.size, 4), dtype=np.uint8)
+  # mapsd draws the active route at intensity 128. The lookup table preserves
+  # the existing colors while avoiding masks and intermediate arrays per frame.
+  np.take(MAP_COLOR_LUT, gray, axis=0, out=rgba)
   return rgba.tobytes()
 
 
@@ -277,6 +307,43 @@ class CarrotNaviMapView:
     self._phone_stream_enabled = False
     self._phone_map_active = False
     self._phone_map_updated_at = 0.0
+    self._panel_key: tuple[float, float, float, float] | None = None
+    self._panel = None
+    self._fallback_projected: tuple[rl.Vector2, ...] | None = None
+    self._fallback_panel_key: tuple[float, float, float, float] | None = None
+
+  def _panel_rect(self, content_rect: rl.Rectangle) -> rl.Rectangle:
+    key = (float(content_rect.x), float(content_rect.y), float(content_rect.width), float(content_rect.height))
+    if key != self._panel_key:
+      self._panel_key = key
+      self._panel = carrot_navi_panel_rect(content_rect)
+      self._fallback_projected = None
+    return self._panel
+
+  def _fallback_route(self, sm: Any, panel: rl.Rectangle) -> tuple[rl.Vector2, ...]:
+    try:
+      alive = bool(sm.alive["carrotNavi"])
+      valid = bool(sm.valid["carrotNavi"])
+    except Exception:
+      alive = valid = False
+    if not alive or not valid:
+      self._fallback_projected = ()
+      self._fallback_panel_key = None
+      return ()
+
+    panel_key = (float(panel.x), float(panel.y), float(panel.width), float(panel.height))
+    try:
+      updated = bool(sm.updated["carrotNavi"])
+    except Exception:
+      updated = True
+    if self._fallback_projected is None or updated or panel_key != self._fallback_panel_key:
+      try:
+        state = map_state_from_carrot_navi(sm["carrotNavi"], alive, valid)
+      except Exception:
+        state = None
+      self._fallback_projected = project_route(route_local_points(state), panel) if state is not None else ()
+      self._fallback_panel_key = panel_key
+    return self._fallback_projected
 
   def _set_phone_map_active(self, active: bool) -> None:
     active = bool(active)
@@ -294,7 +361,10 @@ class CarrotNaviMapView:
       return
     self._phone_stream_enabled = enabled
     if enabled:
-      self._phone_source = NaviIpcMediaSource()
+      self._phone_source = NaviIpcMediaSource(
+        media_keys=ONROAD_MAP_MEDIA_KEYS,
+        h264_queue_max=ONROAD_H264_QUEUE_MAX,
+      )
       try:
         self._params.put_nonblocking("CarrotNaviWebBootstrapRequest", f"ui-{time.time_ns():x}")
       except Exception:
@@ -317,7 +387,7 @@ class CarrotNaviMapView:
     # session has produced a real map frame, keep that map selected for the
     # whole connected session instead of falling back to the simplified local
     # road raster during a sender/decoder stall.
-    panel = carrot_navi_panel_rect(content_rect)
+    panel = self._panel_rect(content_rect)
     if self._phone_source is not None:
       dashboard = self._phone_source.update(None)
       phone_frame = map_frame_from_dashboard(dashboard)
@@ -338,20 +408,12 @@ class CarrotNaviMapView:
           if phone_frame is not None:
             self._phone_map_updated_at = now
           self._set_phone_map_active(True)
-          rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 180))
+          self._fallback_projected = None
+          rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, PHONE_PANEL_BORDER_COLOR)
           return True
 
     self._set_phone_map_active(False)
-    try:
-      state = map_state_from_carrot_navi(
-        sm["carrotNavi"], bool(sm.alive["carrotNavi"]), bool(sm.valid["carrotNavi"]),
-      )
-    except Exception:
-      state = None
-    if state is None:
-      return False
-
-    projected = project_route(route_local_points(state), panel)
+    projected = self._fallback_route(sm, panel)
     if len(projected) < 2:
       return False
     rl.begin_scissor_mode(int(panel.x), int(panel.y), int(panel.width), int(panel.height))
@@ -361,11 +423,11 @@ class CarrotNaviMapView:
       _draw_grid(panel)
     # Restore a translucent navy cast over the raster so the roads stay readable
     # without competing with the blue active route and the driving HUD.
-    rl.draw_rectangle_rec(panel, rl.Color(8, 14, 22, 10))
+    rl.draw_rectangle_rec(panel, LOCAL_MAP_CAST_COLOR)
     if not has_aligned_map:
       _draw_route(projected, panel)
     _draw_vehicle(panel)
-    rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, rl.Color(92, 112, 132, 150))
+    rl.draw_rectangle_rounded_lines_ex(panel, 0.08, 8, 2.0, LOCAL_PANEL_BORDER_COLOR)
     rl.end_scissor_mode()
     # The road view owns a content scissor around us; restore it after using the
     # tighter map clip because raylib's scissor state is not a stack.

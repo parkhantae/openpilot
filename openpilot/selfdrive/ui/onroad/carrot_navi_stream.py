@@ -79,6 +79,8 @@ void main() {
 """
 
 NAVI_EGL_IMAGE_CACHE_LIMIT = 10
+NAVI_MAP_BACKGROUND = rl.Color(12, 18, 25, 210)
+NAVI_TEXTURE_ORIGIN = rl.Vector2(0.0, 0.0)
 
 
 @dataclass(slots=True)
@@ -110,6 +112,9 @@ class NaviMapTextureRenderer:
     self._yuv_locations: dict[str, int] = {}
     self._external_shader = None
     self._egl_images: OrderedDict[tuple[int, int], object] = OrderedDict()
+    self._egl_generation: int | None = None
+    self._source_key: tuple[tuple[int, int], float, float] | None = None
+    self._source_rect = None
 
   def draw(self, frame: NaviMediaFrame, rect: rl.Rectangle) -> bool:
     cached = self._texture_for(frame)
@@ -123,17 +128,20 @@ class NaviMapTextureRenderer:
     if cached is None or cached.size[0] <= 0 or cached.size[1] <= 0:
       return False
 
-    source_w, source_h = map(float, cached.size)
-    source_aspect = source_w / source_h
-    panel_aspect = rect.width / rect.height
-    if source_aspect > panel_aspect:
-      crop_w = source_h * panel_aspect
-      source = rl.Rectangle((source_w - crop_w) * 0.5, 0.0, crop_w, source_h)
-    else:
-      crop_h = source_w / panel_aspect
-      source = rl.Rectangle(0.0, (source_h - crop_h) * 0.5, source_w, crop_h)
-    rl.draw_rectangle_rec(rect, rl.Color(12, 18, 25, 210))
-    self._draw_cached(cached, source, rect)
+    source_key = (cached.size, float(rect.width), float(rect.height))
+    if getattr(self, "_source_key", None) != source_key:
+      source_w, source_h = map(float, cached.size)
+      source_aspect = source_w / source_h
+      panel_aspect = rect.width / rect.height
+      if source_aspect > panel_aspect:
+        crop_w = source_h * panel_aspect
+        self._source_rect = rl.Rectangle((source_w - crop_w) * 0.5, 0.0, crop_w, source_h)
+      else:
+        crop_h = source_w / panel_aspect
+        self._source_rect = rl.Rectangle(0.0, (source_h - crop_h) * 0.5, source_w, crop_h)
+      self._source_key = source_key
+    rl.draw_rectangle_rec(rect, NAVI_MAP_BACKGROUND)
+    self._draw_cached(cached, self._source_rect, rect)
     return True
 
   def _texture_for(self, frame: NaviMediaFrame) -> CachedNaviTexture | None:
@@ -168,8 +176,11 @@ class NaviMapTextureRenderer:
       if not init_egl():
         raise RuntimeError("EGL DMA-BUF import is unavailable")
       normalized_token = (int(token[0]), int(token[1]))
-      self._discard_other_generations(normalized_token[0])
+      if self._egl_generation != normalized_token[0]:
+        self._discard_other_generations(normalized_token[0])
+        self._egl_generation = normalized_token[0]
       egl_image = self._egl_images.get(normalized_token)
+      new_egl_image = egl_image is None
       if egl_image is None:
         egl_image = create_egl_image(width, height, stride, fd, uv_offset)
         if egl_image is None:
@@ -181,16 +192,20 @@ class NaviMapTextureRenderer:
       cached = self._cached
       reuse = cached is not None and cached.mime == frame.mime and cached.size == (width, height)
       texture = cached.texture if reuse else self._new_external_texture(width, height)
-      texture.width = width
-      texture.height = height
       bind_egl_image_to_texture(texture.id, egl_image)
-      replacement = CachedNaviTexture(
-        frame.sequence, (width, height), frame.mime, texture, hardware_token=normalized_token,
-      )
-      if cached is not None and cached.texture is not texture:
-        self._unload_cached(cached)
-      self._cached = replacement
-      self._evict_egl_images()
+      if reuse:
+        cached.sequence = frame.sequence
+        cached.hardware_token = normalized_token
+        replacement = cached
+      else:
+        replacement = CachedNaviTexture(
+          frame.sequence, (width, height), frame.mime, texture, hardware_token=normalized_token,
+        )
+        if cached is not None:
+          self._unload_cached(cached)
+        self._cached = replacement
+      if new_egl_image:
+        self._evict_egl_images()
       return replacement
     except Exception as exc:
       mark_failed = getattr(hardware_buffer, "mark_egl_import_failed", None)
@@ -322,12 +337,12 @@ class NaviMapTextureRenderer:
       rl.begin_shader_mode(shader)
       try:
         bind_egl_image_to_texture(cached.texture.id, self._egl_images[cached.hardware_token])
-        rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
+        rl.draw_texture_pro(cached.texture, source, dest, NAVI_TEXTURE_ORIGIN, 0.0, rl.WHITE)
       finally:
         rl.end_shader_mode()
       return
     if cached.mime != "image/yuv420p":
-      rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
+      rl.draw_texture_pro(cached.texture, source, dest, NAVI_TEXTURE_ORIGIN, 0.0, rl.WHITE)
       return
     if cached.u_texture is None or cached.v_texture is None:
       return
@@ -340,7 +355,7 @@ class NaviMapTextureRenderer:
                           rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
       rl.set_shader_value(shader, self._yuv_locations["uvScaleV"], cached.uv_scale_v,
                           rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
-      rl.draw_texture_pro(cached.texture, source, dest, rl.Vector2(0.0, 0.0), 0.0, rl.WHITE)
+      rl.draw_texture_pro(cached.texture, source, dest, NAVI_TEXTURE_ORIGIN, 0.0, rl.WHITE)
     finally:
       rl.end_shader_mode()
 
@@ -392,6 +407,9 @@ class NaviMapTextureRenderer:
     for image in self._egl_images.values():
       destroy_egl_image(image)
     self._egl_images.clear()
+    self._egl_generation = None
+    self._source_key = None
+    self._source_rect = None
     if self._external_shader is not None:
       rl.unload_shader(self._external_shader)
       self._external_shader = None

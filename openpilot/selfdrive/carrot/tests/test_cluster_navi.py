@@ -759,6 +759,49 @@ def test_ipc_media_source_restores_standalone_navigation_images():
   assert source._projected_media() == ()
 
 
+def test_ipc_media_source_filters_before_copying_unwanted_payload():
+  class PayloadMustNotBeCopied:
+    def __bytes__(self):
+      raise AssertionError("unwanted payload was copied")
+
+  unwanted = SimpleNamespace(
+    schemaVersion=1, sessionId="ipc-session", kind="image", name="tbt_next",
+    sequence=6, present=True, reason="", messageType=1, formatOrReason=1,
+    width=32, height=24, payload=PayloadMustNotBeCopied(),
+  )
+  map_frame = SimpleNamespace(
+    schemaVersion=1, sessionId="ipc-session", kind="image", name="map_main",
+    sequence=7, present=True, reason="", messageType=1, formatOrReason=2,
+    width=64, height=48, payload=b"map",
+  )
+
+  class FakeMessaging:
+    def __init__(self):
+      self.messages = [
+        SimpleNamespace(carrotNaviMedia=unwanted),
+        SimpleNamespace(carrotNaviMedia=map_frame),
+      ]
+
+    def sub_sock(self, service, conflate):
+      assert service == "carrotNaviMedia"
+      assert conflate is False
+      return object()
+
+    def drain_sock(self, _socket):
+      messages, self.messages = self.messages, []
+      return messages
+
+  source = NaviIpcMediaSource(FakeMessaging(), media_keys=frozenset(("image:map_main",)), h264_queue_max=4)
+  try:
+    dashboard = source.update(SimpleNamespace(session_id="ipc-session"))
+  finally:
+    source.close()
+
+  assert dashboard.received_count == 1
+  assert dashboard.media == (NaviMediaFrame("image:map_main", 7, True, "image/jpeg", 64, 48, b"map"),)
+  assert source._h264_worker._max_pending_per_key == 4
+
+
 def test_navi_or_trip_report_panel_shifts_3d_camera_modes_left():
   renderer = object.__new__(ClusterUiRenderer)
   renderer.width = 1920

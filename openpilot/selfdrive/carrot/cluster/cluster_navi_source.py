@@ -299,8 +299,9 @@ def _is_new_h264_result(
 
 
 class H264DecodeWorker:
-    def __init__(self, decoder_factory=H264Decoder) -> None:
+    def __init__(self, decoder_factory=H264Decoder, *, max_pending_per_key: int = H264_DECODE_QUEUE_MAX) -> None:
         self._decoder_factory = decoder_factory
+        self._max_pending_per_key = max(1, int(max_pending_per_key))
         self._condition = threading.Condition()
         self._pending: deque[_H264DecodeRequest] = deque()
         self._results: dict[str, _H264DecodeResult] = {}
@@ -325,7 +326,7 @@ class H264DecodeWorker:
             elif request.key in self._waiting_for_keyframe:
                 self._dropped_requests += 1
                 return
-            elif sum(item.key == request.key for item in self._pending) >= H264_DECODE_QUEUE_MAX:
+            elif sum(item.key == request.key for item in self._pending) >= self._max_pending_per_key:
                 retained = deque(item for item in self._pending if item.key != request.key)
                 self._dropped_requests += len(self._pending) - len(retained) + 1
                 self._pending = retained
@@ -490,12 +491,19 @@ def _ipc_value(data: Any, name: str, default: Any = None) -> Any:
 class NaviIpcMediaSource:
     """Projects standalone carrot_navi media messages into the cluster dashboard."""
 
-    def __init__(self, messaging_module: Any | None = None) -> None:
+    def __init__(
+        self,
+        messaging_module: Any | None = None,
+        *,
+        media_keys: frozenset[str] | None = None,
+        h264_queue_max: int = H264_DECODE_QUEUE_MAX,
+    ) -> None:
         if messaging_module is None:
             import openpilot.cereal.messaging as messaging_module
 
         self.messaging = messaging_module
         self._socket = messaging_module.sub_sock("carrotNaviMedia", conflate=False)
+        self._media_keys = media_keys
         self._session_id = ""
         self._media: dict[str, NaviMediaFrame] = {}
         self._item_status: dict[str, NaviItemStatus] = {}
@@ -505,7 +513,7 @@ class NaviIpcMediaSource:
         self._item_snapshot_dirty = False
         self._media_epoch = 0
         self._h264_requested_sequences: dict[str, int] = {}
-        self._h264_worker = H264DecodeWorker()
+        self._h264_worker = H264DecodeWorker(max_pending_per_key=h264_queue_max)
         self._h264_configs: dict[str, tuple[int, bytes]] = {}
         self._last_media_at_s = 0.0
         self._map_frame_at_s = 0.0
@@ -590,6 +598,11 @@ class NaviIpcMediaSource:
         if kind not in ("image", "render") or not name:
             return
         key = f"{kind}:{name}"
+        # The native onroad UI consumes only map_main. Filter before copying
+        # image/video payloads so unrelated guidance media cannot add decode
+        # work or transient byte buffers to the main UI process.
+        if self._media_keys is not None and key not in self._media_keys:
+            return
         sequence = max(0, int(_ipc_value(data, "sequence", 0)))
         present = bool(_ipc_value(data, "present", False))
         reason = str(_ipc_value(data, "reason", "") or "") or None

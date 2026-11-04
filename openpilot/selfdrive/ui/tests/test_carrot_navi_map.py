@@ -6,6 +6,9 @@ import pyray as rl
 from openpilot.selfdrive.ui.onroad.carrot_navi_map import (
   CarrotNaviMapView,
   GeoPoint,
+  ONROAD_H264_QUEUE_MAX,
+  ONROAD_MAP_MEDIA_KEYS,
+  RoadMapTexture,
   SimpleMapState,
   carrot_navi_panel_rect,
   colorize_map,
@@ -225,6 +228,90 @@ def test_phone_map_tall_source_also_fills_panel(monkeypatch):
   assert source.width == 1080
   assert source.height == pytest.approx(1080 * rect.height / rect.width)
   assert (dest.x, dest.y, dest.width, dest.height) == (rect.x, rect.y, rect.width, rect.height)
+
+
+def test_phone_map_reuses_unchanged_crop_geometry(monkeypatch):
+  renderer = NaviMapTextureRenderer()
+  cached = SimpleNamespace(size=(1920, 1080))
+  rect = rl.Rectangle(1360, 10, 790, 760)
+  sources = []
+  monkeypatch.setattr(rl, "draw_rectangle_rec", lambda *_: None)
+  monkeypatch.setattr(renderer, "_draw_cached", lambda _, source, _dest: sources.append(source))
+
+  assert renderer._draw_texture(cached, rect)
+  assert renderer._draw_texture(cached, rect)
+
+  assert sources[0] is sources[1]
+
+
+def test_local_map_reuses_perspective_strip_geometry():
+  road_map = RoadMapTexture()
+  panel = rl.Rectangle(1360, 10, 790, 760)
+
+  first = road_map._perspective_strips(panel)
+  second = road_map._perspective_strips(panel)
+  resized = road_map._perspective_strips(rl.Rectangle(1360, 10, 780, 760))
+
+  assert len(first) == 64
+  assert first is second
+  assert resized is not first
+
+
+def test_local_route_projection_only_updates_with_navigation(monkeypatch):
+  calls = []
+
+  class FakeSubMaster:
+    alive = {"carrotNavi": True}
+    valid = {"carrotNavi": True}
+    updated = {"carrotNavi": True}
+
+    def __getitem__(self, _service):
+      return object()
+
+  expected = (rl.Vector2(1, 2), rl.Vector2(3, 4))
+  view = object.__new__(CarrotNaviMapView)
+  view._fallback_projected = None
+  view._fallback_panel_key = None
+  panel = rl.Rectangle(1360, 10, 790, 760)
+  sm = FakeSubMaster()
+  monkeypatch.setattr(
+    "openpilot.selfdrive.ui.onroad.carrot_navi_map.map_state_from_carrot_navi",
+    lambda *_: object(),
+  )
+  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.route_local_points", lambda _state: ())
+  monkeypatch.setattr(
+    "openpilot.selfdrive.ui.onroad.carrot_navi_map.project_route",
+    lambda *_: calls.append(True) or expected,
+  )
+
+  assert view._fallback_route(sm, panel) is expected
+  sm.updated["carrotNavi"] = False
+  assert view._fallback_route(sm, panel) is expected
+
+  assert len(calls) == 1
+
+
+def test_onroad_map_source_filters_media_and_bounds_decoder_queue(monkeypatch):
+  created = []
+
+  class FakeSource:
+    def __init__(self, **kwargs):
+      created.append(kwargs)
+
+  view = object.__new__(CarrotNaviMapView)
+  view._phone_stream_enabled = False
+  view._phone_source = None
+  view._phone_map_active = False
+  view._phone_map_updated_at = 0.0
+  view._params = SimpleNamespace(put_nonblocking=lambda *_: None)
+  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.NaviIpcMediaSource", FakeSource)
+
+  view._set_phone_stream_enabled(True)
+
+  assert created == [{
+    "media_keys": ONROAD_MAP_MEDIA_KEYS,
+    "h264_queue_max": ONROAD_H264_QUEUE_MAX,
+  }]
 
 
 def test_phone_map_activity_param_is_only_written_on_transition():
