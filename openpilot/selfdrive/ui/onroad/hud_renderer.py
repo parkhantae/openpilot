@@ -302,7 +302,8 @@ class HudRenderer(Widget):
     # Keep hit testing at camera cadence, outside the cached drawing layer.
     bx, by = int(rect.x + 140), int(rect.y + rect.height - 230)
     self._gap_touch.update(
-      (rl.Rectangle(bx + 180, by + 20, 80, 75), rl.Rectangle(bx + 260, by + 95, 90, 100)),
+      # Broad number/bar targets; keep the adjacent gear box outside the hit area.
+      (rl.Rectangle(bx + 160, by + 10, 110, 200), rl.Rectangle(bx + 270, by + 80, 110, 130)),
       gui_app.mouse_events,
       enabled=ui_state.started and self.is_cruise_available and ui_state.CP is not None,
       awake=device.awake,

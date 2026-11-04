@@ -157,14 +157,16 @@ def test_real_hud_render_consumes_fast_gap_taps_without_sidebar_or_hold_action(h
   exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
   sidebar = []
   view = NS(_hud_renderer=renderer, _click_callback=lambda: sidebar.append(True))
-  for index, pos in enumerate([number, bars]):
+  # Both old labels and newly enlarged margins must consume the tap.
+  margins = [NS(x=325, y=850), NS(x=525, y=1010)]
+  for index, pos in enumerate([number, bars, *margins]):
     module.gui_app.mouse_events = [event(pos.x, pos.y, 1 + index, press=True),
                                    event(pos.x, pos.y, 1.1 + index, release=True)]
     renderer._render(rect)
     namespace['_handle_mouse_press'](view, pos)
     assert not sidebar
-    assert renderer._get_cruise_gap() == 3 - index
-    assert paint_keys[-1][-1] == 2 - index
+    assert renderer._get_cruise_gap() == 4 - ((index + 1) % 4)
+    assert paint_keys[-1][-1] == 3 - ((index + 1) % 4)
   assert not renderer._exp_button.is_pressed
   assert not renderer._gap_touch.contains(NS(x=465, y=860))  # Adjacent D/P/R/N gear box.
   namespace['_handle_mouse_press'](view, NS(x=1000, y=500))

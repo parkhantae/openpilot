@@ -183,6 +183,8 @@ On other brands, tune delay first only if acceleration and braking are both cons
 <a id="following-gap"></a>
 ## 5. Following gap
 
+The touch targets extend around the GAP number and bars while excluding the adjacent gear display. Short-tap, hold and drag handling and the Porter gap cycle are preserved.
+
 ### Gap cycle levels
 
 `CruiseGapLevels` sets how many levels the gap button cycles through. The minimum is 2; the maximum and default are the vehicle-supported count. Four-level vehicles offer 2–4, and three-level vehicles offer 2–3.
