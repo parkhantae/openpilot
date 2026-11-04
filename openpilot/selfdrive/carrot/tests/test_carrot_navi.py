@@ -10,12 +10,14 @@ from aiohttp.test_utils import TestClient, TestServer
 
 from openpilot.selfdrive.carrot.carrot_navi import (
   BINARY_HEADER,
+  CARROT_NM_MAP_DPI,
   CATALOG,
   CLUSTER_ENABLED_IMAGE_NAMES,
   CarrotNaviDiscoveryBeacon,
   ClusterNaviMapParamReader,
   CarrotNaviReceiver,
   DISCOVERY_PORT,
+  MAP_DPI_DEFAULT,
   MAP_SCREEN_CENTER_Y_RATIO_DEFAULT,
   PROTOCOL_VERSION,
   build_manifest,
@@ -140,6 +142,7 @@ def test_manifest_disables_only_cluster_unused_images():
   assert map_stream["params"]["map_theme"] == "auto"
   assert map_stream["params"]["screen_center_y_ratio"] == 0.8
   assert map_stream["params"]["tilt"] == 80.0
+  assert map_stream["params"]["dpi"] == MAP_DPI_DEFAULT
 
   invalid_requirements = requirements_query()
   invalid_requirements["catalog_revision"] = 2
@@ -180,6 +183,20 @@ def test_manifest_requests_configured_map_appearance():
     build_manifest("12345678", map_bitrate_kbps=12001)
   with pytest.raises(ValueError, match="screen center ratio"):
     build_manifest("12345678", screen_center_y_ratio=0.49)
+  with pytest.raises(ValueError, match="map density"):
+    build_manifest("12345678", map_dpi=119)
+
+
+def test_carrot_nm_uses_smaller_native_vehicle_marker_density():
+  receiver = CarrotNaviReceiver()
+
+  carrot_nm = receiver.negotiate(requirements_query(), "naver-6.10.0.16-v129-release")
+  carrot_nm_map = next(stream for stream in carrot_nm["streams"] if stream["kind"] == "render")
+  assert carrot_nm_map["params"]["dpi"] == CARROT_NM_MAP_DPI
+
+  carrot_navi = receiver.negotiate(requirements_query(), "11.8.4.4075")
+  carrot_navi_map = next(stream for stream in carrot_navi["streams"] if stream["kind"] == "render")
+  assert carrot_navi_map["params"]["dpi"] == MAP_DPI_DEFAULT
 
 
 def test_cluster_navi_map_params_and_receiver_updates_next_manifest():

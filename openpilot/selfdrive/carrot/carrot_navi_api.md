@@ -321,6 +321,11 @@ crossroad overlays. Those are separate image streams.
 | `center_longitude` | `-180..180` or `null` | `null` |
 | `stale_timeout_ms` | `1000..30000` | `5000` |
 
+The receiver keeps `dpi=360` for CarrotNavi. CarrotNM builds identify their
+control session with the `naver-*` version prefix; those sessions receive
+`dpi=180` so the native vehicle marker renders at 50% of its prior linear size.
+Render resolution, zoom, tilt, camera position, and frame rate are unchanged.
+
 H.264 dimensions are rounded down to even values. `stale_timeout_ms` is retained
 in effective configuration but currently does not stop the render worker.
 For `map_type=normal`, `map_theme` selects the TMAP driving day/night style.

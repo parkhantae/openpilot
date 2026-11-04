@@ -36,6 +36,8 @@ MAP_THEMES = frozenset(("auto", "dark", "light"))
 MAP_TYPES = frozenset(("normal", "satellite"))
 MAP_RENDER_WIDTH = 960
 MAP_RENDER_HEIGHT = 540
+MAP_DPI_DEFAULT = 360
+CARROT_NM_MAP_DPI = 180
 MAP_HZ_MIN = 1
 MAP_HZ_MAX = 60
 MAP_HZ_DEFAULT = 10
@@ -292,6 +294,7 @@ def _stream_params(
   map_hz: int = MAP_HZ_DEFAULT,
   map_bitrate_kbps: int = MAP_BITRATE_KBPS_DEFAULT,
   screen_center_y_ratio: float = MAP_SCREEN_CENTER_Y_RATIO_DEFAULT,
+  map_dpi: int = MAP_DPI_DEFAULT,
 ) -> dict[str, Any]:
   if kind == "json":
     return {
@@ -312,7 +315,7 @@ def _stream_params(
     "composition": "map_route_vehicle",
     "width": MAP_RENDER_WIDTH,
     "height": MAP_RENDER_HEIGHT,
-    "dpi": 360,
+    "dpi": map_dpi,
     "fps": map_hz,
     "jpeg_quality": 75,
     "codec": "h264",
@@ -342,6 +345,7 @@ def build_manifest(
   map_hz: int = MAP_HZ_DEFAULT,
   map_bitrate_kbps: int = MAP_BITRATE_KBPS_DEFAULT,
   screen_center_y_ratio: float = MAP_SCREEN_CENTER_Y_RATIO_DEFAULT,
+  map_dpi: int = MAP_DPI_DEFAULT,
 ) -> dict[str, Any]:
   normalized_map_theme = str(map_theme).strip().lower()
   if normalized_map_theme not in MAP_THEMES:
@@ -356,6 +360,9 @@ def build_manifest(
   normalized_screen_center_y_ratio = float(screen_center_y_ratio)
   if not MAP_SCREEN_CENTER_Y_RATIO_MIN <= normalized_screen_center_y_ratio <= MAP_SCREEN_CENTER_Y_RATIO_MAX:
     raise ValueError(f"unsupported map screen center ratio: {screen_center_y_ratio}")
+  normalized_map_dpi = int(map_dpi)
+  if not 120 <= normalized_map_dpi <= 640:
+    raise ValueError(f"unsupported map density: {map_dpi}")
   streams = []
   for handle, (kind, name) in enumerate(CATALOG, start=1):
     streams.append({
@@ -366,7 +373,7 @@ def build_manifest(
       "enabled": kind != "image" or name in CLUSTER_ENABLED_IMAGE_NAMES,
       "params": _stream_params(
         kind, name, normalized_map_theme, normalized_map_type,
-        int(map_hz), int(map_bitrate_kbps), normalized_screen_center_y_ratio,
+        int(map_hz), int(map_bitrate_kbps), normalized_screen_center_y_ratio, normalized_map_dpi,
       ),
     })
   return {
@@ -511,6 +518,10 @@ class CarrotNaviReceiver:
         map_hz=self._map_hz,
         map_bitrate_kbps=self._map_bitrate_kbps,
         screen_center_y_ratio=self._screen_center_y_ratio,
+        # CarrotNM identifies its patched Naver build with the naver-* version
+        # prefix. A lower render density scales its native vehicle marker while
+        # preserving the requested map pixels, camera, zoom, tilt, and FPS.
+        map_dpi=CARROT_NM_MAP_DPI if str(app_version).strip().lower().startswith("naver-") else MAP_DPI_DEFAULT,
       )
       self._session_id = session_id
       self._app_version = app_version
