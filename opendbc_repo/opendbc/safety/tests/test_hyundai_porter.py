@@ -3,6 +3,18 @@ from hyundai_porter_testlib import lib, packet, data, rx, seed, init, engage
 
 
 class TestNativePorter(unittest.TestCase):
+    def test_pedal_profile_cannot_replace_porter_stock_gas_after_reinitialization(self):
+        for param in (1025, 9217, 11265, 15361, 25601, 58369, 60417):
+            with self.subTest(param=param):
+                self.assertEqual(lib.set_safety_hooks(8, 0x6005), 0)
+                lib.init_tests()
+                init(param)
+                self.assertTrue(rx(0x371, gas=True))
+                self.assertTrue(lib.get_gas_pressed_prev())
+                self.assertTrue(rx(0x371, gas=False))
+                self.assertFalse(lib.get_gas_pressed_prev())
+                self.assertFalse(lib.safety_tx_hook(packet(0x200, bytes(6))))
+
     def test_porter_large_angle_request_cuts_respect_native_safety(self):
         from opendbc.car import common_fault_avoidance
         from opendbc.car.hyundai.porter import porter_steer_request_frames

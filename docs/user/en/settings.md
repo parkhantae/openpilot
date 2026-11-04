@@ -105,18 +105,18 @@ Ignoring `x0.01`, `x0.001`, `cm`, `km/h`, or `%` can make a value appear one hun
 
 ## Settings map
 
-The `c3-pht-porter` catalog contains **213 parameters**. These counts describe the catalog entries registered under each menu:
+The `c3-pht-porter` catalog contains **216 parameters**. These counts describe the catalog entries registered under each menu:
 
 | Category | Count | Groups |
 |---|---:|---|
-| Driving control | 141 | Startup and auto, buttons and presets, steering, speed and deceleration, cruise and following gap |
-| Vehicle and hardware | 28 | Hyundai/Kia, CAN FD/HDA, radar, driver monitoring, vehicle assistance, Porter Only, device hardware |
+| Driving control | 143 | Startup and auto, buttons and presets, steering, speed and deceleration, cruise and following gap |
+| Vehicle and hardware | 29 | Hyundai/Kia, CAN FD/HDA, radar, driver monitoring, vehicle assistance, Porter Only, device hardware |
 | Display | 35 | Information, path, brightness/on-road view, external HUD |
 | System | 9 | Recording/power, network/map, sound, software |
 
 ## Driving control
 
-These 124 settings can affect driving behavior. Change one item at a time.
+These 143 settings can affect driving behavior. Change one item at a time.
 
 <a id="start-auto"></a>
 ### Startup and auto — 10 settings
@@ -156,7 +156,7 @@ Volkswagen's separate `SET` button sets current speed and `RES` restores the pre
 | ONNX Lane and BSD | `ShareData`, `OnnxBsdEnabled`, `OnnxLaneThreshold`, `OnnxLaneIntervalMs`, `OnnxBsdThreshold`, `OnnxBsdSmoothingMs`, `OnnxBsdIntervalMs` | Lane-type detection plus separately controlled camera BSD and tuning |
 | Centering | `PathOffset`, `CameraYawTrimDeg` | Path position and camera-yaw trim |
 | Steering feel | `SteerActuatorDelay`, `LatSmoothSec`, `LatSuspendAngleDeg`, `CustomSR`, `SteerRatioRate` | Timing, smoothing, suspension angle, and steering ratio |
-| [Lane change](lane-change.md) and automatic turn | `LaneChangeNeedTorque`, `LaneChangeDelay`, `LaneChangeBsd`, `LaneLineCheck`, `BlinkerLatchedTurn`, `LaneChangeLeverWait`, `AutoTurnControl`, `AutoTurnControlRightLaneChange`, `ManualLaneChangeIndicator`, `AutoTurnControlSpeedTurn`, `AutoTurnControlTurnEnd`, `AutoTurnMapChange` | Lane-change entry conditions and ATC behavior |
+| [Lane change](lane-change.md) and automatic turn | `LaneChangeNeedTorque`, `LaneChangeDelay`, `LaneChangeBsd`, `LaneLineCheck`, `BlinkerLatchedTurn`, `LaneChangeLeverWait`, `AutoTurnControl`, `AutoTurnControlRightLaneChange`, `ManualLaneChangeIndicator`, `ModelDesireIndicator`, `ModelPathIndicator`, `AutoTurnControlSpeedTurn`, `AutoTurnControlTurnEnd`, `AutoTurnMapChange` | Lane-change entry conditions and ATC behavior |
 | Lane mode | `LatMpcPathCost`, `LatMpcMotionCost`, `LatMpcAccelCost`, `LatMpcJerkCost`, `LatMpcSteeringRateCost`, `LatMpcInputOffset`, `UseLaneLineSpeed`, `UseLaneLineCurveSpeed`, `AdjustLaneOffset` | Lane-mode MPC weights and lane-line conditions |
 | Advanced torque | `LateralTorqueCustom`, `LateralTorqueAccelFactor`, `LateralTorqueFriction`, `LateralTorqueKpV`, `LateralTorqueKiV`, `LateralTorqueKf`, `LateralTorqueKd` | Custom torque-control gains |
 | Advanced torque, search only | `NNFF` | Neural-network feedforward for torque steering |
@@ -266,7 +266,7 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | Driver monitoring | `DriverMonitoringEnabled` (search only), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | Driver monitoring and selected vehicle alerts |
 | Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
 | Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGapUse`, `PorterGap1`~`PorterGap4`, `PorterLeadReactionTime` | Automatic cancel/SET, dedicated GAP and deceleration lookahead |
-| Device hardware | `HardwareC3xLite` | Speakerless C3X Lite audio and process configuration |
+| Device hardware | `CommaPedalEnabled`, `HardwareC3xLite` | Comma Pedal permission for vehicles without ACC, and C3X Lite hardware configuration |
 
 For Porter II EV, `MaxAngleFrames` uses a minimum of 89 frames during control even if the saved value is lower. This keeps temporary steering-request cuts at large steering angles within Panda's minimum matching-request interval. Other vehicle settings are unchanged.
 
@@ -287,6 +287,8 @@ See [Radar tracks and corner radar](radar.md) before changing radar modes.
 
 **Cluster CAN Direct Send** (`HyundaiCanfdClusterDirectTx`) compares the original direct-send method on Hyundai/Kia/Genesis CAN-FD CameraSCC vehicles with intermittent cluster warnings. It defaults to OFF for every vehicle; enable it manually on an affected vehicle. Reboot the device after changing it. Updated Panda firmware supporting this setting is required. Resolution of vehicle warnings has not been validated.
 
+With CAN-FD CameraSCC, openpilot longitudinal control and corner radar enabled, valid CAN, Drive, released brakes and speed above 10.8 km/h allow periodic requests to switch on stock SCC MAIN. This applies independently of AutoEngage and Carrot cruise engagement, and these requests stop once MAIN is on. SET and standstill-resume requests retain the existing Carrot cruise engagement requirement.
+
 With `HyundaiCameraSCC=0` and no camera-SCC configuration already applied to the vehicle, receiving `SCC_CONTROL` (CAN-FD) or `SCC12` (classic CAN) on the camera bus during the current onroad session adds **Enable CameraSCC** to the CAN error alert. This is bus2, or the corresponding camera bus with multiple Pandas. The hint uses reception history and does not establish the cause of every CAN error. It never changes the setting automatically; existing disengagement and engagement blocking remain active. Select the mode appropriate for the vehicle and wiring while stopped, then verify it in the next onroad session.
 
 `SpeedFromPCM` defaults to `2` (curve/camera deceleration) and affects PCM speed selection and button spamming. With mode `3`, Toyota/Lexus use stock set speed without changing longitudinal-control mode. For `TOYOTA_RAV4_TSS2_2022` using PCM with direct longitudinal control, mode `0` also applies valid stock set-speed changes and cruise resume while preserving lower deceleration targets. See [button transmission details](buttons-presets.md#button-spam).
@@ -302,6 +304,10 @@ In modes `EnableRadarTracks=1`–`3`, a confirmed departing front lead can recei
 `CarrotRadarMode` continuously tracks vehicles with the front and corner radars to detect cut-ins, then matches camera and radar information in a new way to select the vehicle ahead. On vehicles with neither corner-radar nor radar-track support, it behaves the same as the existing mode. It can change acceleration and braking, so enable it only on the same vehicle after completing validation. The value is latched when the next OnRoad session starts, so end the current drive and restart the vehicle or reboot the device after changing it. The previous `RadarMotionMode` value is migrated to the new name once on the first startup after updating.
 
 `CarrotRadarCutInSensitivity` controls only Carrot Radar Mode CUT-IN detection: `0` disables it, `1` is insensitive, `3` is normal (default), and `5` is very sensitive; `2` and `4` are the intermediate levels. Levels `1` through `5` require `0.50`, `0.40`, `0.35`, `0.25`, and `0.20 s` of continuing measured motion evidence, while the physical future prediction remains fixed at 5.0 seconds. A front-radar track with at least 0.50 m of strongly one-way progress in its recent measured history may receive at most one 20 Hz radar-frame credit so timestamp quantization does not discard a completed dwell; small adjacent drift does not. It does not affect conventional radar mode or `EnableCornerRadar`. The value is read at the next OnRoad start, so restart the vehicle or reboot the device after changing it.
+
+`CommaPedalEnabled` defaults to OFF. It permits the Comma Pedal longitudinal path on vehicles without ACC carrying the `CC_ONLY_CAR` flag when explicit vehicle configuration, device CAN reception, and the existing control and safety conditions are satisfied. It works only while the vehicle's **Cruise ready is off**; when Cruise ready is on, OEM cruise control takes priority and Comma Pedal control is unavailable. The shared protocol is reusable; the supplied DBC, tuning, and safety profile are for Kia Ray EV. Other vehicles require their own configuration and never inherit the Ray values automatically.
+
+A saved change takes effect at the **next vehicle-parameter initialization**; it does not switch the running control path immediately. Comma Pedal operation on CarrotPilot has not yet been validated in a vehicle. Pedal firmware and voltage calibration are unchanged. See the [Comma Pedal diagnostic guide](../../comma_pedal.md) for the observations required at each stage.
 
 `HardwareC3xLite` must remain off on standard C3 and C3X hardware. Enable it only on a C3X Lite, then reboot the device. The setting skips the unavailable amplifier so startup is not delayed by I2C retries, uses the GPIO buzzer for alerts, disables `micd`, `soundd`, and `loggerd`, and turns off `RecordAudio`. Normal route logging is unavailable while this hardware mode is enabled.
 
@@ -455,7 +461,9 @@ For Porter II EV conventional cruise, see [button-message tests](buttons-presets
 
 `AutoBlinkerControl` — Settings > Driving > Steering > Lane Change (Auto Turn). Default: 0. Currently limited to the Ioniq 5 PE, Jetson and PEAK USB-CAN/B1 profile on carrot-wip.
 
-An acknowledged ATC turn is not completed by an approach bend while navigation still places the same turn ahead. With the original hold still valid and no driver cancellation or communication failure, both lamps remaining off for 1.5 seconds allows one recovery attempt for that turn. Unconfirmed initial starts, manual/Bluetooth cancellation, opposite indicators and navigation cancellation do not trigger recovery. Physical lamp recovery still needs vehicle acceptance.
+ATC indication starts at audioTurn and persists through stops. A fresh cue can start at a full stop in Drive when lateral permission remains valid and steering is fault-free. After the receiver confirms send completion, both lamps staying off for 1.5 seconds permits one recovery attempt per turn, including an initially unlit request. Driver cancellation, communication failure or an unconfirmed send forbids retry. A fresh opposite-turn cue waits at most three seconds for physical completion of the preceding turn.
+
+When a usable TBT point and raw vehicle GPS are available, passage evidence supplements physical turn completion. Continuing straight sufficiently beyond a closely passed point cancels the indication without replaying the same audioTurn. Accuracy, continuity and direction checks disable this location-based cancellation for poor GPS, missing points or curved approaches. Fresh navigation status reporting guidance ended or off-route also releases automatic indication. Physical lamps and road behavior still need validation.
 
 ### Behavior
 
@@ -479,9 +487,9 @@ USB-CAN requests the initial blink; the existing vehicle indicator-hold function
 
 A hold-start request without confirmed lamp activation expires after four seconds, allowing the next button press to start a new request.
 
-`AutoTurnControlRightLaneChange` under ATC details adds to modes 1 and 2 and triggers the physical right indicator before a TBT right turn or right fork, at an eligible lane-change speed and within 250 m, until turning starts. It requires the supported USB2CAN indicator setup, a right lane, fresh OEM BSD and right-front gaps of at least 5 m both now and after three seconds; existing manual/Bluetooth lane-change behavior is unchanged. See [lane changes](lane-change.md).
+`AutoTurnControlRightLaneChange` under ATC details adds to modes 1 and 2 and triggers the physical right indicator before a TBT right turn or right fork, at 10km/h or above and within the configured distance, until turning starts. It requires the supported USB2CAN indicator setup, a right lane, fresh OEM BSD and right-front gaps of at least 5 m both now and after three seconds; existing manual/Bluetooth lane-change behavior is unchanged. See [lane changes](lane-change.md).
 
-`AutoTurnControlRightLaneChange` is the separate ATC-details add-on for modes 1 and 2, within 250 m of a right turn or right fork. `ManualLaneChangeIndicator` is independent of ATC and detects driver boundary approach during preparation. It can bridge at most one second of confidence loss after observing the crossed boundary. An executing automatic lane change or another indicator request takes precedence; its lamp feedback never creates a new steering request. See [lane changes](lane-change.md).
+`AutoTurnControlRightLaneChange` remains the separate ATC distance add-on. `ManualLaneChangeIndicator` independently retains recent intent for up to 1.5s. The left side excludes centre lines using fresh white-line classification; the right requires at least 2.5m from the target boundary to the road edge. Outer-line probability is not required. It never requests automatic steering. See [lane changes](lane-change.md).
 
 The manual lane-change indicator can request again after at least three seconds, one continuous second of lamp extinction and fresh steering/approach conditions. Automatic-steering feedback isolation remains at least 12 seconds.
 
@@ -494,7 +502,7 @@ With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAI
 
 With MAIN and automatic SET ON, a fresh gas press/release at 30 km/h or above can rearm after brake or CANCEL. MAIN OFF prevents automatic starts.
 
-Porter automatic SET startup pulses allow at most six frames/120ms and release immediately on stock ON feedback. Existing speed-step and automatic-cancel bounds are unchanged.
+The current Porter automatic SET profile sends two bounded presses, each at most three frames/60ms, with an explicit release between them. The second press remains scheduled after the first engages stock cruise; driver input and invalid conditions can still abort it. Existing speed-step and automatic-cancel bounds are unchanged.
 
 Porter automatic SET tolerates at most 0.1s of request blocking at gas release. This also covers rearming after brake/CANCEL in confirmed MAIN standby following a fresh press of at least 0.1s. Dashboard/wheel speeds, MAIN availability, units and drive gear must qualify at release and remain valid. The target and other request conditions must become valid within the original release window; request SET on the next new CAN sample without renewing the deadline. A new gas press, driver button, brake or invalid input clears the observation. Initial unconfirmed-MAIN one-trial conditions and retry limits remain.
 
@@ -519,3 +527,14 @@ Porter button messages, including automatic SET, recompute parity after switch/c
 With Porter automatic SET ON, a fresh gas press/release in MAIN standby requests SET− on the next new CAN sample regardless of engagement/lateral activity. Inactive control cannot start without pedal input, and cues blocked by retry limits are not executed later. Existing speed, lead, brake, CANCEL and signal-validity guards remain.
 
 If Porter automatic SET has no actual stock ON within 0.5s, or driver intervention/invalid input interrupts response observation, wait at least three seconds after the last SET or release transmission before another attempt. TX echo does not establish success or the native retry phase. Actual ON resets consecutive attempts in both host and Panda without shortening an already reserved minimum wait. Inactive controls discard cues blocked by the wait and require a new pedal cycle; `retry_ms` diagnostics show remaining wait.
+
+An ATC recovery attempt has a new four-second activation deadline. It does not extend the five-minute maximum measured from the original request.
+
+`ModelDesireIndicator` and `ModelPathIndicator` are separate default-off indication-only options. See [lane changes](lane-change.md) for TBT distance holding and each feature’s start/end conditions.
+
+Manual indication projects 0.3s of measured boundary approach, advancing the centre-to-boundary threshold by at most 0.3m. Existing speed, centre-line and road-edge gates remain.
+
+After confirmed turn entry, the TBT indicator ends its hold as the wheel returns within ±15 degrees while moving, without waiting for the remaining 30m. Pre-turn traffic-light waits remain held; see [lane changes](lane-change.md) for the entry conditions.
+
+
+The ATC right lane-change distance uses 0m for off and 50m steps up to 500m. The former ON setting migrates to 250m at restart.

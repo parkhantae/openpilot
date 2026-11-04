@@ -14,11 +14,15 @@ from opendbc.car.hyundai.porter import update_porter_state
 from opendbc.car.hyundai.section_average import DISTANCE_SCALE as SECTION_DISTANCE_SCALE, SectionAverage
 from opendbc.car.hyundai.steering_touch import HyundaiSteeringTouch
 from opendbc.car.hyundai.rear_gap import tbt_bsd_inputs
+from opendbc.car.hyundai.lane_line_time import lane_line_time
 from opendbc.car.hyundai.vehicle_gps import VehicleGPS, register_vehicle_gps
 from opendbc.car.hyundai.values import HyundaiFlags, CAR, DBC, Buttons, CarControllerParams, CAMERA_SCC_CAR, HyundaiExtFlags, \
                                        EV_MODE_ACTIVE_VALUES, EV_MODE_STATUS_ADDR, EV_MODE_STATUS_DLC, EV_MODE_STATUS_MSG, \
                                        EV_MODE_STATUS_SIGNAL
 from opendbc.car.interfaces import CarStateBase
+from opendbc.car.hyundai.values import get_pedal_interceptor_params
+from opendbc.car.pedal_interceptor import (PEDAL_INTERCEPTOR_BUS,
+                                         PEDAL_INTERCEPTOR_RX_FREQUENCY, PedalInterceptorState)
 
 from openpilot.common.params import Params
 
@@ -244,6 +248,9 @@ class CarState(CarStateBase):
     if CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV and any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in CP.safetyConfigs):
       self.main_enabled = any(c.safetyParam in (25601, 58369, 60417) for c in CP.safetyConfigs)
     self.porter_main_stock_prev = False
+    self.pedal_interceptor_params = get_pedal_interceptor_params(CP)
+    self.pedal_interceptor_state = PedalInterceptorState() if self.pedal_interceptor_params is not None else None
+    self.pedal_interceptor_cruise_blocked = True
     self.manual_main_off_latched = False
     self.gear_shifter = GearShifter.drive # Gear_init for Nexo ?? unknown 21.02.23.LSW
 
@@ -572,9 +579,25 @@ class CarState(CarStateBase):
 
       ret.pcmCruiseGap = cp_cruise.vl["SCC11"]["TauGapSet"]
 
+    if self.pedal_interceptor_params is not None:
+      pedal_interceptor_params = self.pedal_interceptor_params
+      self.pedal_interceptor_state.update(can_parsers[Bus.party], pedal_interceptor_params)
+      message, signal = pedal_interceptor_params.cruise_ready
+      address, bit = pedal_interceptor_params.cruise_enabled_bit
+      payload = cp.dat.get(address, b"")
+      ret.cruiseState.enabled = len(payload) == 8 and bool(int.from_bytes(payload, "little") & (1 << bit))
+      cruise_valid = (cp.ts_nanos[message][signal] > 0 and len(payload) == 8 and
+                      cp.message_states[address].valid(cp._last_update_nanos, False))
+      self.pedal_interceptor_cruise_blocked = (not cruise_valid or bool(cp.vl[message][signal]) or ret.cruiseState.enabled)
+      # OEM Cruise ready/engaged takes priority. Keep Carrot's independent
+      # main-switch/controls-initialization gate as well.
+      ret.cruiseState.available = ret.cruiseState.available and not self.pedal_interceptor_cruise_blocked
+      message, signal = pedal_interceptor_params.cruise_speed
+      ret.cruiseState.speed = cp.vl[message][signal] * speed_conv
+
     # TODO: Find brake pressure
     ret.brake = 0
-    if not self.CP.flags & HyundaiFlags.CC_ONLY_CAR:
+    if not self.CP.flags & HyundaiFlags.CC_ONLY_CAR or self.pedal_interceptor_params is not None:
       ret.brakePressed = cp.vl["TCS13"]["DriverOverride"] == 2  # 2 includes regen braking by user on HEV/EV
       ret.brakeHoldActive = cp.vl["TCS15"]["AVH_LAMP"] == 2  # 0 OFF, 1 ERROR, 2 ACTIVE, 3 READY
       ret.parkingBrake = cp.vl["TCS13"]["PBRAKE_ACT"] == 1
@@ -582,6 +605,11 @@ class CarState(CarStateBase):
       ret.espActive = cp.vl["TCS11"]["ABS_ACT"] == 1
       ret.accFaulted = cp.vl["TCS13"]["ACCEnable"] != 0  # 0 ACC CONTROL ENABLED, 1-3 ACC CONTROL DISABLED
       ret.brakeLights = bool(cp.vl["TCS13"]["BrakeLight"] or ret.brakePressed)
+
+    if self.pedal_interceptor_state is not None:
+      # ACCEnable describes a nonexistent SCC in this adapter. Brake/hold,
+      # parking, ESP, main/READY and CAN health continue through Carrot's paths.
+      ret.accFaulted = self.pedal_interceptor_state.faulted
 
     if self.CP.flags & (HyundaiFlags.HYBRID | HyundaiFlags.EV | HyundaiFlags.FCEV):
       if self.CP.flags & HyundaiFlags.FCEV:
@@ -594,6 +622,9 @@ class CarState(CarStateBase):
     else:
       ret.gas = cp.vl["EMS12"]["PV_AV_CAN"] / 100.
       ret.gasPressed = bool(cp.vl["EMS16"]["CF_Ems_AclAct"])
+
+    if self.pedal_interceptor_state is not None and self.pedal_interceptor_state.valid:
+      ret.gasPressed = self.pedal_interceptor_state.gas_pressed
 
     # Gear Selection via Cluster - For those Kia/Hyundai which are not fully discovered, we can use the Cluster Indicator for Gear Selection,
     # as this seems to be standard over all cars, but is not the preferred method.
@@ -1539,6 +1570,7 @@ class CarState(CarStateBase):
     ret.gearStep = cp.vl["GEAR_ALT"]["GEAR_STEP"] if self.GEAR_ALT else ret.gearStep
 
     lane_info = self.cam_0x2a4 if self.cam_0x2a4 is not None else self.cam_0x362
+    ret.laneLineInfoMonoTime = lane_line_time((self.cp_cam, self.cp_alt), lane_info)
 
     if lane_info is not None:
       left_lane_prob = lane_info["LEFT_LANE_PROB"]
@@ -1672,9 +1704,16 @@ class CarState(CarStateBase):
     if CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
       porter_messages = [("E_EMS11", 100), ("TCS13", 50), ("ELECT_GEAR", 100), ("TCS15", 10), ("CLU11", 50)]
 
-    return {
+    parsers = {
       # EMS21 carries SCR_UREA_LEVEL on diesel platforms. NaN frequency makes
       # it optional, so gasoline/EV platforms do not fail CAN validity.
       Bus.pt: register_vehicle_gps(CANParser(DBC[CP.carFingerprint][Bus.pt], [("EMS21", math.nan)] + porter_messages, 0)),
       Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 2),
     }
+    pedal_interceptor_params = get_pedal_interceptor_params(CP)
+    if pedal_interceptor_params is not None:
+      parsers[Bus.party] = CANParser(pedal_interceptor_params.dbc_name, [("GAS_SENSOR", PEDAL_INTERCEPTOR_RX_FREQUENCY)],
+                                    PEDAL_INTERCEPTOR_BUS)
+      # Register the configured OEM CC input at its actual receive rate.
+      parsers[Bus.pt]._add_message(pedal_interceptor_params.cruise_ready[0], 10)
+    return parsers
