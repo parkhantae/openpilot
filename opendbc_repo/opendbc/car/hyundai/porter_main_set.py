@@ -216,7 +216,8 @@ class PorterMainSet:
         if not self.previous_gas:
           self.pair_gas_since = now
       elif self.previous_gas:
-        qualified_pair_release = self.pair_gas_since is not None and now - self.pair_gas_since >= .1 - 1e-9
+        qualified_pair_release = (release_eligible and self.pair_gas_since is not None and
+                                  now - self.pair_gas_since >= .1 - 1e-9)
         self.pair_gas_since = None
     if self.two_press and (not eligible or gas_pressed or not request or
                            not release_eligible or key is None or
@@ -230,7 +231,9 @@ class PorterMainSet:
     if eligible and not stock_enabled and self.previous_gas and not gas_pressed:
       self.gas_release_since = now if not self.two_press or qualified_pair_release else None
     self.previous_gas = gas_pressed if eligible and not stock_enabled else False
-    if not eligible or stock_enabled or gas_pressed:
+    if not eligible or stock_enabled or gas_pressed or (self.two_press and not release_eligible):
+      # A below-floor/invalid release cannot become an engagement cue merely
+      # because speed or another vehicle condition recovers on the next tick.
       self.gas_release_since = None
     elif not request and self.gas_release_since is not None and now - self.gas_release_since > .1 + 1e-9:
       # A brief lead/plan transition may straddle pedal release. Keep only a

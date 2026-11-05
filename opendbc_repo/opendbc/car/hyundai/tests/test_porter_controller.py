@@ -413,6 +413,32 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.out.gasPressed = False
     self.assertEqual(self.tick(100), [2])
 
+  def test_production_pair_rejects_low_wheels_without_queuing_later_set(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    self.controller.porter_main_set = PorterMainSet(two_press=True)
+    self.controller.porter_main_params.get_bool = lambda key: True
+    self.controller.CP.safetyConfigs = [NS(safetyParam=15361)]
+    self.cs.out.cruiseState.enabled = False
+    self.cc.enabled, self.cc.latActive = False, True
+    starts = []
+    for frame in range(450):
+      speed, cluster = (29.5, 32.) if frame < 102 else (32., 34.)
+      self.cs.out.vEgo = speed/3.6
+      self.cs.out.vEgoCluster = cluster/3.6
+      self.cs.out.wheelSpeeds = NS(fl=speed/3.6, rr=speed/3.6)
+      self.cs.main_buttons = [int(frame < 2)]
+      self.cs.out.gasPressed = 20 <= frame < 100 or 300 <= frame < 400
+      self.cc.cruiseControl.resume = not self.cs.out.gasPressed
+      before = self.controller.porter_main_set.requests
+      self.controller.frame = frame
+      self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
+      self.cs.cp.ts_nanos['CLU11']['counter'] = 1_000_000_000 + (frame // 2) * 20_000_000
+      self.cs.clu11['CF_Clu_AliveCnt1'] = frame // 2 % 16
+      self.function(self.controller, self.cc, self.cs, True)
+      if before != self.controller.porter_main_set.requests:
+        starts.append(frame)
+    self.assertEqual(starts, [400, 414])
+
   def test_log552_dashboard31_wheels29_set_reaches_real_controller_packer(self):
     self.controller.porter_main_params.get_bool = lambda key: True
     self.controller.CP.safetyConfigs = [NS(safetyParam=11265)]

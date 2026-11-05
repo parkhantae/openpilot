@@ -11,6 +11,8 @@ class TestPorterSetPair(unittest.TestCase):
             openpilotLongitudinalControl=False, safetyConfigs=[NS(safetyModel='hyundai', safetyParam=15361)])
     cs = NS(vEgo=29/3.6, vEgoCluster=31.5/3.6, wheelSpeeds=NS(fl=29/3.6, rr=29/3.6))
     self.assertTrue(supports_porter_button_cruise(cp))
+    self.assertFalse(porter_auto_set_speed_valid(cp, cs))
+    cs.wheelSpeeds = NS(fl=30/3.6, rr=30/3.6)
     self.assertTrue(porter_auto_set_speed_valid(cp, cs))
 
   def setUp(self):

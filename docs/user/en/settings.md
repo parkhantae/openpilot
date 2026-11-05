@@ -514,6 +514,8 @@ Porter automatic SET initializes MAIN parity consistently with AutoEngage while 
 
 Porter automatic SET transmits only on a newly observed CLU11 sample received within 8ms. Skip older samples and await the next one within the original pedal cue and press deadlines. Do not add a 10ms delay or remember an automatic-SET timing slot. One TX per sample, press/retry bounds and safety guards remain; waiting never extends pedal authorization or pulse limits. Diagnostics `sample_age_ms` and `late_samples` report sample age and late-sample count. Engaged speed matching retains its independent timing and acknowledgement memory.
 
+The current Porter double-SET profile also requires both front-left and rear-right wheel speeds at 30–160km/h before starting. A dashboard reading above 30 alone is insufficient. Below-floor pedal releases are discarded; rising speed alone does not start cruise, and a fresh pedal cycle is required.
+
 In Settings > Vehicle & Hardware > Porter Only, enable **Porter: dedicated GAP** (`PorterGapUse`) to share `PorterGap1`–`PorterGap4` between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Default OFF uses common `TFollowGap1`–`TFollowGap4`. Existing GAP selection buttons remain; switching modes never copies or resets either set of saved values.
 
 Porter GAP1–4 range from 40 to 300 in steps of 5; 50=0.50s. Initial defaults are 100/130/160/200; previously saved dedicated values are preserved. Button decisions use the planner’s applied time after existing speed, driving-mode and deceleration adjustments. Without valid planner time, use the selected mode’s base time. Allow about five seconds for planner refresh after changes.

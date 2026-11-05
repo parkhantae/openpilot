@@ -37,3 +37,19 @@ class TestPorterSetSpeed(unittest.TestCase):
     # Below the original floor, both dashboard comparisons are still required.
     self.assertFalse(self.valid(cluster=35.125, fl=30, rr=29.96875))
     self.assertFalse(self.valid(cluster=35.125, fl=29.96875, rr=30))
+
+  def test_production_pair_requires_both_wheels_at_thirty(self):
+    # 5ac/12: failed SET pairs at wheel speeds 29.x despite dashboard >31;
+    # the successful pair is above 31.9 on both wheels. Keep the host floor
+    # conservative without changing the native compatibility profiles.
+    for cluster, fl, rr, expected in ((32.125, 29.6875, 29.5, False),
+                                      (31.5, 29.375, 29.28125, False),
+                                      (33.375, 31.96875, 31.96875, True),
+                                      (35, 30, 29.96875, False),
+                                      (35, 29.96875, 30, False),
+                                      (35, 30, 30, True),
+                                      (58.25, 54.125, 53.15625, True)):
+      with self.subTest(cluster=cluster, fl=fl, rr=rr):
+        self.assertEqual(self.valid(cluster, fl, rr, profile=15361), expected)
+    for profile in (11265, 60417):
+      self.assertTrue(self.valid(32.125, 29.6875, 29.5, profile=profile))
