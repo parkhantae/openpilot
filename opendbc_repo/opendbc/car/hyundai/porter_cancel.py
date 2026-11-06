@@ -5,11 +5,19 @@ from opendbc.car.hyundai.porter import PORTER_CRUISE_MAX_KPH, PORTER_LEAD_REACTI
 
 
 def porter_cancel_target(planner, selected, navigation, ego, distance, relative, gap, *,
-                         lead_visible=False, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
+                         lead_visible=False, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S,
+                         planner_now=None):
   # Zero navigation/selected values mean unavailable; zero planner speed is a stop.
   candidates = [v for v in (selected, navigation) if v is not None and math.isfinite(v) and 0 < v <= 250]
   if planner is not None and math.isfinite(planner) and 0 <= planner <= 250:
-    candidates.append(planner)
+    # A positive terminal prediction starts button deceleration, but alone is
+    # not a current sub-floor cancellation demand. Preserve explicit zero-stop
+    # requests and the independent navigation/selected/closing-lead paths.
+    if planner > 0 and planner_now is not None:
+      if math.isfinite(planner_now) and 0 <= planner_now <= 250:
+        candidates.append(max(planner, planner_now))
+    else:
+      candidates.append(planner)
   if lead_visible and all(math.isfinite(v) for v in (ego, distance, relative)) and ego >= 0 and distance > 0:
     lead_speed = max(0., ego + relative) * 3.6
     # Reuse the existing selected-lead constraint without changing its 30 floor.

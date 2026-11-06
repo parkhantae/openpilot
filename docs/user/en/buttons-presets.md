@@ -165,7 +165,7 @@ If a button request receives no set-speed response within 0.5s, the next request
 
 ### Porter automatic cancellation below the stock minimum
 
-Carrot Web > Settings > Vehicle & Hardware > Porter Only includes **Porter: cancel cruise below 30 km/h target** (`PorterAutoCancelBelow30`). Default OFF preserves existing button speed matching. ON applies only to Porter II EV with `SpeedFromPCM=0`; changes apply immediately. Valid planner, driver-selected, navigation and existing close-lead targets are checked before the 30 km/h floor. A continuously sub-30 target for 0.3 seconds requests stock cruise cancellation and inhibits resume until stock OFF is observed. Invalid/stale sources and short fluctuations do not start a cancellation. Switching OFF clears this feature's pending request; it does not re-engage cruise.
+Porter II EV `PorterAutoCancelBelow30` defaults OFF and applies in `SpeedFromPCM=0`. A positive sub-30 future plan keeps button deceleration, while cancellation waits for a sub-30 current planned speed too. Explicit zero-plan, selected, navigation and close-lead low targets retain their existing conditions. Confirmation remains 0.3s; a low forecast still blocks automatic SET. This is neither a measured-vehicle-speed threshold nor automatic braking. Changes apply immediately; switching OFF clears the pending/cancel state without re-engaging cruise.
 
 This uses target speed, not vehicle speed or lead distance alone. Cancellation is a request to release stock cruise, not a brake/stop command. No automatic re-engagement is added. This opt-in function still needs vehicle response validation.
 

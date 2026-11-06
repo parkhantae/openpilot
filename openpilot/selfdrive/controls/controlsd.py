@@ -121,20 +121,30 @@ class Controls:
                 self.params.get_int("SpeedFromPCM") == 0 and
                 ready and CS.canValid and not CS.accFaulted and self.sm.all_checks(['carState']))
     target = None
+    cancel_target = None
     if eligible:
       lead = self.sm['radarState'].leadOne
       # Use the same applied planner TF as button speed matching below.
-      target = porter_cancel_target(
+      target_args = (
         planner_kph if self.sm.all_checks(['longitudinalPlan']) else None, CS.vCruiseCluster,
         carrot_man.desiredSpeed if carrot_man is not None else None,
-        CS.vEgo, lead.dRel, lead.vRel, self.sm['selfdriveState'].personality.raw + 1,
-        lead_visible=self.sm.all_checks(['radarState']) and lead.status,
-        reaction_s=porter_lead_reaction_s(self.params),
-        gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
+        CS.vEgo, lead.dRel, lead.vRel, self.sm['selfdriveState'].personality.raw + 1)
+      target_options = {
+        'lead_visible': self.sm.all_checks(['radarState']) and lead.status,
+        'reaction_s': porter_lead_reaction_s(self.params),
+        'gap_time_s': porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                     getattr(self.sm['longitudinalPlan'], 'tFollow', None)
-                                    if self.sm.all_checks(['longitudinalPlan']) else None))
+                                    if self.sm.all_checks(['longitudinalPlan']) else None)}
+      # Auto SET must still respect the full forecast; postponing CANCEL must
+      # never authorize re-engagement into an anticipated low-speed stop.
+      target = porter_cancel_target(*target_args, **target_options)
+      ratio = CS.vCluRatio if getattr(CS, 'vCluRatio', 0) > .5 else 1.
+      now_kph = getattr(self.sm['longitudinalPlan'], 'vTargetNow', None)
+      if now_kph is not None:
+        now_kph = now_kph * CV.MS_TO_KPH / ratio
+      cancel_target = porter_cancel_target(*target_args, **target_options, planner_now=now_kph)
     previous = self.porter_low_speed_cancel.active
-    if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, target,
+    if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, cancel_target,
                                            eligible=eligible and CC.enabled and self.params.get_bool("PorterAutoCancelBelow30"),
                                            cruise_enabled=CS.cruiseState.enabled):
       CC.cruiseControl.cancel = True
@@ -147,7 +157,8 @@ class Controls:
       # Controller and Panda independently check MAIN/pedal authority and speed.
       CC.cruiseControl.resume = True
     if previous != self.porter_low_speed_cancel.active:
-      cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s", self.porter_low_speed_cancel.active, target)
+      cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s forecast=%s",
+                    self.porter_low_speed_cancel.active, cancel_target, target)
 
   def update(self):
     self.sm.update(15)

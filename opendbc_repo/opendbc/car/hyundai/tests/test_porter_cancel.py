@@ -258,3 +258,48 @@ class TestPorterCancelPublish(unittest.TestCase):
       self.cs.wheelSpeeds.rr = (53.15625 if tick % 2 else 54.15625)/3.6
       self.function(self.obj, self.cs, self.cc, 58, None)
       self.assertTrue(self.cc.cruiseControl.resume)
+
+
+class TestSeparatedCancelTiming(unittest.TestCase):
+  def test_forecast_only_low_target_does_not_cancel_at_a_high_current_plan_speed(self):
+    args = (29.2, 55, 200, 8.53, 0, 0, 2)
+    self.assertEqual(porter_cancel_target(*args), 29.2)  # Still blocks automatic SET.
+    self.assertEqual(porter_cancel_target(*args, planner_now=35.1), 35.1)
+    self.assertEqual(porter_cancel_target(*args, planner_now=29.9), 29.9)
+
+  def test_stop_zero_and_independent_low_targets_are_not_postponed(self):
+    for planner, selected, navigation, distance, relative, visible, expected in (
+      (0, 55, 200, 0, 0, False, 0),
+      (29, 25, 200, 0, 0, False, 25),
+      (29, 55, 20, 0, 0, False, 20),
+      (29, 55, 200, 12, -9, True, 3.6),
+    ):
+      with self.subTest(expected=expected):
+        self.assertAlmostEqual(porter_cancel_target(
+          planner, selected, navigation, 10, distance, relative, 2,
+          lead_visible=visible, planner_now=40), expected)
+
+  def test_invalid_current_plan_does_not_turn_a_forecast_into_current_demand(self):
+    for current in (float('nan'), float('inf'), -1, 251):
+      self.assertEqual(porter_cancel_target(29, 55, 200, 10, 0, 0, 2, planner_now=current), 55)
+
+
+class TestSeparatedCancelPublish(TestPorterCancelPublish):
+  def test_recorded_early_cancel_conditions_wait_for_current_plan(self):
+    self.values['PorterAutoCancelBelow30'] = True
+    self.cs.vCluRatio = .9
+    self.sm['longitudinalPlan'].vTargetNow = 35 * .9 / 3.6
+    self.run_frames(planner=29.2)
+    self.assertFalse(self.cc.cruiseControl.cancel)
+    self.sm['longitudinalPlan'].vTargetNow = 29.5 * .9 / 3.6
+    self.run_frames(planner=28, start=40)
+    self.assertTrue(self.cc.cruiseControl.cancel)
+
+  def test_delaying_cancel_does_not_allow_auto_set_into_a_low_forecast(self):
+    self.values.update(PorterAutoCancelBelow30=True, PorterAutoSetMain=True)
+    self.cs.cruiseState.enabled = False
+    self.cs.cruiseState.available = True
+    self.cc.cruiseControl.resume = False
+    self.sm['longitudinalPlan'].vTargetNow = 11
+    self.run_frames(planner=29)
+    self.assertFalse(self.cc.cruiseControl.resume)

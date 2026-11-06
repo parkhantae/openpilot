@@ -5,12 +5,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoCancelBelow30 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="955757825664131ece955bdb1aae6b5c18c29384d6a7f67ddebf71e2302ff9da" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="1c394ee9e42ddd08018fc4fb967f93b915b0ec506e6ca558a057b547c05f5e7a" reviewed-at="2026-11-06T06:27:21+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+낮은 목표의 연속 확인이 끊기면 확인 시간을 다시 셉니다. 취소가 시작되면 순정 OFF까지 짧은 CANCEL 누름·해제를 보내며 미응답 시 0.5초 대기 후 재시도하고 3회 뒤 3초 쉽니다.
++양수인 미래 계획 속도만 30km/h 미만이면 버튼 감속은 유지하되, 현재 계획 속도도 30km/h 미만일 때 취소를 확인합니다. 명시적인 계획 0, 선택·내비·근접 앞차의 낮은 목표는 기존 조건을 유지합니다. 확인 시간은 0.3초이며, 미래의 낮은 목표는 자동 SET을 계속 막습니다. 실제 차량속도 기준이나 자동 제동 기능은 아닙니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -34,12 +34,12 @@
  
  <!-- CARROT:MANUAL:BEGIN PorterAutoCancelBelow30 -->
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="955757825664131ece955bdb1aae6b5c18c29384d6a7f67ddebf71e2302ff9da" reviewed-at="2026-10-29T09:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="1c394ee9e42ddd08018fc4fb967f93b915b0ec506e6ca558a057b547c05f5e7a" reviewed-at="2026-11-06T06:27:21+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Interrupted low-target confirmation restarts its timer. Cancellation sends bounded CANCEL/release pulses until stock OFF, waiting 0.5 seconds before retry and three seconds after three requests.
++A positive sub-30 future plan keeps button deceleration, while cancellation waits for a sub-30 current planned speed too. Explicit zero-plan, selected, navigation and close-lead low targets retain their existing conditions. Confirmation remains 0.3s; a low forecast still blocks automatic SET. This is not a measured-vehicle-speed threshold or automatic braking.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
