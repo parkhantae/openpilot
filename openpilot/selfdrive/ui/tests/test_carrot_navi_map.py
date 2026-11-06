@@ -328,3 +328,42 @@ def test_phone_map_activity_param_is_only_written_on_transition():
     ("CarrotNaviPhoneMapActive", True),
     ("CarrotNaviPhoneMapActive", False),
   ]
+
+
+def test_map_resources_are_recreated_after_offroad_close(monkeypatch):
+  sources, closed_sources, closed_renderers, bootstrap = [], [], [], []
+
+  class Source:
+    def __init__(self, **kwargs):
+      sources.append(self)
+
+    def close(self):
+      closed_sources.append(self)
+
+  class Renderer:
+    def close(self):
+      closed_renderers.append(self)
+
+  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.NaviIpcMediaSource", Source)
+  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.NaviMapTextureRenderer", Renderer)
+  view = object.__new__(CarrotNaviMapView)
+  view._phone_stream_enabled = False
+  view._phone_source = None
+  view._phone_map_active = False
+  view._phone_map_updated_at = 0.0
+  view._phone_renderer = Renderer()
+  view._road_map = SimpleNamespace(close=lambda: None)
+  view._params = SimpleNamespace(put_nonblocking=lambda *args: bootstrap.append(args))
+
+  view._set_phone_stream_enabled(True)
+  first_source = view._phone_source
+  view.close()
+  assert view._phone_source is None
+  assert closed_sources == [first_source]
+  assert len(closed_renderers) == 1
+  view._set_phone_stream_enabled(True)
+  assert view._phone_source is sources[1]
+  assert view._phone_source is not first_source
+  assert len(bootstrap) == 2
+  view.close()
+  assert len(closed_sources) == len(closed_renderers) == 2

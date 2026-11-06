@@ -37,6 +37,7 @@ DEFAULT_NAVI_HOST = "0.0.0.0"
 DEFAULT_NAVI_PORT = 7714
 MAP_FRAME_STALE_TIMEOUT_MS = 3000
 NAVI_IPC_DISCONNECT_TIMEOUT_S = 3.0
+NAVI_IPC_MAX_EVENTS_PER_UPDATE = 64
 H264_FLAG_KEYFRAME = 1
 H264_DECODE_QUEUE_MAX = MAP_HZ_MAX
 NAVI_IPC_ITEM_KEYS = tuple(f"{kind}:{name}" for kind, name in CATALOG)
@@ -522,7 +523,12 @@ class NaviIpcMediaSource:
 
     def update(self, navi_live: Any | None) -> NaviDashboardState:
         now_s = time.monotonic()
-        for event in self.messaging.drain_sock(self._socket):
+        # Keep H.264 config/frame order without materializing the entire IPC
+        # backlog (and all payload readers) in a temporary list each UI tick.
+        for _ in range(NAVI_IPC_MAX_EVENTS_PER_UPDATE):
+            event = self.messaging.recv_one_or_none(self._socket)
+            if event is None:
+                break
             try:
                 self._consume(event.carrotNaviMedia, now_s)
             except Exception as exc:

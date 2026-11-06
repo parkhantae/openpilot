@@ -73,6 +73,14 @@ class AugmentedRoadView(CameraView):
       lambda: read_border_params(ui_state.params, ui_state.params_memory),
     )
 
+  def _offroad_transition(self):
+    super()._offroad_transition()
+    if not ui_state.is_onroad():
+      # Rendering stops offroad, so render(enabled=False) cannot release its
+      # IPC decoder, held frames and GPU map resources for us.
+      if map_view := getattr(self, "_carrot_navi_map", None):
+        map_view.close()
+
   def _refresh_plot_mode(self, now: float) -> None:
     if now < self._plot_mode_next_t:
       return
@@ -87,7 +95,11 @@ class AugmentedRoadView(CameraView):
       self._show_carrot_navi_map = False
 
   def set_cluster_hud_connected(self, connected: bool, show_camera: bool = False) -> None:
+    was_suppressed = self._suppress_camera_for_cluster
     self._suppress_camera_for_cluster = connected and not show_camera
+    if self._suppress_camera_for_cluster and not was_suppressed:
+      if map_view := getattr(self, "_carrot_navi_map", None):
+        map_view.close()
 
   def _render(self, rect):
     # plotMode 갱신(가끔 파일 읽기)은 drawTime 창 밖에서 — total을 오염시키지 않는다

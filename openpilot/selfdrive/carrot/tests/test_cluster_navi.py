@@ -30,6 +30,7 @@ from cluster_navi_source import (
   DecodedH264Frame,
   H264_DECODE_QUEUE_MAX,
   MAP_FRAME_STALE_TIMEOUT_MS,
+  NAVI_IPC_MAX_EVENTS_PER_UPDATE,
   H264Decoder,
   H264DecodeWorker,
   NaviIpcMediaSource,
@@ -735,9 +736,8 @@ def test_ipc_media_source_restores_standalone_navigation_images():
       assert conflate is False
       return object()
 
-    def drain_sock(self, _socket):
-      messages, self.messages = self.messages, []
-      return messages
+    def recv_one_or_none(self, _socket):
+      return self.messages.pop(0) if self.messages else None
 
   source = NaviIpcMediaSource(FakeMessaging())
   dashboard = source.update(SimpleNamespace(session_id="ipc-session"))
@@ -787,9 +787,8 @@ def test_ipc_media_source_filters_before_copying_unwanted_payload():
       assert conflate is False
       return object()
 
-    def drain_sock(self, _socket):
-      messages, self.messages = self.messages, []
-      return messages
+    def recv_one_or_none(self, _socket):
+      return self.messages.pop(0) if self.messages else None
 
   source = NaviIpcMediaSource(FakeMessaging(), media_keys=frozenset(("image:map_main",)), h264_queue_max=4)
   try:
@@ -1319,5 +1318,81 @@ def test_embedded_navi_source_projects_json_and_png(unused_tcp_port):
     assert disconnected.navi_dashboard is not None
     assert disconnected.navi_dashboard.connected is False
     assert disconnected.navi_dashboard.media == ()
+  finally:
+    source.close()
+
+
+def test_ipc_media_backlog_does_not_retain_all_event_readers():
+  class Event:
+    live = 0
+    peak = 0
+
+    def __init__(self, sequence):
+      type(self).live += 1
+      type(self).peak = max(type(self).peak, type(self).live)
+      self.carrotNaviMedia = SimpleNamespace(
+        schemaVersion=1, sessionId="backlog", kind="image", name="map_main",
+        sequence=sequence, present=True, reason="", messageType=1,
+        formatOrReason=2, width=64, height=48, payload=b"map",
+      )
+
+    def __del__(self):
+      type(self).live -= 1
+
+  class FakeMessaging:
+    def __init__(self):
+      self.sequence = 0
+
+    def sub_sock(self, _service, conflate):
+      assert conflate is False
+      return object()
+
+    def recv_one_or_none(self, _socket):
+      if self.sequence >= 64:
+        return None
+      self.sequence += 1
+      return Event(self.sequence)
+
+    def drain_sock(self, sock):
+      events = []
+      while (event := self.recv_one_or_none(sock)) is not None:
+        events.append(event)
+      return events
+
+  source = NaviIpcMediaSource(FakeMessaging())
+  try:
+    dashboard = source.update(None)
+    assert dashboard.received_count == 64
+    assert dashboard.media[0].sequence == 64
+    assert Event.peak <= 2
+  finally:
+    source.close()
+
+
+
+def test_ipc_backlog_is_drained_in_order_across_bounded_ui_updates():
+  limit = NAVI_IPC_MAX_EVENTS_PER_UPDATE
+  events = (
+    SimpleNamespace(carrotNaviMedia=SimpleNamespace(
+      schemaVersion=1, sessionId="bounded", kind="image", name="map_main",
+      sequence=sequence, present=True, reason="", messageType=1,
+      formatOrReason=2, width=64, height=48, payload=b"map",
+    )) for sequence in range(1, 2 * limit + 4)
+  )
+
+  class Messaging:
+    def sub_sock(self, _service, conflate):
+      assert conflate is False
+      return object()
+
+    def recv_one_or_none(self, _socket):
+      return next(events, None)
+
+  source = NaviIpcMediaSource(Messaging())
+  try:
+    for expected in (limit, 2 * limit, 2 * limit + 3):
+      dashboard = source.update(None)
+      assert dashboard.received_count == expected
+      assert dashboard.media[0].sequence == expected
   finally:
     source.close()
