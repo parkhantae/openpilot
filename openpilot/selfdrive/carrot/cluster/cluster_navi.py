@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import islice
 import math
 import time
 from dataclasses import replace
@@ -289,7 +290,7 @@ def parse_carrot_navi(
             route = previous_route
         else:
             polyline = []
-            for point in tuple(_get(route_item, "polyline", ()) or ())[:MAX_ROUTE_POINTS]:
+            for point in islice(_get(route_item, "polyline", ()) or (), MAX_ROUTE_POINTS):
                 latitude = _float(point, "latitude", math.nan)
                 longitude = _float(point, "longitude", math.nan)
                 if math.isfinite(latitude) and math.isfinite(longitude):

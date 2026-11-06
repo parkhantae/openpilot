@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import islice
 import math
 from typing import Any
 
@@ -177,7 +178,7 @@ def _route(data: Any) -> NaviRouteControl:
   points: list[tuple[float, float]] = []
   if present:
     try:
-      values = tuple(_get(item, "polyline", ()) or ())[:MAX_ROUTE_POINTS]
+      values = tuple(islice(_get(item, "polyline", ()) or (), MAX_ROUTE_POINTS))
     except Exception:
       values = ()
     for point in values:
@@ -216,6 +217,25 @@ def _traffic(data: Any) -> NaviTrafficControl:
     lamp=lamp,
     remain_sec=remain_sec,
   )
+
+
+class CarrotNaviControlCache:
+  """Retain one parsed IPC event, never its Cap'n Proto reader/backing buffer."""
+  def __init__(self):
+    self.timestamp = None
+    self.control = None
+
+  def read(self, sm) -> CarrotNaviControl | None:
+    if not (sm.alive['carrotNavi'] and sm.valid['carrotNavi']):
+      self.timestamp = None
+      self.control = None
+      return None
+    timestamp = getattr(sm, 'logMonoTime', {}).get('carrotNavi', 0)
+    # Missing timestamps (e.g. standalone adapters) cannot identify an event.
+    if not timestamp or timestamp != self.timestamp:
+      self.control = parse_carrot_navi_control(sm['carrotNavi'])
+      self.timestamp = timestamp
+    return self.control
 
 
 def parse_carrot_navi_control(data: Any) -> CarrotNaviControl | None:

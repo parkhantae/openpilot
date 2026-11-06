@@ -304,7 +304,7 @@ def test_onroad_map_source_filters_media_and_bounds_decoder_queue(monkeypatch):
   view._phone_map_active = False
   view._phone_map_updated_at = 0.0
   view._params = SimpleNamespace(put_nonblocking=lambda *_: None)
-  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.NaviIpcMediaSource", FakeSource)
+  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.create_phone_map_source", FakeSource)
 
   view._set_phone_stream_enabled(True)
 
@@ -344,7 +344,7 @@ def test_map_resources_are_recreated_after_offroad_close(monkeypatch):
     def close(self):
       closed_renderers.append(self)
 
-  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.NaviIpcMediaSource", Source)
+  monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.create_phone_map_source", Source)
   monkeypatch.setattr("openpilot.selfdrive.ui.onroad.carrot_navi_map.NaviMapTextureRenderer", Renderer)
   view = object.__new__(CarrotNaviMapView)
   view._phone_stream_enabled = False
@@ -367,3 +367,46 @@ def test_map_resources_are_recreated_after_offroad_close(monkeypatch):
   assert len(bootstrap) == 2
   view.close()
   assert len(closed_sources) == len(closed_renderers) == 2
+
+
+def test_phone_map_server_dependencies_are_loaded_only_on_enable():
+  import subprocess
+  import sys
+
+  result = subprocess.run([sys.executable, '-c', '''
+import sys
+from openpilot.selfdrive.ui.onroad.carrot_navi_map import create_phone_map_source
+assert "cluster_navi_source" not in sys.modules
+class Socket:
+  def close(self): pass
+class Messaging:
+  def sub_sock(self, *args, **kwargs): return Socket()
+source = create_phone_map_source(messaging_module=Messaging())
+assert "cluster_navi_source" in sys.modules
+source.close()
+'''], capture_output=True, text=True)
+  assert result.returncode == 0, result.stderr
+
+
+def test_local_map_buffer_is_lazy_reused_and_released(monkeypatch):
+  import numpy as np
+  from openpilot.selfdrive.ui.onroad.carrot_navi_map import MAP_COLOR_LUT, MAP_SIZE
+
+  road = RoadMapTexture()
+  assert road._rgba is None
+  monkeypatch.setattr(rl, 'update_texture', lambda *_: None)
+  monkeypatch.setattr(rl, 'unload_texture', lambda *_: None)
+  road._texture = object()
+  pixels = np.arange(MAP_SIZE ** 2, dtype=np.uint8)
+  road._upload(pixels)
+  first = road._rgba
+  assert first.nbytes == 262144
+  np.testing.assert_array_equal(first, MAP_COLOR_LUT[pixels])
+  road._upload(pixels)
+  assert road._rgba is first
+  road.close()
+  assert road._rgba is None
+  road._texture = object()
+  road._upload(pixels)
+  assert road._rgba is not first
+  np.testing.assert_array_equal(road._rgba, first)

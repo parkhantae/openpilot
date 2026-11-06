@@ -5,7 +5,7 @@ import math
 from pathlib import Path
 import sys
 import time
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 import pyray as rl
@@ -17,7 +17,8 @@ from openpilot.common.params import Params
 CLUSTER_MODULE_DIR = str(Path(__file__).resolve().parents[2] / "carrot" / "cluster")
 if CLUSTER_MODULE_DIR not in sys.path:
   sys.path.insert(0, CLUSTER_MODULE_DIR)
-from cluster_navi_source import NaviIpcMediaSource  # noqa: E402
+if TYPE_CHECKING:
+  from cluster_navi_source import NaviIpcMediaSource
 from openpilot.selfdrive.ui.onroad.carrot_navi_stream import NaviMapTextureRenderer, map_frame_from_dashboard  # noqa: E402
 
 
@@ -51,6 +52,13 @@ PHONE_PANEL_BORDER_COLOR = rl.Color(92, 112, 132, 180)
 LOCAL_PANEL_BORDER_COLOR = rl.Color(92, 112, 132, 150)
 LOCAL_MAP_CAST_COLOR = rl.Color(8, 14, 22, 10)
 TEXTURE_ORIGIN = rl.Vector2(0.0, 0.0)
+
+
+def create_phone_map_source(**kwargs) -> NaviIpcMediaSource:
+  # The IPC source also imports the embedded HTTP server and simulator. Load
+  # that optional dependency tree only when the phone-map stream is enabled.
+  from cluster_navi_source import NaviIpcMediaSource
+  return NaviIpcMediaSource(**kwargs)
 
 
 def _build_map_color_lut() -> np.ndarray:
@@ -202,7 +210,7 @@ class RoadMapTexture:
     self._retry_at = 0.0
     self._updated_at = 0.0
     self._has_roads = False
-    self._rgba = np.empty((MAP_SIZE * MAP_SIZE, 4), dtype=np.uint8)
+    self._rgba: np.ndarray | None = None
     self._strip_key: tuple[float, float, float, float] | None = None
     self._strips: tuple[tuple[rl.Rectangle, rl.Rectangle], ...] = ()
 
@@ -256,6 +264,8 @@ class RoadMapTexture:
     return self._strips
 
   def _upload(self, pixels: np.ndarray) -> None:
+    if self._rgba is None:
+      self._rgba = np.empty((MAP_SIZE * MAP_SIZE, 4), dtype=np.uint8)
     np.take(MAP_COLOR_LUT, pixels, axis=0, out=self._rgba)
     if self._texture is None:
       image = rl.Image(None, MAP_SIZE, MAP_SIZE, 1, rl.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
@@ -269,6 +279,7 @@ class RoadMapTexture:
       rl.unload_texture(self._texture)
       self._texture = None
     self._client = None
+    self._rgba = None
     self._strips = ()
     self._strip_key = None
 
@@ -361,7 +372,7 @@ class CarrotNaviMapView:
       return
     self._phone_stream_enabled = enabled
     if enabled:
-      self._phone_source = NaviIpcMediaSource(
+      self._phone_source = create_phone_map_source(
         media_keys=ONROAD_MAP_MEDIA_KEYS,
         h264_queue_max=ONROAD_H264_QUEUE_MAX,
       )

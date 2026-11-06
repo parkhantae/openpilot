@@ -1396,3 +1396,19 @@ def test_ipc_backlog_is_drained_in_order_across_bounded_ui_updates():
       assert dashboard.media[0].sequence == expected
   finally:
     source.close()
+
+
+def test_route_parser_does_not_read_unused_polyline_points():
+  from cluster_navi import MAX_ROUTE_POINTS
+
+  def points():
+    for _ in range(MAX_ROUTE_POINTS):
+      yield {"latitude": 37.5, "longitude": 127.1}
+    raise AssertionError("unused route tail was materialized")
+
+  data = {"schemaVersion": 1, "connected": True, "sessionId": "bounded",
+          "route": {"meta": {"present": True, "sequence": 1,
+                             "receivedMonoTimeNanos": 100_000_000_000}, "polyline": points()}}
+  state = parse_carrot_navi(data, now=100.1)
+  assert state is not None and state.route is not None
+  assert len(state.route.polyline) == MAX_ROUTE_POINTS

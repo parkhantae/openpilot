@@ -520,3 +520,21 @@ def test_curve_selection_ignores_retired_model_speed(monkeypatch, mode, expected
   result = sent['carrotMan'].carrotMan
   assert result.desiredSource == expected_source
   assert result.desiredSpeed == (125 if mode == 1 else expected_speed)
+
+
+def test_main_route_and_service_share_one_parse_and_clear_on_disconnect():
+  serv = _serv()
+  sm = _SubMaster(_message())
+  sm.logMonoTime = {'carrotNavi': 1}
+  route_control = serv.read_carrot_navi(sm)
+  assert serv._update_carrot_navi(sm)
+  assert serv.carrot_navi_control is route_control
+  sm.valid['carrotNavi'] = False
+  assert serv.read_carrot_navi(sm) is None
+  assert not serv._update_carrot_navi(sm)
+  sm.valid['carrotNavi'] = True
+  sm.logMonoTime['carrotNavi'] = 2
+  reconnected = serv.read_carrot_navi(sm)
+  assert reconnected == route_control and reconnected is not route_control
+  assert serv._update_carrot_navi(sm)
+  assert serv.carrot_navi_control is reconnected

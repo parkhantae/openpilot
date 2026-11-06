@@ -73,16 +73,19 @@ def curve_speed(model, v_ego, sensitivity=1.0, lower_limit_kph=30.0, *, speed_ra
   lateral_budget = TARGET_LAT_ACCEL / float(np.clip(sensitivity, 0.5, 3.0))
   best = CurveSpeed()
   found_valid = False
+  # Compute the same three-node checks/medians in one NumPy operation rather
+  # than allocating and dispatching reductions separately for every node.
+  valid_windows = valid[:-2] & valid[1:-1] & valid[2:]
+  median_windows = np.median(np.lib.stride_tricks.sliding_window_view(curvature, 3), axis=1)
   for i in range(len(distance)):
     start = min(max(i - 1, 0), len(distance) - 3)
-    neighbourhood = slice(start, start + 3)
-    if distance[i] > max_distance or not np.all(valid[neighbourhood]):
+    if distance[i] > max_distance or not valid_windows[start]:
       continue
     # A stationary path with a nonzero velocity prediction is not usable.
     if distance[start + 2] - distance[start] < 0.05:
       continue
     found_valid = True
-    curve = float(np.median(curvature[neighbourhood]))
+    curve = float(median_windows[start])
     if abs(curve) < 1e-6:
       continue
     curve_ms = max(floor_ms, math.sqrt(lateral_budget / abs(curve)))

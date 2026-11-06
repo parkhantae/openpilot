@@ -20,7 +20,7 @@ from openpilot.selfdrive.navd.helpers import Coordinate
 from openpilot.common.constants import CV
 from openpilot.common.gps import get_gps_location_service
 from openpilot.selfdrive.carrot.gps_sources import GPSSources
-from openpilot.selfdrive.carrot.carrot_navi_control import CarrotNaviControl, parse_carrot_navi_control
+from openpilot.selfdrive.carrot.carrot_navi_control import CarrotNaviControl, CarrotNaviControlCache
 
 nav_type_mapping = {
   12: ("turn", "left", 1),
@@ -86,6 +86,7 @@ SCHOOL_ZONE_GAS_OVERRIDE_TIMEOUT_S = 3.0
 
 class CarrotServ:
   def __init__(self):
+    self._carrot_navi_cache = CarrotNaviControlCache()
     self.params = Params()
     self.params_memory = Params("/dev/shm/params")
 
@@ -1107,6 +1108,11 @@ class CarrotServ:
     elif not next_changed:
       self.xDistToTurnNext = old_next_dist
 
+  def read_carrot_navi(self, sm):
+    if not hasattr(self, '_carrot_navi_cache'):
+      self._carrot_navi_cache = CarrotNaviControlCache()
+    return self._carrot_navi_cache.read(sm)
+
   def _update_carrot_navi(self, sm):
     service_active = sm.alive['carrotNavi'] and sm.valid['carrotNavi']
     if service_active and not sm.updated['carrotNavi']:
@@ -1115,7 +1121,7 @@ class CarrotServ:
         self.active_sdi_count = self.active_sdi_count_max
       return self.carrot_navi_active and self.carrot_navi_has_control
 
-    navi = parse_carrot_navi_control(sm['carrotNavi']) if service_active else None
+    navi = self.read_carrot_navi(sm)
     was_active = self.carrot_navi_active
     self.carrot_navi_active = navi is not None
     if navi is None:
