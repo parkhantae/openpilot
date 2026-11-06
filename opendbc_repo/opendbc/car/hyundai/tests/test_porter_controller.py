@@ -501,6 +501,59 @@ class TestPorterMessagePath(unittest.TestCase):
         starts.append(frame)
     self.assertEqual(starts, [130,530])
 
+  def test_production_constructor_and_message_path_use_one_pedal_press(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    tree = ast.parse((Path(__file__).resolve().parents[1] / "carcontroller.py").read_text())
+    assignment = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
+                      isinstance(n.targets[0], ast.Attribute) and n.targets[0].attr == 'porter_main_set')
+    for engage_at, expected in ((None, [(100,2),(102,2),(104,2),(106,0)]),
+                                (103, [(100,2),(102,2),(104,0)])):
+      with self.subTest(engage_at=engage_at):
+        self.setUp()
+        self.controller.CP.safetyConfigs = [NS(safetyParam=15361)]
+        exec(compile(ast.Module(body=[assignment], type_ignores=[]), 'actual_main_set_constructor', 'exec'),
+             dict(self=self.controller, CP=self.controller.CP, PorterMainSet=PorterMainSet))
+        self.controller.porter_main_params = NS(get_bool=lambda key: True)
+        self.cs.out.wheelSpeeds = NS(fl=50/3.6, rr=50/3.6)
+        self.cc.hudControl.setSpeed = 50/3.6
+        outputs = []
+        for frame in range(180):
+          stock = engage_at is not None and frame >= engage_at
+          gas = 20 <= frame < 100
+          self.controller.frame = frame
+          self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
+          self.cs.cp.ts_nanos['CLU11']['counter'] = 1_000_000_000 + (frame // 2) * 20_000_000
+          self.cs.clu11['CF_Clu_AliveCnt1'] = frame // 2 % 16
+          self.cs.clu11['CF_Clu_CruiseSwMain'] = int(frame < 2)
+          self.cs.main_buttons = [int(frame < 2)]
+          self.cs.out.gasPressed = gas
+          self.cs.out.cruiseState.enabled = stock
+          self.cs.out.cruiseState.speed = 50/3.6 if stock else 0
+          self.cc.enabled = stock
+          self.cc.cruiseControl.resume = not stock and not gas
+          outputs.extend((frame,b) for b in self.function(self.controller,self.cc,self.cs,True))
+        self.assertEqual(outputs, expected)
+        self.assertEqual(self.controller.porter_main_set.requests, 1)
+        self.assertEqual(self.controller.porter_main_set.pair_remaining, 0)
+
+  def test_option_off_or_non_set_profile_does_not_transmit_on_pedal_release(self):
+    for option, profile in ((False,1025),(True,1025),(False,15361)):
+      with self.subTest(option=option,profile=profile):
+        self.setUp()
+        self.controller.porter_main_params = NS(get_bool=lambda key,value=option: value)
+        self.controller.CP.safetyConfigs = [NS(safetyParam=profile)]
+        self.cs.out.cruiseState.enabled = False
+        self.cs.out.wheelSpeeds = NS(fl=50/3.6,rr=50/3.6)
+        self.cc.enabled = False
+        self.cc.cruiseControl.resume = True
+        outputs = []
+        for frame in range(180):
+          self.cs.out.gasPressed = 20 <= frame < 100
+          self.cs.main_buttons = [int(frame < 2)]
+          outputs.extend(self.tick(frame))
+        self.assertEqual(outputs, [])
+        self.assertEqual(self.controller.porter_main_config_status[:2], (option,profile != 1025))
+
 
 if __name__ == "__main__":
   unittest.main()

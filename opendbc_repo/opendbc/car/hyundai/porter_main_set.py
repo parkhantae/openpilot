@@ -8,7 +8,7 @@ PORTER_SET_MAX_SAMPLE_AGE_S = .008
 
 
 class PorterMainSet:
-  def __init__(self, initial_main=False, allow_startup_gas=False, two_press=False):
+  def __init__(self, initial_main=False, allow_startup_gas=False, two_press=False, single_press=False):
     self.main = bool(initial_main)
     self.main_known = False
     self.previous_main = False
@@ -50,6 +50,9 @@ class PorterMainSet:
     self.startup_grant = False
     self.startup_grant_since = None
     self.two_press = two_press
+    # The versioned short-pulse profile also permits a single press. Keep its
+    # pedal, freshness and timing guards without scheduling a second press.
+    self.single_press = single_press
     self.pair_remaining = 0
     self.pair_deadline = None
     self.pair_index = 0
@@ -58,7 +61,7 @@ class PorterMainSet:
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured,
              gas_pressed=False, pedal_only=False, release_eligible=True, sample_age_s=None):
-    # The production two-press policy always needs a fresh pedal cue, including
+    # The versioned short-pulse policy always needs a fresh pedal cue, including
     # while lateral control is active. Legacy profiles/tests retain their path.
     pedal_only = pedal_only or self.two_press
     if key is not None and key != self.sample_key:
@@ -207,7 +210,7 @@ class PorterMainSet:
           self.rearm_release_since = None
     self.raw_previous_gas = gas_pressed
     eligible = (self.armed or self.startup_grant) and configured and clock_ok and not blocked and not main_pressed and not manual_button
-    pair_continuing = self.two_press and (self.pressing or self.pair_remaining > 0)
+    pair_continuing = self.two_press and not self.single_press and (self.pressing or self.pair_remaining > 0)
     qualified_pair_release = False
     if self.two_press:
       if not eligible or stock_enabled:
@@ -244,6 +247,7 @@ class PorterMainSet:
       # Inactive controls must not queue a later engagement behind retry limits.
       self.gas_release_since = None
     if (not eligible or (stock_enabled and not pair_continuing) or not request or gas_pressed or
+        (self.two_press and not release_eligible) or
         (pedal_only and self.pressing and not self.pedal_started)):
       self.since = None
       if self.pressing:
@@ -299,7 +303,7 @@ class PorterMainSet:
         self.response_started = now
       if self.two_press:
         self.pair_index = 2 if second_press else 1
-        self.pair_remaining = int(not second_press and self.main_known)
+        self.pair_remaining = int(not self.single_press and not second_press and self.main_known)
         # New versioned Panda profile: two <=60ms/3-frame presses separated by
         # an explicit release and 80ms gap, at most six SET frames in 240ms.
         self.pair_deadline = now + .24 if self.pair_remaining else None

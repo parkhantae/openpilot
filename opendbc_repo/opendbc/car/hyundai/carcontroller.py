@@ -203,9 +203,11 @@ class CarController(CarControllerBase):
                               if pedal_interceptor_params is not None else None)
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
+    # Retain the versioned short-pulse safety profile, but schedule one press.
     self.porter_main_set = PorterMainSet(initial_main=any(c.safetyParam in (25601, 58369, 60417) for c in CP.safetyConfigs),
                                          allow_startup_gas=any(c.safetyParam in (58369, 60417) for c in CP.safetyConfigs),
-                                         two_press=any(c.safetyParam == 15361 for c in CP.safetyConfigs))
+                                         two_press=any(c.safetyParam == 15361 for c in CP.safetyConfigs),
+                                         single_press=True)
     self.porter_cancel_buttons = PorterCancelButtons()
     self.porter_main_params = Params()
 
@@ -749,6 +751,9 @@ class CarController(CarControllerBase):
       main_set_vehicle_ready = (CS.out.cruiseState.available and CS.is_metric and
                                 CS.out.gearShifter == structs.CarState.GearShifter.drive and
                                 porter_auto_set_speed_valid(self.CP, CS.out))
+      main_set_enabled = self.porter_main_params.get_bool("PorterAutoSetMain")
+      main_set_profile_ready = any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417)
+                                   for c in self.CP.safetyConfigs)
       main_set = self.porter_main_set.update(
         self.frame * DT_CTRL, (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
         main_pressed=CS.main_buttons[-1] != 0 or CS.clu11["CF_Clu_CruiseSwMain"] != 0,
@@ -762,8 +767,12 @@ class CarController(CarControllerBase):
         sample_age_s=(parser._last_update_nanos - timestamp) * 1e-9 if fresh else float("inf"),
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
-        configured=(self.porter_main_params.get_bool("PorterAutoSetMain") and
-                    any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in self.CP.safetyConfigs)))
+        configured=main_set_enabled and main_set_profile_ready)
+      config_status = (main_set_enabled, main_set_profile_ready, self.porter_main_set.single_press)
+      if config_status != getattr(self, "porter_main_config_status", None):
+        self.porter_main_config_status = config_status
+        cloudlog.info("PorterMainSetConfig: enabled=%s profile_ready=%s single=%s restart_required=%s",
+                      *config_status, main_set_enabled and not main_set_profile_ready)
       cancel_status = (self.porter_cancel_buttons.status, self.porter_cancel_buttons.requests)
       if cancel_status != getattr(self, "porter_cancel_status", None):
         self.porter_cancel_status = cancel_status

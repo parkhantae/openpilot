@@ -239,3 +239,48 @@ class TestPorterPairSafety(unittest.TestCase):
         self.assertEqual(transmitted.count(2), 12)
         self.assertEqual(transmitted.count(0), 4)
         self.assertFalse(lib.get_controls_allowed())
+
+
+class TestPorterSinglePressSafety(unittest.TestCase):
+  def test_production_single_presses_pass_native_guards_across_new_pedal_cycles(self):
+    for engage_at in (None, 103):
+      init(15361)
+      pulse = PorterMainSet(two_press=True, single_press=True)
+      starts, outputs = [], []
+      for tick in range(900):
+        # A successful first attempt is disengaged before the next driver cue.
+        stock = engage_at is not None and engage_at <= tick < 380
+        gas = 20 <= tick < 100 or 420 <= tick < 450 or 800 <= tick < 820
+        lib.set_timer(21000 + tick * 10000)
+        if tick % 2 == 0:
+          seed(counter=tick // 2, speed=40, main=tick == 0, gas=gas, target=40 if stock else 0)
+        before = pulse.requests
+        button = pulse.update(tick * .01, tick // 2, main_pressed=tick < 2, manual_button=0,
+                              blocked=False, request=not gas, stock_enabled=stock,
+                              configured=True, gas_pressed=gas)
+        if pulse.requests != before:
+          starts.append(tick)
+        if button is not None:
+          outputs.append((tick, button))
+          self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=tick // 2 + 1))),
+                          (engage_at, tick, button))
+      self.assertEqual(starts, [100, 450, 820])
+      self.assertEqual(sum(button == 0 for _, button in outputs), 3)
+      self.assertEqual(sum(button == 2 for _, button in outputs), 9 if engage_at is None else 8)
+
+  def test_single_host_press_cannot_bypass_native_brake_or_main_off(self):
+    for change in (dict(brake=True), dict(main=True)):
+      init(15361)
+      pulse = PorterMainSet(two_press=True, single_press=True)
+      for tick in range(101):
+        gas = 20 <= tick < 100
+        lib.set_timer(21000 + tick * 10000)
+        if tick % 2 == 0:
+          seed(counter=tick // 2, speed=40, main=tick == 0, gas=gas)
+        button = pulse.update(tick * .01, tick // 2, main_pressed=tick < 2, manual_button=0,
+                              blocked=False, request=not gas, stock_enabled=False, configured=True, gas_pressed=gas)
+      self.assertEqual(button, 2)
+      self.assertTrue(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=button, counter=51))))
+      lib.set_timer(21000 + 102 * 10000)
+      seed(counter=51, speed=40, **change)
+      self.assertFalse(lib.safety_tx_hook(packet(0x4f1, data(0x4f1, button=2, counter=52))))
