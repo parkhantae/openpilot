@@ -121,7 +121,7 @@ def analyze(oem, injected, echoes, speeds, origin=0.0):
           'injected_frames': len(injected), 'tx_echo_frames': len(echoes),
           'unmatched_intended_frames': sum((intended - confirmed).values()),
           'unmatched_echo_frames': sum((confirmed - intended).values()),
-          'limitations': ['TX echo confirms transmission, not ECU acceptance.',
+          'limitations': ['TX echo is an adapter return; H7/FDCAN emits it at hardware submission, not wire completion or ECU acceptance.',
                           'Counter overlap alone is not a rejection cause.',
                           'Setting changes do not prove physical acceleration or braking.',
                           'Segment boundaries can omit presses, releases or feedback.']}

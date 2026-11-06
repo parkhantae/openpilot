@@ -1,10 +1,21 @@
 """Driver-authorized bounded SET pulses; no remembered-speed RES requests."""
 import math
+import os
+import time
 
 
 # CLU11 normally arrives every 20 ms. Preserve transport headroom rather than
 # holding its counter for another 10 ms control tick before automatic SET.
 PORTER_SET_MAX_SAMPLE_AGE_S = .008
+
+
+def porter_can_clock_nanos(replay_now_nanos):
+  # C++ CAN envelopes use CLOCK_BOOTTIME. CI.apply's live now_nanos instead
+  # uses MONOTONIC: never mix them after suspend, or change steering's clock.
+  if "REPLAY" in os.environ:
+    return replay_now_nanos
+  clock = getattr(time, "CLOCK_BOOTTIME", None)
+  return time.monotonic_ns() if clock is None else time.clock_gettime_ns(clock)
 
 
 class PorterMainSet:

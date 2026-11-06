@@ -105,7 +105,7 @@ class TestPorterMessagePath(unittest.TestCase):
            "CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "Buttons": NS(NONE=0), "DT_CTRL": .01,
            "CV": NS(MS_TO_KPH=3.6), "structs": NS(CarState=NS(GearShifter=NS(drive="drive"))),
            "hyundaican": NS(create_clu11_button=lambda packer, frame, clu, button, cp: button),
-           "cloudlog": NS(info=lambda *args: None)}
+           "cloudlog": NS(info=lambda *args: None), "porter_can_clock_nanos": lambda now: now}
     exec(compile(ast.Module(body=[function], type_ignores=[]), "actual_create_button_messages", "exec"), env)
     cls.function = staticmethod(env["create_button_messages"])
 
@@ -553,6 +553,47 @@ class TestPorterMessagePath(unittest.TestCase):
           outputs.extend(self.tick(frame))
         self.assertEqual(outputs, [])
         self.assertEqual(self.controller.porter_main_config_status[:2], (option,profile != 1025))
+
+  def test_dispatch_age_rejects_stale_batches_without_queueing_old_pedal_release(self):
+    from opendbc.car.hyundai.porter_main_set import PorterMainSet
+    for mode, expected in (
+      ('timely', [(100,2),(102,2),(104,2),(106,0)]),
+      ('late', []),
+      ('late_after_start', [(100,2),(106,0)]),
+      ('recover_in_window', [(102,2),(104,2),(106,2),(108,0)]),
+      ('recover_after_window', []),
+      ('future_timestamp', []),
+    ):
+      with self.subTest(mode=mode):
+        self.setUp()
+        self.controller.CP.safetyConfigs = [NS(safetyParam=15361)]
+        self.controller.porter_main_set = PorterMainSet(two_press=True,single_press=True)
+        self.controller.porter_main_params = NS(get_bool=lambda key: True)
+        self.cs.out.wheelSpeeds = NS(fl=50/3.6,rr=50/3.6)
+        self.cs.out.cruiseState.enabled = False
+        self.cc.enabled = False
+        outputs = []
+        for frame in range(180):
+          self.controller.frame = frame
+          current = 1_000_000_000 + frame * 10_000_000
+          self.cs.cp._last_update_nanos = current
+          timestamp = 1_000_000_000 + (frame // 2) * 20_000_000
+          self.cs.cp.ts_nanos['CLU11']['counter'] = timestamp
+          self.cs.clu11['CF_Clu_AliveCnt1'] = frame // 2 % 16
+          self.cs.clu11['CF_Clu_CruiseSwMain'] = int(frame < 2)
+          self.cs.main_buttons = [int(frame < 2)]
+          gas = 20 <= frame < 100
+          self.cs.out.gasPressed = gas
+          self.cc.cruiseControl.resume = not gas
+          timely = (mode == 'timely' or mode == 'late_after_start' and frame <= 100 or
+                    mode == 'recover_in_window' and frame >= 102 or
+                    mode == 'recover_after_window' and frame >= 112)
+          sample_now = current + (4_000_000 if timely else 12_000_000)
+          if mode == 'future_timestamp':
+            sample_now = timestamp - 1
+          outputs.extend((frame,b) for b in self.function(self.controller,self.cc,self.cs,True,
+                                                         apply_now_nanos=sample_now))
+        self.assertEqual(outputs, expected)
 
 
 if __name__ == "__main__":

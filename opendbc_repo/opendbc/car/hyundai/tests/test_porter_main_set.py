@@ -374,7 +374,7 @@ class TestPorterMainSet(unittest.TestCase):
     from pathlib import Path
     from types import SimpleNamespace as NS
     tree = ast.parse((Path(__file__).resolve().parents[1] / 'carcontroller.py').read_text())
-    names = ('main_set_vehicle_ready', 'main_set_enabled', 'main_set_profile_ready', 'main_set')
+    names = ('main_set_vehicle_ready', 'main_set_enabled', 'main_set_profile_ready', 'sample_clock', 'main_set')
     nodes = [n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
              isinstance(n.targets[0], ast.Name) and n.targets[0].id in names]
     code = compile(ast.Module(body=nodes, type_ignores=[]), 'actual_porter_release_eligibility', 'exec')
@@ -397,7 +397,7 @@ class TestPorterMainSet(unittest.TestCase):
         cs = NS(out=out,is_metric=metric,main_buttons=[0],cruise_buttons=[0],
                 clu11={'CF_Clu_AliveCnt1': 0,'CF_Clu_CruiseSwMain': 0})
         exec(code,dict(self=obj,CS=cs,CC=NS(enabled=False,latActive=False,cruiseControl=NS(resume=target,cancel=False)),
-                       fresh=True,timestamp=1,parser=NS(_last_update_nanos=4_000_001),
+                       fresh=True,timestamp=1,parser=NS(_last_update_nanos=4_000_001),apply_now_nanos=None,
                        cancel_busy=False,pair_busy=False,DT_CTRL=.01,
                        structs=NS(CarState=NS(GearShifter=NS(drive='drive'))),
                        porter_auto_set_speed_valid=porter_auto_set_speed_valid))

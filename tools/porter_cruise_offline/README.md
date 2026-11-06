@@ -50,7 +50,7 @@ python tools/porter_cruise_offline/analyze_buttons.py /path/to/segment2.zst /pat
 python -m pytest -q -c /dev/null --rootdir=. --confcutdir=tools/porter_cruise_offline tools/porter_cruise_offline/test_analyze_buttons.py
 ```
 
-전체 openpilot 스키마로 bus 0 순정 CLU11, `sendcan` 주입, bus 128 송신 확인을 구분합니다. 순정/자동 누름 길이·프레임 수·카운터 진행, 설정 속도 변화, 순정 메시지와 같은 카운터를 쓰면서 버튼 값이 다른 프레임 수를 JSON으로 출력합니다. 송신 확인은 주소/버스/전체 바이트의 중복 개수까지 대조합니다. 직접 버튼 조작이 겹치면 자동 입력의 응답으로 단정하지 않습니다.
+전체 openpilot 스키마로 bus 0 순정 CLU11, `sendcan` 주입, bus 128 송신 반환을 구분합니다. 순정/자동 누름 길이·프레임 수·카운터 진행, 설정 속도 변화, 순정 메시지와 같은 카운터를 쓰면서 버튼 값이 다른 프레임 수를 JSON으로 출력합니다. 반환 메시지는 주소/버스/전체 바이트의 중복 개수까지 대조합니다. H7/FDCAN은 하드웨어 송신 등록 직후 반환하므로 이것만으로 물리 전송 완료나 ECU 수락을 확인할 수 없습니다. 직접 버튼 조작이 겹치면 자동 입력의 응답으로 단정하지 않습니다.
 
 카운터 중복은 성공·무응답 양쪽에 존재할 수 있으므로 그 자체를 거부 원인으로 판정하지 않습니다. 0.5초 안의 설정 속도 변화도 물리적인 가감속을 검증하지 않습니다. 구간 경계의 누름·해제·응답 누락은 별도로 고려해야 합니다. 원본 식별 정보나 위치·영상·음성은 출력하지 않습니다.
 

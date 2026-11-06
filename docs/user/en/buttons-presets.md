@@ -264,7 +264,7 @@ Brake, CANCEL, MAIN OFF, renewed gas, driver buttons, lost eligibility or cancel
 
 Each qualified release permits at most one press. No ECU response does not repeat that cue. Another attempt requires at least three seconds after the last TX and a fresh pedal cycle. Retry-blocked cues are discarded. The first request opportunity expires 0.1s after release; brake/CANCEL also require MAIN ON and a new qualifying pedal cycle.
 
-Automatic SET uses only newly observed CLU11 samples received within 8ms. Waiting never extends pedal or press deadlines. Do not add a 10ms delay or remember a timing phase. Existing Panda safety limits and the three-second wait remain.
+For new automatic SET frames, compare the CAN receive-envelope timestamp with host dispatch time and use newly observed CLU11 only within 8ms. Live operation uses the same boot-time clock; replay uses replay time, so a buffered envelope cannot appear 0ms old merely because it is also the latest CAN envelope. Skip late samples without extending pedal/press deadlines, adding a 10ms delay or remembering a timing phase. Existing Panda limits and the three-second wait remain; this age does not prove USB/wire transmission completion or ECU acceptance.
 
 Option OFF revokes transmission permission while preserving MAIN tracking, without cancelling already engaged stock cruise. Turning ON again still requires MAIN and fresh-pedal authorization. If automatic SET remains unavailable after restart, first check the setting and actual CRUISE standby. `PorterMainSetConfig enabled=False` means OFF; `restart_required=True` means ON with no applied profile permission, requiring restart.
 

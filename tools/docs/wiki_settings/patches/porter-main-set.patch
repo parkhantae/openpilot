@@ -2,14 +2,14 @@
 +++ b/KO-포터-MAIN-대기-중-자동-SET.md
 @@ -29 +29,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="17ec210005dad2ea650cd1d9b577bc9b477069b689e7c7921a575ea331563007" reviewed-at="2026-11-06T22:38:27+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="04bfb0d58569989f713b2c2cf0a508158cbf2d969b516a45ca89a75d1d1847a4" reviewed-at="2026-11-06T23:17:43+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
 +MAIN ON이 확인된 대기에서 새 엑셀을 0.1초 이상 밟았다 놓을 때마다 인게이지·조향 활성과 무관하게 SET− 한 번·해제를 요청합니다. 추가 해제 확인 지연이나 두 번째 누름은 없으며 실제 순정 ON이면 남은 SET도 중단합니다. 브레이크·CANCEL·MAIN OFF·새 엑셀·운전자 버튼·조건 이탈·취소 요청은 입력을 중단하고 자동 취소가 우선합니다.
 +
-+새 CLU11을 관측한 주기에서 수신 후 8ms 이내인 샘플만 자동 SET에 사용합니다. 10ms 추가 지연과 성공 시점 기억은 사용하지 않습니다. 오래된 샘플은 건너뛰고 기존 페달 허가·누름 시간 안에서 다음 샘플을 기다리며 만료 시각을 늘리지 않습니다.
++수신 CAN 묶음 생성 시각부터 호스트 송신 판단 시각까지 같은 부트 시간 시계로 비교해 8ms 이내인 새 CLU11만 새 SET에 사용하며, 로그 재생은 재생 시각을 사용합니다. 오래된 묶음이 최신 CAN 묶음이라는 이유만으로 0ms로 취급되지 않으며, 늦은 샘플은 건너뛰되 기한 연장·10ms 추가 지연·성공 위상 기억 없이 기존 제한을 유지합니다. 이 시간은 USB·물리 버스 전송 완료나 ECU 수락을 증명하지 않습니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -27,14 +27,14 @@
 +++ b/EN-Porter-automatic-SET-from-MAIN-standby.md
 @@ -29 +29,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="17ec210005dad2ea650cd1d9b577bc9b477069b689e7c7921a575ea331563007" reviewed-at="2026-11-06T22:38:27+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="04bfb0d58569989f713b2c2cf0a508158cbf2d969b516a45ca89a75d1d1847a4" reviewed-at="2026-11-06T23:17:43+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
 +In confirmed MAIN standby, each fresh gas press of at least 0.1s and release requests one SET− press/release regardless of engagement or lateral activity. No extra release dwell or second press; actual stock ON stops remaining SET frames. Brake, CANCEL, MAIN OFF, renewed gas, driver buttons, lost eligibility or cancellation interrupt input. Cancellation takes priority.
 +
-+Automatic SET uses only a newly observed CLU11 sample received within 8ms. Do not add a 10ms delay or remember a timing slot. Skip older samples and await the next within the original pedal/press deadlines, without extending their expiry.
++For new SET frames, compare the CAN receive-envelope timestamp with host dispatch time in the same boot-time clock and require newly observed CLU11 within 8ms; replay uses replay time. A buffered envelope cannot appear 0ms old merely because it is the latest CAN envelope; skip late samples without extending deadlines, adding a 10ms delay or remembering a timing phase. This age does not prove USB/wire completion or ECU acceptance.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -52,14 +52,14 @@
 +++ b/ZH-波特-MAIN待机自动SET.md
 @@ -29 +29,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="17ec210005dad2ea650cd1d9b577bc9b477069b689e7c7921a575ea331563007" reviewed-at="2026-11-06T22:38:27+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="04bfb0d58569989f713b2c2cf0a508158cbf2d969b516a45ca89a75d1d1847a4" reviewed-at="2026-11-06T23:17:43+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
 +
 +在确认MAIN开启的待机状态，每次重新踩油门至少0.1秒再松开，均请求一次SET−并释放，与接合或横向控制无关。不增加松油门确认延迟，不再第二次按下；确认原厂巡航开启后结束剩余SET帧。制动、CANCEL、MAIN关闭、再次踩油门、驾驶员按钮、条件失效或取消请求中断输入，取消优先。
 +
-+自动SET仅使用本控制周期新接收且接收时间不超过8毫秒的CLU11样本。不再增加10毫秒延迟或记忆时序。跳过旧样本，在原油门授权和按压期限内等待下一样本，不延长截止时间。
++新SET帧仅使用从CAN接收消息包生成到主机发送判断不超过8毫秒的新CLU11，实车采用相同的启动时间时钟，日志回放采用回放时间。旧消息包不会因其也是最新CAN消息包而显示为0毫秒；跳过过旧样本，不延长截止时间、不增加10毫秒延迟或记忆时序。该时间不证明USB或物理总线发送完成或车辆接受。
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->

@@ -8,7 +8,7 @@ from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
-from opendbc.car.hyundai.porter_main_set import PorterMainSet
+from opendbc.car.hyundai.porter_main_set import PorterMainSet, porter_can_clock_nanos
 from opendbc.car.hyundai.porter import PorterCruiseButtons, porter_steer_request_frames, porter_auto_set_speed_valid
 from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits
 from opendbc.car.hyundai.stopping import CanfdStopping
@@ -649,7 +649,9 @@ class CarController(CarControllerBase):
         self.lkas11_active = True
 
       if not self.CP.openpilotLongitudinalControl:
-        can_sends.extend(self.create_button_messages(CC, CS, use_clu11=True))
+        can_sends.extend(self.create_button_messages(
+          CC, CS, use_clu11=True,
+          apply_now_nanos=now_nanos if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV else None))
       if self.CP.carFingerprint in CAN_GEARS["send_mdps12"] and CS.mdps12 is not None:  # send mdps12 to LKAS to prevent LKAS error
         can_sends.append(hyundaican.create_mdps12(self.packer, self.frame, CS.mdps12))
 
@@ -710,7 +712,7 @@ class CarController(CarControllerBase):
     return new_actuators, can_sends
 
 
-  def create_button_messages(self, CC: structs.CarControl, CS: CarState, use_clu11: bool):
+  def create_button_messages(self, CC: structs.CarControl, CS: CarState, use_clu11: bool, *, apply_now_nanos=None):
     can_sends = []
     if self.CP.carFingerprint == CAR.HYUNDAI_PORTER_II_EV:
       if not use_clu11 or CS.clu11 is None:
@@ -754,6 +756,10 @@ class CarController(CarControllerBase):
       main_set_enabled = self.porter_main_params.get_bool("PorterAutoSetMain")
       main_set_profile_ready = any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417)
                                    for c in self.CP.safetyConfigs)
+      # Read the live clock after parameter/other-button work, just before the
+      # SET decision. Legacy direct adapters retain the CAN-relative fallback.
+      sample_clock = (porter_can_clock_nanos(apply_now_nanos) if apply_now_nanos is not None else
+                      parser._last_update_nanos if parser is not None else None)
       main_set = self.porter_main_set.update(
         self.frame * DT_CTRL, (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
         main_pressed=CS.main_buttons[-1] != 0 or CS.clu11["CF_Clu_CruiseSwMain"] != 0,
@@ -764,7 +770,7 @@ class CarController(CarControllerBase):
                  not CC.cruiseControl.cancel and not cancel_busy and
                  not CS.out.gasPressed and main_set_vehicle_ready),
         release_eligible=main_set_vehicle_ready,
-        sample_age_s=(parser._last_update_nanos - timestamp) * 1e-9 if fresh else float("inf"),
+        sample_age_s=(sample_clock - timestamp) * 1e-9 if fresh and sample_clock is not None else float("inf"),
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
         configured=main_set_enabled and main_set_profile_ready)
