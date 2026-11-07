@@ -506,11 +506,13 @@ class TestPorterMessagePath(unittest.TestCase):
     tree = ast.parse((Path(__file__).resolve().parents[1] / "carcontroller.py").read_text())
     assignment = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
                       isinstance(n.targets[0], ast.Attribute) and n.targets[0].attr == 'porter_main_set')
-    for engage_at, expected in ((None, [(100,2),(102,2),(104,2),(106,0)]),
-                                (103, [(100,2),(102,2),(104,0)])):
+    for profile, engage_at, expected in ((15361,None, [(100,2),(102,2),(104,2),(106,0)]),
+                                         (15361,103, [(100,2),(102,2),(104,0)]),
+                                         (15489,None, [(100,2),(102,2),(104,2),(106,2),(108,2),(110,2),(112,0)]),
+                                         (15489,103, [(100,2),(102,2),(104,0)])):
       with self.subTest(engage_at=engage_at):
         self.setUp()
-        self.controller.CP.safetyConfigs = [NS(safetyParam=15361)]
+        self.controller.CP.safetyConfigs = [NS(safetyParam=profile)]
         exec(compile(ast.Module(body=[assignment], type_ignores=[]), 'actual_main_set_constructor', 'exec'),
              dict(self=self.controller, CP=self.controller.CP, PorterMainSet=PorterMainSet))
         self.controller.porter_main_params = NS(get_bool=lambda key: True)

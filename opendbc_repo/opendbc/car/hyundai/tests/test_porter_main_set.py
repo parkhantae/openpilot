@@ -14,7 +14,7 @@ class TestPorterMainSet(unittest.TestCase):
     block = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
                  ast.unparse(n.test) == 'candidate == CAR.HYUNDAI_PORTER_II_EV')
     code = compile(ast.Module(body=[block], type_ignores=[]), 'actual_porter_profile', 'exec')
-    for enabled, engage, expected in ((False,2,1025), (True,0,15361), (True,1,15361), (True,2,15361)):
+    for enabled, engage, expected in ((False,2,1025), (True,0,15489), (True,1,15489), (True,2,15489)):
       ret = NS(flags=0)
       exec(code, dict(candidate='porter', CAR=NS(HYUNDAI_PORTER_II_EV='porter'), ret=ret,
                       params=NS(get_bool=lambda key,e=enabled:e, get_int=lambda key,e=engage:e),
@@ -26,12 +26,13 @@ class TestPorterMainSet(unittest.TestCase):
     node = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
                 ast.unparse(n.targets[0]) == 'self.porter_main_set')
     code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_startup_init', 'exec')
-    for profile in (1025,9217,11265,15361,25601,58369,60417):
+    for profile in (1025,9217,11265,15361,15489,25601,58369,60417):
       obj = NS()
       exec(code, dict(self=obj, CP=NS(safetyConfigs=[NS(safetyParam=profile)]), PorterMainSet=PorterMainSet))
       self.assertEqual(obj.porter_main_set.allow_startup_gas, profile in (58369,60417))
       self.assertEqual(obj.porter_main_set.main, profile in (25601,58369,60417))
-      self.assertEqual(obj.porter_main_set.two_press, profile == 15361)
+      self.assertEqual(obj.porter_main_set.two_press, profile in (15361,15489))
+      self.assertEqual(obj.porter_main_set.long_press, profile == 15489)
     tree = ast.parse((root / 'carstate.py').read_text())
     initial = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and
                    ast.unparse(n.targets[0]) == 'self.main_enabled')

@@ -208,23 +208,24 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.assertTrue(self.cc.cruiseControl.resume)  # candidate; controller still requires fresh pedal
 
   def test_production_pair_planner_requires_both_wheels_above_minimum(self):
-    self.values['PorterAutoSetMain'] = True
-    self.obj.CP.safetyConfigs = [NS(safetyParam=15361)]
-    self.cs.cruiseState.enabled = False
-    self.cs.cruiseState.available = True
-    self.cs.vEgo = 29.5/3.6
-    self.cs.vEgoCluster = 32/3.6
-    self.cs.wheelSpeeds = NS(fl=29.5/3.6, rr=29.5/3.6)
-    self.cc.enabled, self.cc.latActive = False, True
-    self.cc.cruiseControl.resume = False
-    self.run_frames(planner=36)
-    self.assertFalse(self.cc.cruiseControl.resume)
-    self.cs.vEgo = 32/3.6
-    self.cs.vEgoCluster = 34/3.6
-    self.cs.wheelSpeeds = NS(fl=32/3.6, rr=32/3.6)
-    self.run_frames(planner=36, start=40)
-    self.assertTrue(self.cc.cruiseControl.resume)
-
+    for profile in (15361,15489):
+      self.setUp()
+      self.values['PorterAutoSetMain'] = True
+      self.obj.CP.safetyConfigs = [NS(safetyParam=profile)]
+      self.cs.cruiseState.enabled = False
+      self.cs.cruiseState.available = True
+      self.cs.vEgo = 29.5/3.6
+      self.cs.vEgoCluster = 32/3.6
+      self.cs.wheelSpeeds = NS(fl=29.5/3.6, rr=29.5/3.6)
+      self.cc.enabled, self.cc.latActive = False, True
+      self.cc.cruiseControl.resume = False
+      self.run_frames(planner=36)
+      self.assertFalse(self.cc.cruiseControl.resume)
+      self.cs.vEgo = 32/3.6
+      self.cs.vEgoCluster = 34/3.6
+      self.cs.wheelSpeeds = NS(fl=32/3.6, rr=32/3.6)
+      self.run_frames(planner=36, start=40)
+      self.assertTrue(self.cc.cruiseControl.resume)
   def test_cluster_profile_accepts_dashboard30_with_plausible_wheels_only(self):
     self.values['PorterAutoSetMain'] = True
     self.obj.CP.safetyConfigs = [NS(safetyParam=60417)]

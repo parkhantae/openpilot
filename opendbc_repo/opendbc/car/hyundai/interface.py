@@ -234,7 +234,7 @@ class CarInterface(CarInterfaceBase):
         # physical MAIN-ON edge must not invert an AutoEngage=2 synthetic ON.
         ret.safetyConfigs[-1].safetyParam |= (
           HyundaiSafetyFlags.PORTER_MAIN_SET.value | HyundaiSafetyFlags.PORTER_CLUSTER_SET.value |
-          HyundaiSafetyFlags.PORTER_SET_PAIR.value)
+          HyundaiSafetyFlags.PORTER_SET_PAIR.value | HyundaiSafetyFlags.PORTER_SET_SINGLE_LONG.value)
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = False # True  # carrot

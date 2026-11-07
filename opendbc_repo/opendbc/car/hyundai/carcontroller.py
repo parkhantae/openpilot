@@ -203,11 +203,12 @@ class CarController(CarControllerBase):
                               if pedal_interceptor_params is not None else None)
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
-    # Retain the versioned short-pulse safety profile, but schedule one press.
+    # Schedule one press with the bound selected by the versioned safety profile.
     self.porter_main_set = PorterMainSet(initial_main=any(c.safetyParam in (25601, 58369, 60417) for c in CP.safetyConfigs),
                                          allow_startup_gas=any(c.safetyParam in (58369, 60417) for c in CP.safetyConfigs),
-                                         two_press=any(c.safetyParam == 15361 for c in CP.safetyConfigs),
-                                         single_press=True)
+                                         two_press=any(c.safetyParam in (15361, 15489) for c in CP.safetyConfigs),
+                                         single_press=True,
+                                         long_press=any(c.safetyParam == 15489 for c in CP.safetyConfigs))
     self.porter_cancel_buttons = PorterCancelButtons()
     self.porter_main_params = Params()
 
@@ -754,7 +755,7 @@ class CarController(CarControllerBase):
                                 CS.out.gearShifter == structs.CarState.GearShifter.drive and
                                 porter_auto_set_speed_valid(self.CP, CS.out))
       main_set_enabled = self.porter_main_params.get_bool("PorterAutoSetMain")
-      main_set_profile_ready = any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417)
+      main_set_profile_ready = any(c.safetyParam in (9217, 11265, 15361, 15489, 25601, 58369, 60417)
                                    for c in self.CP.safetyConfigs)
       # Read the live clock after parameter/other-button work, just before the
       # SET decision. Legacy direct adapters retain the CAN-relative fallback.
@@ -787,7 +788,7 @@ class CarController(CarControllerBase):
                      self.porter_main_set.main_known, self.porter_main_set.startup_grant,
                      self.porter_main_set.requests, self.porter_main_set.acks, self.porter_main_set.timeouts,
                      self.porter_main_set.response, self.porter_main_set.response_reason)
-      if (any(c.safetyParam in (9217, 11265, 15361, 25601, 58369, 60417) for c in self.CP.safetyConfigs) and
+      if (any(c.safetyParam in (9217, 11265, 15361, 15489, 25601, 58369, 60417) for c in self.CP.safetyConfigs) and
           (main_status != getattr(self, "porter_main_status", None) or self.frame % 100 == 0)):
         self.porter_main_status = main_status
         cloudlog.info("PorterMainSet: main=%s armed=%s pressing=%s request=%s stock=%s speed=%.1f known=%s "

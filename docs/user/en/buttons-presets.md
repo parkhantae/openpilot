@@ -254,9 +254,11 @@ Remember that SET/- in custom mode 3 does not walk backward through the preset t
 
 ### Porter automatic SET from MAIN standby
 
+This comparison trial restores only the `4757bccb` 120ms/six-frame single press. Update both host and Panda and restart for the new transmission profile. MAIN initialization, speed, driver priority and retry conditions remain; actual vehicle acceptance still needs verification.
+
 Settings > Vehicle & Hardware > Porter Only includes **Porter: automatic SET from MAIN standby** (`PorterAutoSetMain`), default OFF. **Turn ON, then restart** to apply the automatic-SET Panda profile. While parked, update/restart with MAIN OFF, then press MAIN ON after boot for CRUISE standby. OFF or a non-authorized profile sends no automatic SET on gas release. MAIN tracking starts OFF independently of AutoEngage; `AutoEngage=2` is not required.
 
-In confirmed MAIN standby, each fresh gas press of at least 0.1s followed by release requests **one SET− press → release**, regardless of engagement/lateral activity. Send on the next new CAN sample without extra release-confirmation dwell; do not schedule a second press. A press is at most three frames/60ms. Actual stock ON stops remaining SET frames and sends release. This does not mean one CAN frame or guarantee exact speed latching at pedal release.
+In confirmed MAIN standby, each fresh gas press of at least 0.1s followed by release requests **one SET− press → release**, regardless of engagement/lateral activity. Send on the next new CAN sample without extra release-confirmation dwell; do not schedule a second press. A press is at most six frames/120ms. Actual stock ON stops remaining SET frames and sends release. This does not mean one CAN frame or guarantee exact speed latching at pedal release.
 
 Initial target, dashboard and both front-left/rear-right wheel speeds must be 30–160km/h, with `SpeedFromPCM=0`, drive gear, 0.5s MAIN settling and valid vehicle/planner/radar inputs. Dashboard speed alone or MAIN OFF cannot authorize a start. Releases at low speed or invalid conditions require a new pedal cycle after recovery; they are never executed later.
 

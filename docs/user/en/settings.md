@@ -506,7 +506,7 @@ With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAI
 
 With MAIN and automatic SET ON, a fresh gas press/release at 30 km/h or above can rearm after brake or CANCEL. MAIN OFF prevents automatic starts.
 
-The current Porter automatic SET uses one bounded press of at most three frames/60ms followed by release, without a second press. Another attempt requires three seconds after the last TX and a fresh pedal cycle. Turn the setting ON and restart to apply transmission permission. Existing speed-step and automatic-cancel bounds remain.
+The current Porter automatic SET uses one bounded press of at most six frames/120ms followed by release, without a second press. Another attempt requires three seconds after the last TX and a fresh pedal cycle. Turn the setting ON and restart to apply transmission permission. Existing speed-step and automatic-cancel bounds remain.
 
 Porter automatic SET tolerates at most 0.1s of request blocking at gas release. This also covers rearming after brake/CANCEL in confirmed MAIN standby following a fresh press of at least 0.1s. Dashboard/wheel speeds, MAIN availability, units and drive gear must qualify at release and remain valid. The target and other request conditions must become valid within the original release window; request SET on the next new CAN sample without renewing the deadline. A new gas press, driver button, brake or invalid input clears the observation. Current-profile MAIN confirmation and retry limits remain.
 

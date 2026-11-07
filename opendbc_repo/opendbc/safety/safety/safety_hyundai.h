@@ -61,6 +61,7 @@ static bool hyundai_porter_cc = false;
 // Optional driver-authorized SET: never enabled by the old 1025 configuration.
 static bool hyundai_porter_main_set = false;
 static bool hyundai_porter_set_pair = false;
+static bool hyundai_porter_single_long = false;
 static bool hyundai_porter_main = false;
 static bool hyundai_porter_main_known = false;
 // New profile only: one fresh pedal cycle can grant a bounded startup trial
@@ -597,7 +598,8 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
                      !GET_BIT(to_send, 3U) && !GET_BIT(to_send, 4U);
       if (!GET_BIT(to_send, 3U)) {
         main_set = hyundai_porter_pair_tx(now, button, fresh, allowed,
-                                        get_ts_elapsed(now, hyundai_porter_main_ts) >= 500000U, !cruise_engaged_prev);
+                                        get_ts_elapsed(now, hyundai_porter_main_ts) >= 500000U, !cruise_engaged_prev,
+                                        hyundai_porter_single_long);
       }
       if (main_set && button == HYUNDAI_BTN_SET) {
         hyundai_porter_set_rx_ts = hyundai_porter_clu_ts;
@@ -860,6 +862,7 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_porter_cc = GET_FLAG(param, 1024U);
   hyundai_porter_main_set = hyundai_porter_cc && GET_FLAG(param, 8192U);
   hyundai_porter_set_pair = hyundai_porter_main_set && GET_FLAG(param, 4096U);
+  hyundai_porter_single_long = param == 15489U; // Bit128 is classic-Porter-specific; CAN-FD has a separate hook.
   hyundai_porter_pair = (HyundaiPorterPair){0};
   hyundai_porter_main = hyundai_porter_main_prev = hyundai_porter_main_armed = false;
   hyundai_porter_main = hyundai_porter_main_set && GET_FLAG(param, 16384U);
@@ -896,7 +899,7 @@ static safety_config hyundai_init(uint16_t param) {
       {.msg = {{0x507, 0, 4, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, {0}, {0}}},
     };
     // Never combine conventional cruise with direct longitudinal or camera SCC mode.
-    if (param != 1025U && param != 9217U && param != 11265U && param != 15361U && param != 25601U && param != 58369U && param != 60417U) {
+    if (param != 1025U && param != 9217U && param != 11265U && param != 15361U && param != 15489U && param != 25601U && param != 58369U && param != 60417U) {
       safety_config invalid = {0};
       return invalid;
     }

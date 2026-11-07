@@ -19,7 +19,7 @@ def porter_can_clock_nanos(replay_now_nanos):
 
 
 class PorterMainSet:
-  def __init__(self, initial_main=False, allow_startup_gas=False, two_press=False, single_press=False):
+  def __init__(self, initial_main=False, allow_startup_gas=False, two_press=False, single_press=False, long_press=False):
     self.main = bool(initial_main)
     self.main_known = False
     self.previous_main = False
@@ -61,9 +61,10 @@ class PorterMainSet:
     self.startup_grant = False
     self.startup_grant_since = None
     self.two_press = two_press
-    # The versioned short-pulse profile also permits a single press. Keep its
-    # pedal, freshness and timing guards without scheduling a second press.
+    # Versioned profiles can schedule a single press. Keep their pedal,
+    # freshness and timing guards without scheduling a second press.
     self.single_press = single_press
+    self.long_press = bool(long_press and single_press and two_press)
     self.pair_remaining = 0
     self.pair_deadline = None
     self.pair_index = 0
@@ -277,7 +278,8 @@ class PorterMainSet:
         return send(0)
       return None
     if self.pressing:
-      if now - self.started >= (.06 if self.two_press else .12) - 1e-9 or self.frames >= (3 if self.two_press else 6):
+      if (now - self.started >= (.06 if self.two_press and not self.long_press else .12) - 1e-9 or
+          self.frames >= (3 if self.two_press and not self.long_press else 6)):
         self.pressing = False
         self.startup_grant = False
         self.pending_release = True

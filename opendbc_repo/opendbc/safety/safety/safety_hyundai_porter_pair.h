@@ -1,8 +1,9 @@
 #pragma once
 
-// Driver-pedal-authorized double SET. Six SET frames total, never more than
+// Legacy driver-pedal-authorized double SET. Six SET frames total, never more than
 // three/60ms per press, an explicit >=60ms release gap, and a 240ms envelope.
-// A new pair needs another pedal cycle and three seconds after the last TX.
+// Profile15489 instead allows one <=120ms/six-frame press, ending on release.
+// Both profiles require another pedal cycle and three seconds after the last TX.
 typedef struct {
   bool pedal;
   bool grant;
@@ -56,14 +57,14 @@ static bool hyundai_porter_pair_normal_steps(uint32_t now) {
   return !hyundai_porter_pair.seen || get_ts_elapsed(now, hyundai_porter_pair.start_ts) >= 240000U;
 }
 
-static bool hyundai_porter_pair_tx(uint32_t now, int button, bool fresh, bool allowed, bool settled, bool standby) {
+static bool hyundai_porter_pair_tx(uint32_t now, int button, bool fresh, bool allowed, bool settled, bool standby, bool single_long) {
   if (button == HYUNDAI_BTN_NONE) {
     if (fresh && hyundai_porter_pair.active) {
       if (!hyundai_porter_pair.released) {
         hyundai_porter_pair.released = true;
         hyundai_porter_pair.release_ts = now;
         hyundai_porter_pair.last_tx_ts = now;
-        if (hyundai_porter_pair.second) hyundai_porter_pair.active = false;
+        if (single_long || hyundai_porter_pair.second) hyundai_porter_pair.active = false;
       }
     }
     return true;
@@ -92,9 +93,9 @@ static bool hyundai_porter_pair_tx(uint32_t now, int button, bool fresh, bool al
     hyundai_porter_pair.press_ts = now;
     hyundai_porter_pair.press_frames = 0;
   }
-  if (get_ts_elapsed(now, hyundai_porter_pair.start_ts) >= 240000U ||
-      get_ts_elapsed(now, hyundai_porter_pair.press_ts) >= 60000U ||
-      hyundai_porter_pair.frames >= 6 || hyundai_porter_pair.press_frames >= 3) {
+  if (get_ts_elapsed(now, hyundai_porter_pair.start_ts) >= (single_long ? 120000U : 240000U) ||
+      get_ts_elapsed(now, hyundai_porter_pair.press_ts) >= (single_long ? 120000U : 60000U) ||
+      hyundai_porter_pair.frames >= 6 || hyundai_porter_pair.press_frames >= (single_long ? 6 : 3)) {
     hyundai_porter_pair.active = false;
     return false;
   }

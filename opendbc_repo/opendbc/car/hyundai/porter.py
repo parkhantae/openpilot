@@ -72,16 +72,16 @@ def pcm_cruise_min_kph(CP):
 
 def porter_auto_set_speed_valid(CP, CS):
   """Versioned dashboard-speed eligibility with independent wheel plausibility."""
-  if not any(c.safetyParam in (11265, 15361, 60417) for c in getattr(CP, "safetyConfigs", ())):
+  if not any(c.safetyParam in (11265, 15361, 15489, 60417) for c in getattr(CP, "safetyConfigs", ())):
     return math.isfinite(CS.vEgo) and 30 <= CS.vEgo * 3.6 <= 160
   cluster = getattr(CS, "vEgoCluster", float("nan")) * 3.6
   wheels = getattr(CS, "wheelSpeeds", None)
   fl = getattr(wheels, "fl", float("nan")) * 3.6
   rr = getattr(wheels, "rr", float("nan")) * 3.6
-  # Require both wheels to reach 30 km/h before current double-SET, rather
+  # Require both wheels to reach 30 km/h before current automatic SET, rather
   # than granting a low-speed attempt solely on a higher dashboard reading.
   # Older compatibility profiles retain their existing plausibility policy.
-  wheel_min = PORTER_CRUISE_MIN_KPH if any(c.safetyParam == 15361 for c in CP.safetyConfigs) else 25
+  wheel_min = PORTER_CRUISE_MIN_KPH if any(c.safetyParam in (15361, 15489) for c in CP.safetyConfigs) else 25
   return (all(math.isfinite(v) for v in (cluster, fl, rr)) and
           30 - 1e-5 <= cluster <= 160 + 1e-5 and wheel_min - 1e-5 <= fl <= 160 + 1e-5 and wheel_min - 1e-5 <= rr <= 160 + 1e-5 and
           ((fl >= 30 - 1e-5 and rr >= 30 - 1e-5) or
@@ -245,7 +245,8 @@ def update_porter_state(ret, cp, main_enabled, is_metric):
 def supports_porter_button_cruise(CP):
   return (CP.brand == "hyundai" and CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and
           CP.pcmCruise and not CP.openpilotLongitudinalControl and
-          any(str(config.safetyModel) == "hyundai" and config.safetyParam in (1025, 9217, 11265, 15361, 25601, 58369, 60417) for config in CP.safetyConfigs))
+          any(str(config.safetyModel) == "hyundai" and
+              config.safetyParam in (1025, 9217, 11265, 15361, 15489, 25601, 58369, 60417) for config in CP.safetyConfigs))
 
 
 class PorterCruiseButtons:
