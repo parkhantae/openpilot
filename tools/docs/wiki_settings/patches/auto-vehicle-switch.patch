@@ -1,0 +1,69 @@
+--- a/KO-포터·아이오닉5-자동-설정-전환.md
++++ b/KO-포터·아이오닉5-자동-설정-전환.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b4ef78c929381208cde20cfddf01fb474a5622d1fb044004328515f1c00a788" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++아이오닉5 HDA2로 확인되면 CAMERA SCC=2, 레이더트랙=3, HDA2=1, CustomSR=140을 적용하고 포터 자동 SET·저속 취소·전용 GAP 사용을 끕니다. 포터로 돌아오면 저장한 일곱 값을 복원합니다. 다른 설정과 보정·학습값은 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++현재 포터 설정 상태에서 켠 뒤 포터에서 재시작해 기준값을 저장합니다. 차량을 옮길 때는 전원을 끄고 해당 차량의 하네스로 연결합니다. 주행 중 토글 변경은 다음 시작에 적용되며, 끄면 현재 값은 유지하고 수동 차종 선택을 사용합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++이 기능은 확인된 포터 CAN 패턴과 2022~24 아이오닉5 HDA2만 대상으로 합니다. 아이오닉5 ECU 정보와 HDA2 신호가 함께 확인되지 않거나 포터 패턴이 불완전하면 이전 차량으로 추정해 제어하지 않습니다. 자동 SET 자체의 차량 수락 문제를 해결하는 기능은 아닙니다.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/EN-Automatic-Porter–Ioniq-5-settings-switch.md
++++ b/EN-Automatic-Porter–Ioniq-5-settings-switch.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b4ef78c929381208cde20cfddf01fb474a5622d1fb044004328515f1c00a788" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Confirmed Ioniq 5 HDA2 applies CAMERA SCC=2, radar tracks=3, HDA2=1 and CustomSR=140, and turns Porter automatic SET, low-speed cancellation and dedicated GAP OFF. Returning to Porter restores the seven saved values. Other settings, calibration and learned values remain unchanged.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Enable with the current Porter configuration and restart on the Porter to save its baseline. Power down before moving the device and connect through the appropriate harness. Mid-drive toggle changes take effect at the next startup; OFF retains current values and uses manual car selection.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Only the observed Porter CAN signature and 2022–24 Ioniq 5 HDA2 are supported. Missing exact Ioniq ECU identification/HDA2 traffic or an incomplete Porter signature never falls back to the previous car for control. This feature does not resolve stock acceptance of automatic SET.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/ZH-波特与IONIQ-5自动切换设置.md
++++ b/ZH-波特与IONIQ-5自动切换设置.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="6b4ef78c929381208cde20cfddf01fb474a5622d1fb044004328515f1c00a788" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++确认IONIQ 5 HDA2后应用CAMERA SCC=2、雷达轨迹=3、HDA2=1和CustomSR=140，并关闭波特自动SET、低速取消和专用GAP。返回波特时恢复七项已保存值，其他设置、校准和学习值保持不变。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++保持当前波特配置，开启后在波特上重启以保存基准值。移动车载设备前断电，并连接对应车型的线束。行驶中更改开关仅在下次启动生效；关闭后保留当前值并使用手动车型选择。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++仅支持已观察的波特CAN特征和2022–2024款IONIQ 5 HDA2。缺少IONIQ精确ECU识别与HDA2信号或波特特征不完整时，不沿用上次车型控制。本功能不解决原厂车辆是否接受自动SET的问题。
++<!-- CARROT:SECTION:END REFERENCE -->
++

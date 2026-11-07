@@ -174,6 +174,10 @@ class Car:
     self.params.put("CarParams", cp_bytes)
     self.params.put_nonblocking("CarParamsCache", cp_bytes)
     self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
+    if self.params.get_bool("AutoVehicleSession"):
+      # Release settings consumers only after restore and CP construction finish.
+      self.params.put("AutoVehicleResolved", self.CP.carFingerprint)
+      self.params.put_bool("AutoVehicleReady", True)
 
     self.mock_carstate = MockCarState()
     self.v_cruise_helper = VCruiseCarrot(self.CP) #VCruiseHelper(self.CP)

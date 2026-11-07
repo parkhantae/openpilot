@@ -15,6 +15,7 @@ import openpilot.cereal.messaging as messaging
 import openpilot.system.sentry as sentry
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
+from openpilot.common.auto_vehicle import WAIT_PROCESSES
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.manager.process_crash import enable_fault_handler, flush_crash_reports, report_process_exit
 
@@ -264,11 +265,14 @@ def ensure_running(procs: ValuesView[ManagerProcess], started: bool, params=None
     not_run = []
 
   running = []
+  vehicle_wait = (started and params is not None and params.get_bool("AutoVehicleSession") and
+                  not params.get_bool("AutoVehicleReady"))
   for p in procs:
     if p.proc is not None and p.proc.exitcode is not None:
       p.stop(block=False)
 
-    if p.enabled and p.name not in not_run and p.should_run(started, params, CP):
+    if (p.enabled and p.name not in not_run and not (vehicle_wait and p.name in WAIT_PROCESSES) and
+        p.should_run(started, params, CP)):
       if p.restart_if_crash and p.proc is not None and not p.proc.is_alive():
         cloudlog.error(f'Restarting {p.name} (exitcode {p.proc.exitcode})')
         p.restart()

@@ -214,6 +214,9 @@ def manager_thread(update_status: UpdateStatus) -> None:
 
     if started and not started_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_ONROAD_TRANSITION)
+      # Mid-drive toggle changes take effect at the next startup, never by
+      # stopping control processes or changing profiles during a drive.
+      params.put_bool("AutoVehicleSession", params.get_bool("AutoVehicleSwitch"))
     elif not started and started_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_OFFROAD_TRANSITION)
 

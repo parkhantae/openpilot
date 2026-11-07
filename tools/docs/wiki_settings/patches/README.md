@@ -4,6 +4,15 @@ These patches preserve reviewed Wiki edits in the code branch when the author
 cannot push to the separate Wiki repository. Committing a patch here does not
 publish its content to the live Wiki.
 
+## Porter–Ioniq 5 automatic settings switch
+
+`auto-vehicle-switch.patch` adds Korean, English and Chinese manual regions for
+`AutoVehicleSwitch` on `c3-pht-porter`. Generate pages from this branch's catalog,
+apply the patch there with `git apply --unidiff-zero`, regenerate using
+that directory as `--wiki-dir`, then validate. It documents the seven-setting
+scope and startup-only identification; it does not publish this fork feature
+to the upstream Wiki.
+
 ## Bosch passive reception
 
 `bosch-passive-reception.patch` changes only the Korean and English

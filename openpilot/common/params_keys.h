@@ -169,6 +169,11 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"SearchInput", {PERSISTENT, INT}},
 
     {"CarSelected3", {PERSISTENT, STRING, "MOCK"}},
+    {"AutoVehicleSwitch", {PERSISTENT, BOOL, "0"}},
+    {"AutoVehicleSession", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BOOL}},
+    {"AutoVehicleReady", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BOOL}},
+    {"AutoVehicleResolved", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, STRING}},
+    {"AutoVehiclePorterBase", {PERSISTENT | DONT_LOG, JSON, "{}"}},
     {"SupportedCars", {PERSISTENT, STRING}},
     {"SupportedCars_gm", {PERSISTENT, STRING}},
     {"SupportedCars_toyota", {PERSISTENT, STRING}},

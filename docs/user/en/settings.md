@@ -268,7 +268,7 @@ These settings describe the car, harness, and device hardware configuration. Do 
 | CAN FD/HDA | `CanfdHDA2`, `HyundaiCanfdClusterDirectTx`, `CanfdDebug`, `HDPuse` | HDA2 selection, cluster direct send, CAN FD diagnostics, and HDP |
 | Radar | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC radar, front-track orientation, corner radar, and Carrot Radar processing and cut-in sensitivity |
 | Driver monitoring | `DriverMonitoringEnabled` (search only), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | Driver monitoring and selected vehicle alerts |
-| Vehicle assistance | `MaxAngleFrames`, `SpeedFromPCM` | Steering-angle frames and stock-SCC speed control |
+| Vehicle assistance | `AutoVehicleSwitch`, `MaxAngleFrames`, `SpeedFromPCM` | Automatic Porter/Ioniq settings selection, steering-angle frames and stock-SCC speed control |
 | Porter Only | `PorterAutoCancelBelow30`, `PorterAutoSetMain`, `PorterGapUse`, `PorterGap1`~`PorterGap4`, `PorterLeadReactionTime` | Automatic cancel/SET, dedicated GAP and deceleration lookahead |
 | Device hardware | `CommaPedalEnabled`, `HardwareC3xLite` | Comma Pedal permission for vehicles without ACC, and C3X Lite hardware configuration |
 
@@ -314,6 +314,20 @@ In modes `EnableRadarTracks=1`–`3`, a confirmed departing front lead can recei
 A saved change takes effect at the **next vehicle-parameter initialization**; it does not switch the running control path immediately. Comma Pedal operation on CarrotPilot has not yet been validated in a vehicle. Pedal firmware and voltage calibration are unchanged. See the [Comma Pedal diagnostic guide](../../comma_pedal.md) for the observations required at each stage.
 
 `HardwareC3xLite` must remain off on standard C3 and C3X hardware. Enable it only on a C3X Lite, then reboot the device. The setting skips the unavailable amplifier so startup is not delayed by I2C retries, uses the GPIO buzzer for alerts, disables `micd`, `soundd`, and `loggerd`, and turns off `RecordAudio`. Normal route logging is unavailable while this hardware mode is enabled.
+
+### Automatic Porter–Ioniq 5 settings switch
+
+Settings > Vehicle and hardware > Vehicle assistance > **Automatic Porter–Ioniq 5 settings switch** (`AutoVehicleSwitch`) defaults to OFF. It selects the vehicle and changes only the seven values below at startup for the observed Porter II EV camera-harness CAN signature and the 2022–24 Ioniq 5 HDA2. First enable it with the current Porter configuration and restart on the Porter to preserve that baseline.
+
+| Setting | Ioniq 5 HDA2 | Returning to Porter |
+|---|---|---|
+| HYUNDAI: CAMERA SCC (`HyundaiCameraSCC`) | `2` | Saved Porter value |
+| Enable radar tracks (`EnableRadarTracks`) | `3` | Saved Porter value |
+| CANFD HDA2 (`CanfdHDA2`) | ON (`1`) | Saved Porter value |
+| CustomSteerRatiox0.1 (`CustomSR`) | `140` — steering ratio 14.0 | Saved Porter value |
+| Porter automatic SET, below-30 cancellation and dedicated GAP | All OFF | Each saved Porter value |
+
+GAP numbers, calibration, learned values and other settings are unchanged. Ioniq requires both an exact ECU firmware match and HDA2 CAN traffic. An unresolved or unsupported vehicle never uses the previous selection as a guess for control. Power down before moving the device and use each vehicle's compatible harness. Settings apply before constructing the control interface at each startup; they do not change during a drive. Turning OFF returns to manual vehicle selection at the next startup and retains the current seven values, so adjust them manually if needed.
 
 <a id="display"></a>
 ## Display
