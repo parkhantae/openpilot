@@ -193,6 +193,8 @@ class VCruiseCarrot:
     self._gas_pressed_count = 0
     self._gas_pressed_count_last = 0
     self._gas_pressed_value = 0
+    self._gas_sync_base_kph = None
+    self._gas_sync_manual_input = False
     self._gas_tok_timer = int(0.4 / 0.01) # 0.4 sec
     self._gas_tok = False
     self.speedcam_gas_tok_consumed = False  # set by card when carstate spent this tap on a camera skip
@@ -590,6 +592,8 @@ class VCruiseCarrot:
     if remote == 'decelCruise' and self._soft_hold_active > 0:
       remote_enable = False
 
+    speed_command = (getattr(self, "carrot_cmd_index_last", None) != getattr(self, "carrot_cmd_index", None) and
+                     getattr(self, "carrot_cmd", "") in ("CRUISE", "SPEED"))
     v_cruise_kph, button_type, long_pressed = self._carrot_command(v_cruise_kph, button_type, long_pressed)
 
     if button_type in [ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.setCruise, ButtonType.resumeCruise]:
@@ -742,6 +746,8 @@ class VCruiseCarrot:
       if not CC.enabled:
         self._cruise_control(1, -1, "Cruise on (paddle decel)")
 
+    self._gas_sync_manual_input = (bool(CS.buttonEvents) or remote is not None or
+                                   button_type != ButtonType.unknown or speed_command)
     updated_speed = self._update_cruise_state(CS, CC, v_cruise_kph)
     # Keep automatic engagement/disengagement checks, but let an explicit SET/RES
     # own the speed selected on this frame (e.g. simultaneous pedal release).
@@ -867,6 +873,40 @@ class VCruiseCarrot:
     self._soft_hold_active = 2
     self._cruise_control(1, -1, "Cruise on (soft hold)", allow_cancel_state=self.soft_hold_on_cancel)
 
+  def _sync_gas_release_speed(self, CS, CC, v_cruise_kph):
+    """Select release speed once, without retaining the pedal's peak speed."""
+    if not getattr(self, "autoGasSyncSpeed", 0):
+      self._gas_sync_base_kph = None
+      return v_cruise_kph
+
+    pcm_speed_owned = self.CP.pcmCruise and (self.speed_from_pcm == 1 or
+                      (self.speed_from_pcm == 3 and self.CP.brand == "toyota"))
+    valid = (CC.enabled and CS.cruiseState.available and
+             (not self.CP.pcmCruise or CS.cruiseState.enabled) and
+             CS.canValid and not CS.canTimeout and not CS.accFaulted and CS.gearShifter == GearShifter.drive and
+             not (CS.brakePressed or CS.brakeHoldActive or CS.parkingBrake or CC.cruiseControl.cancel) and
+             not self.disengage_on_accelerator and not self._cruise_cancel_state and
+             self._activate_cruise >= 0 and self._cancel_timer == 0 and not pcm_speed_owned and
+             not getattr(self, "_gas_sync_manual_input", False))
+    if self._gas_pressed_count == 1:
+      self._gas_sync_base_kph = v_cruise_kph if valid and math.isfinite(v_cruise_kph) else None
+    elif not valid:
+      self._gas_sync_base_kph = None
+    elif self._gas_pressed_count == -1:
+      base_kph = self._gas_sync_base_kph
+      self._gas_sync_base_kph = None
+      # Preserve the existing short gas-tap behavior. The option changes an
+      # already-active cruise, never grants an automatic engagement request.
+      minimum = pcm_cruise_min_kph(self.CP) if self.CP.pcmCruise else self._cruise_speed_min
+      if (base_kph is not None and self._gas_pressed_count_last > self._gas_tok_timer and
+          math.isfinite(self.v_ego_kph_set) and minimum <= self.v_ego_kph_set <= self._cruise_speed_max and
+          self.v_ego_kph_set > base_kph):
+        self._add_log(f"Cruise speed from gas release: {self.v_ego_kph_set}")
+        return self.v_ego_kph_set
+    elif self._gas_pressed_count < 0:
+      self._gas_sync_base_kph = None
+    return v_cruise_kph
+
   def _update_cruise_state(self, CS, CC, v_cruise_kph):
     if not CC.enabled:
       #self._pause_auto_speed_up = False
@@ -959,8 +999,6 @@ class VCruiseCarrot:
     if self._gas_pressed_count > self._gas_tok_timer:
       if CS.aEgo < -0.5:
         self._cruise_control(-1, 5.0, "Cruise off (gas pressed while braking)")
-      if self.v_ego_kph_set > v_cruise_kph and self.autoGasSyncSpeed:
-        v_cruise_kph = self.v_ego_kph_set
 
     if self._gas_pressed_count == 1 or CS.vEgo < 0.1:
       self._pause_auto_speed_up = False
@@ -969,6 +1007,7 @@ class VCruiseCarrot:
     elif self._brake_pressed_count > 0:
       self._pause_auto_speed_up = True
 
+    v_cruise_kph = self._sync_gas_release_speed(CS, CC, v_cruise_kph)
     return self._auto_speed_up(v_cruise_kph)
 
   def _prepare_brake_gas(self, CS, CC):

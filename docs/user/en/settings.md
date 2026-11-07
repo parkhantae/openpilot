@@ -133,6 +133,10 @@ These 143 settings can affect driving behavior. Change one item at a time.
 - `AutoCruiseControl` covers Hyundai/Kia auto-cruise and soft-hold behavior.
 - `DisableMinSteerSpeed` is vehicle-specific and relates to low-speed steering restrictions on SMDPS-equipped cars.
 
+With **Auto update Cruise speed** (`AutoGasSyncSpeed`) ON, an accelerator press of about 0.4 seconds or longer during active system/cruise operation selects the dashboard speed at release as the new set speed, rounded to 1km/h. It applies only when that speed exceeds the setting before the pedal press and is within existing setting bounds. For example, starting at a 70 setting, accelerating to 100 and releasing at 85 selects 85; it does not retain the pedal's peak of 100.
+
+Existing short gas-tap actions remain. OFF, braking, CANCEL, driver buttons, speed commands, invalid input, leaving drive or losing cruise cancels that pedal's speed capture; recovery requires a new press. Vehicle-owned PCM speed modes and existing automatic speed, model, lead, curve and navigation control remain in effect. Porter uses the existing button controller to request the selected stock setting, so vehicle acceptance and timing are not guaranteed. This is separate from automatic SET while cruise is in standby.
+
 ### Buttons and presets — 15 settings
 
 Select a section title for the code-based state machine, units, and application conditions.

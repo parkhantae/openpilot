@@ -1,0 +1,69 @@
+--- a/KO-자동크루즈속도-업데이트.md
++++ b/KO-자동크루즈속도-업데이트.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++크루즈와 시스템이 활성인 동안 약 0.4초 이상 엑셀을 밟았다 놓으면, 해제 시 계기판 속도가 밟기 전 설정보다 빠를 때 그 속도를 새 설정으로 선택합니다. 70에서 100까지 가속했다가 85에서 놓으면 85를 선택하며 밟는 동안의 최고속도는 저장하지 않습니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++이 설정을 켜고 기존 크루즈 주행 중 사용합니다. 짧은 엑셀 톡 동작은 유지합니다. 브레이크·CANCEL·버튼·속도 명령·무효 입력·크루즈 해제 등이 끼면 해당 입력은 취소되고 새로 밟아야 합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++기존 설정 범위, 순정 속도 우선 PCM 모드와 자동 속도·앞차·커브·내비 제어는 유지합니다. 포터의 실제 설정속도 반영은 기존 버튼 송신과 차량 수락에 따라 지연될 수 있으며, 대기 중 자동 SET을 켜는 기능과는 별개입니다.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/EN-Auto-update-Cruise-speed.md
++++ b/EN-Auto-update-Cruise-speed.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++While system and cruise are active, release after about 0.4s or longer on the accelerator selects the dashboard speed if it exceeds the pre-press setting. Accelerating from a 70 setting to 100 and releasing at 85 selects 85, without saving the pedal peak.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Enable this setting and use it during existing cruise operation. Short gas-tap actions remain. Brake, CANCEL, buttons, speed commands, invalid input or loss of cruise revoke that cycle; press again after recovery.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Existing setting bounds, vehicle-owned PCM speed modes and automatic speed, lead, curve and navigation control remain in effect. Porter uses existing button requests, so actual stock-setting changes depend on vehicle acceptance and may be delayed. Separate from automatic SET in standby.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/ZH-自动更新巡航速度.md
++++ b/ZH-自动更新巡航速度.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++系统与巡航已启用时，踩油门约0.4秒以上再松开，若松开时仪表速度高于踩下前设定值，则选择该速度。从设定70加速至100后在85松开，将选择85而不保存踩油门期间的峰值。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++开启后在现有巡航行驶中使用，短踩油门动作保持不变。制动、CANCEL、按钮、速度指令、无效输入或巡航解除会撤销本次输入，恢复后需重新踩下。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++原有设定范围、原厂PCM速度优先模式及自动速度、前车、弯道和导航控制保持有效。波特仍使用原有按钮请求，实际生效取决于车辆接受且可能延迟。与待机时自动SET功能独立。
++<!-- CARROT:SECTION:END REFERENCE -->
++

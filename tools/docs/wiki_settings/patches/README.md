@@ -4,6 +4,15 @@ These patches preserve reviewed Wiki edits in the code branch when the author
 cannot push to the separate Wiki repository. Committing a patch here does not
 publish its content to the live Wiki.
 
+## Cruise speed at accelerator release
+
+`gas-release-speed.patch` supplies Korean, English and Chinese manual regions
+for `AutoGasSyncSpeed` on `c3-pht-porter`. Generate fresh pages from this branch's
+catalog, apply with `git apply --unidiff-zero`, regenerate with that staging
+directory as `--wiki-dir`, and validate. It describes release-speed selection
+instead of pedal-peak capture, interruption priority and the unchanged stock
+button/PCM limitations. This patch does not publish to the upstream Wiki.
+
 ## Porter–Ioniq 5 automatic settings switch
 
 `auto-vehicle-switch.patch` adds Korean, English and Chinese manual regions for

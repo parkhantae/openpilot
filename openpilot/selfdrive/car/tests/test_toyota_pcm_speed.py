@@ -26,7 +26,8 @@ class ZeroParams:
 @pytest.mark.parametrize('longitudinal', [True, False])
 def test_pcm_set_resume_and_adjustments_replace_stale_speed(monkeypatch, brand, pcm, mode, uses_stock, longitudinal):
   monkeypatch.setattr(cruise, 'Params', ZeroParams)
-  helper = cruise.VCruiseCarrot(SimpleNamespace(brand=brand, pcmCruise=pcm, openpilotLongitudinalControl=longitudinal))
+  helper = cruise.VCruiseCarrot(SimpleNamespace(brand=brand, carFingerprint='TEST_VEHICLE', pcmCruise=pcm,
+                                               openpilotLongitudinalControl=longitudinal))
   helper.speed_from_pcm = mode
   helper.v_cruise_kph = 83.
   helper.cruise_state_available_last = True
