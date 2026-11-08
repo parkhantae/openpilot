@@ -208,9 +208,9 @@ def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multip
       if candidate == PORTER:
         source = CarParams.FingerprintSource.can
         exact_match = True
-      apply_vehicle_settings(params, str(candidate), profile_data)
+      recalibrate = apply_vehicle_settings(params, str(candidate), profile_data)
       carlog.warning({"event": "automatic_vehicle_settings", "candidate": str(candidate),
-                      "settings": {key: params.get(key) for key in IONIQ_SETTINGS}})
+                      "settings": {key: params.get(key) for key in IONIQ_SETTINGS}, "recalibrate": recalibrate})
 
   if forced_candidate is not None:
     candidate = forced_candidate

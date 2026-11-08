@@ -19,7 +19,8 @@ button/PCM limitations. This patch does not publish to the upstream Wiki.
 `AutoVehicleSwitch` on `c3-pht-porter`. Generate pages from this branch's catalog,
 apply the patch there with `git apply --unidiff-zero`, regenerate using
 that directory as `--wiki-dir`, then validate. It documents the seven-setting
-scope and startup-only identification; it does not publish this fork feature
+scope, startup-only identification and recalibration on actual vehicle changes;
+it does not publish this fork feature
 to the upstream Wiki.
 
 ## Bosch passive reception

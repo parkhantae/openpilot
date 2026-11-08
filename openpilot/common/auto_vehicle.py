@@ -1,4 +1,5 @@
-"""Startup-only seven-setting switch for the owner's Porter and Ioniq 5 HDA2."""
+"""Startup settings switch with recalibration on a confirmed vehicle change."""
+import base64
 import copy
 
 PORTER = "HYUNDAI_PORTER_II_EV"
@@ -18,6 +19,7 @@ IONIQ_SETTINGS = {
 }
 RANGES = {"HyundaiCameraSCC": (0, 2), "EnableRadarTracks": (-2, 3), "CanfdHDA2": (0, 1), "CustomSR": (0, 300)}
 BOOL_KEYS = frozenset(IONIQ_SETTINGS) - RANGES.keys()
+RECALIBRATION_KEYS = ("CalibrationParams", "LiveTorqueParameters", "LiveParameters", "LiveParametersV2", "LiveDelay")
 # These consumers must initialize after the seven settings are applied. Card
 # identifies the car while Panda retains startup safety; no live profile switch.
 WAIT_PROCESSES = frozenset({
@@ -88,6 +90,15 @@ def _load(params):
 
 
 def _rollback(params, pending):
+  if "recalibration" in pending:
+    values = pending["recalibration"]
+    if not isinstance(values, dict) or set(values) != set(RECALIBRATION_KEYS):
+      raise ValueError("Invalid recalibration recovery record")
+    restored = {}
+    for key, value in values.items():
+      restored[key] = (base64.b64decode(value, validate=True)
+                       if value is not None and key != "LiveParameters" else value)
+    _write(params, restored)
   _write(params, _settings(pending["values"]))
   _write(params, {"CarName": pending["car_name"], "CarSelected3": pending["car_selected"]})
 
@@ -119,11 +130,25 @@ def apply_vehicle_settings(params, candidate, data):
       raise ValueError("Save the Porter baseline on the Porter before using automatic Ioniq settings")
     data["porter"] = _snapshot(params)
   target = _settings(IONIQ_SETTINGS if candidate == IONIQ5 else data["porter"])
+  previous = params.get("CarName")
+  if previous not in CAR_LABELS:
+    previous = data["active"]
+  changed = previous in CAR_LABELS and previous != candidate
   data["pending"] = {"values": _snapshot(params), "car_name": params.get("CarName"),
                      "car_selected": params.get("CarSelected3")}
+  if changed:
+    # Match the device's Reset Calibration action. Keep a temporary journal for
+    # rollback only; returning to a car starts fresh rather than restoring its
+    # old camera pose or learned steering values.
+    values = {key: params.get(key) for key in RECALIBRATION_KEYS}
+    data["pending"]["recalibration"] = {
+      key: base64.b64encode(value).decode() if isinstance(value, bytes) else value for key, value in values.items()
+    }
   _store(params, data)
   try:
     _write(params, target)
+    if changed:
+      _write(params, dict.fromkeys(RECALIBRATION_KEYS))
     # Keep the UI's selected vehicle consistent with the actual interface.
     _write(params, {"CarSelected3": CAR_LABELS[candidate], "CarName": candidate})
     del data["pending"]
@@ -136,3 +161,4 @@ def apply_vehicle_settings(params, candidate, data):
       del recovery["pending"]
       _store(params, recovery)
     raise
+  return changed

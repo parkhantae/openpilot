@@ -16,6 +16,8 @@ def params(tmp_path):
   p.put_bool('PorterAutoSetMain', True)
   p.put_bool('PorterAutoCancelBelow30', True)
   p.put_bool('PorterGapUse', True)
+  for key in av.RECALIBRATION_KEYS:
+    p.put(key, {'test': 'learned'} if key == 'LiveParameters' else b'old calibration/learning')
   return p
 
 
@@ -23,7 +25,7 @@ def snapshot(params):
   return {(k.decode() if isinstance(k, bytes) else k): params.get(k) for k in params.all_keys()}
 
 
-def test_only_requested_seven_settings_change_and_porter_returns_exactly(params):
+def test_only_requested_settings_and_recalibration_change_and_porter_returns_exactly(params):
   params.put('CalibrationParams', b'untouched camera calibration')
   params.put('LiveTorqueParameters', b'untouched learned torque')
   params.put_int('PorterGap1', 45)
@@ -33,12 +35,14 @@ def test_only_requested_seven_settings_change_and_porter_returns_exactly(params)
   av.apply_vehicle_settings(params, av.IONIQ5, av.prepare_settings(params))
   after = snapshot(params)
   changed = {k for k in before if before[k] != after[k]}
-  assert changed <= set(av.IONIQ_SETTINGS) | {'AutoVehiclePorterBase', 'CarName', 'CarSelected3'}
+  assert changed <= set(av.IONIQ_SETTINGS) | set(av.RECALIBRATION_KEYS) | {'AutoVehiclePorterBase', 'CarName', 'CarSelected3'}
+  assert all(params.get(key) is None for key in av.RECALIBRATION_KEYS)
   assert {k: params.get(k) for k in av.IONIQ_SETTINGS} == av.IONIQ_SETTINGS
   av.apply_vehicle_settings(params, av.PORTER, av.prepare_settings(params))
   restored = snapshot(params)
-  assert {k: restored[k] for k in before if k != 'AutoVehiclePorterBase'} == {
-    k: v for k, v in before.items() if k != 'AutoVehiclePorterBase'
+  exempt = {'AutoVehiclePorterBase'} | set(av.RECALIBRATION_KEYS)
+  assert {k: restored[k] for k in before if k not in exempt} == {
+    k: v for k, v in before.items() if k not in exempt
   }
 
 
@@ -131,3 +135,78 @@ def test_live_ready_session_cannot_apply_another_vehicle(params):
   with pytest.raises(RuntimeError):
     av.apply_vehicle_settings(params, av.IONIQ5, data)
   assert snapshot(params) == before
+
+
+def test_both_vehicle_changes_reset_but_same_car_restarts_keep_calibration(params):
+  original = {key: params.get(key) for key in av.RECALIBRATION_KEYS}
+  assert not av.apply_vehicle_settings(params, av.PORTER, av.prepare_settings(params))
+  assert {key: params.get(key) for key in av.RECALIBRATION_KEYS} == original
+  assert av.apply_vehicle_settings(params, av.IONIQ5, av.prepare_settings(params))
+  assert all(params.get(key) is None for key in av.RECALIBRATION_KEYS)
+  for key, value in original.items():
+    params.put(key, value)
+  assert not av.apply_vehicle_settings(params, av.IONIQ5, av.prepare_settings(params))
+  assert {key: params.get(key) for key in av.RECALIBRATION_KEYS} == original
+  assert av.apply_vehicle_settings(params, av.PORTER, av.prepare_settings(params))
+  assert all(params.get(key) is None for key in av.RECALIBRATION_KEYS)
+
+
+def test_failure_during_recalibration_restores_all_previous_values(params):
+  data = av.prepare_settings(params)
+  before = snapshot(params)
+
+  class FailReset:
+    def __getattr__(self, key):
+      return getattr(params, key)
+
+    def remove(self, key):
+      if key == 'LiveTorqueParameters':
+        raise OSError('reset failed')
+      params.remove(key)
+
+  with pytest.raises(OSError):
+    av.apply_vehicle_settings(FailReset(), av.IONIQ5, data)
+  assert snapshot(params) == before
+
+
+def test_power_loss_after_reset_recovers_old_calibration_before_retry(params):
+  data = av.prepare_settings(params)
+  before = snapshot(params)
+
+  class PowerLoss:
+    def __getattr__(self, key):
+      return getattr(params, key)
+
+    def put(self, key, value):
+      if key == 'CarName':
+        raise SystemExit('power loss after clearing calibration')
+      params.put(key, value)
+
+  with pytest.raises(SystemExit):
+    av.apply_vehicle_settings(PowerLoss(), av.IONIQ5, data)
+  assert all(params.get(key) is None for key in av.RECALIBRATION_KEYS)
+  data = av.prepare_settings(params)
+  assert snapshot(params) == before
+  av.apply_vehicle_settings(params, av.IONIQ5, data)
+  assert all(params.get(key) is None for key in av.RECALIBRATION_KEYS)
+  assert 'pending' not in params.get('AutoVehiclePorterBase')
+
+
+def test_calibrator_starts_uncalibrated_after_switch_and_reuses_same_car(params, monkeypatch):
+  from openpilot.cereal import log, messaging
+  from openpilot.selfdrive.locationd import calibrationd
+
+  monkeypatch.setattr(calibrationd, 'Params', lambda: params)
+  msg = messaging.new_message('liveCalibration')
+  msg.liveCalibration.validBlocks = 20
+  msg.liveCalibration.rpyCalib = [0., 0., 0.]
+  msg.liveCalibration.wideFromDeviceEuler = [0., 0., 0.]
+  msg.liveCalibration.height = [1.22]
+  params.put('CalibrationParams', msg.to_bytes())
+  assert calibrationd.Calibrator(param_put=True).valid_blocks == 20
+  av.apply_vehicle_settings(params, av.PORTER, av.prepare_settings(params))
+  assert calibrationd.Calibrator(param_put=True).valid_blocks == 20
+  av.apply_vehicle_settings(params, av.IONIQ5, av.prepare_settings(params))
+  calibrator = calibrationd.Calibrator(param_put=True)
+  assert calibrator.valid_blocks == 0
+  assert calibrator.cal_status == log.LiveCalibrationData.Status.uncalibrated

@@ -331,7 +331,7 @@ Settings > Vehicle and hardware > Vehicle assistance > **Automatic Porter–Ioni
 | CustomSteerRatiox0.1 (`CustomSR`) | `140` — steering ratio 14.0 | Saved Porter value |
 | Porter automatic SET, below-30 cancellation and dedicated GAP | All OFF | Each saved Porter value |
 
-GAP numbers, calibration, learned values and other settings are unchanged. Ioniq requires both an exact ECU firmware match and HDA2 CAN traffic. An unresolved or unsupported vehicle never uses the previous selection as a guess for control. Power down before moving the device and use each vehicle's compatible harness. Settings apply before constructing the control interface at each startup; they do not change during a drive. Turning OFF returns to manual vehicle selection at the next startup and retains the current seven values, so adjust them manually if needed.
+GAP numbers and other settings remain unchanged. An actual Porter/Ioniq vehicle change clears camera calibration, learned steering/vehicle parameters and control delay, matching the device’s Reset Calibration action before control processes start. Same-car restarts retain these values. Returning to a car starts calibration again instead of restoring its old calibration. Ioniq requires both an exact ECU firmware match and HDA2 CAN traffic. An unresolved or unsupported vehicle never uses the previous selection as a guess for control. Power down before moving the device and use each vehicle's compatible harness. Settings apply before constructing the control interface at each startup; they do not change during a drive. Turning OFF returns to manual vehicle selection at the next startup and retains the current seven values, so adjust them manually if needed.
 
 <a id="display"></a>
 ## Display
