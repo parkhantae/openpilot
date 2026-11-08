@@ -92,6 +92,7 @@ class HyundaiSafetyFlags(IntFlag):
   PORTER_CLUSTER_SET = 2048  # Classic Porter only; CAN-FD interprets this bit separately.
   CANFD_CLUSTER_DIRECT_TX = 2048
   CANFD_SPAS_BLINKERS = 4096
+  CANFD_STRICT_CONTROL = 8192  # Torque Ioniq 5 only; classic hooks interpret this bit separately.
   PORTER_SET_SINGLE_LONG = 128  # Classic Porter versioned single 120ms profile.
   PORTER_SET_PAIR = 4096  # Classic Porter only; CAN-FD uses a separate hook.
   PEDAL_INTERCEPTOR = 8192  # Ray profile only; Porter uses this bit for MAIN_SET.
