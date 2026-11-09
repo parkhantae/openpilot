@@ -13,16 +13,6 @@ directory as `--wiki-dir`, and validate. It describes release-speed selection
 instead of pedal-peak capture, interruption priority and the unchanged stock
 button/PCM limitations. This patch does not publish to the upstream Wiki.
 
-## Porter–Ioniq 5 automatic settings switch
-
-`auto-vehicle-switch.patch` adds Korean, English and Chinese manual regions for
-`AutoVehicleSwitch` on `c3-pht-porter`. Generate pages from this branch's catalog,
-apply the patch there with `git apply --unidiff-zero`, regenerate using
-that directory as `--wiki-dir`, then validate. It documents the seven-setting
-scope, startup-only identification and recalibration on actual vehicle changes;
-it does not publish this fork feature
-to the upstream Wiki.
-
 ## Bosch passive reception
 
 `bosch-passive-reception.patch` changes only the Korean and English
@@ -155,3 +145,13 @@ for `CustomSteerDeltaDown` and `CustomSteerDeltaDownLC` in Korean, English and
 Chinese. Generate initial pages from the current c3-pht-porter catalog, apply
 with `git apply --check` and `git apply`, then regenerate and validate. It changes
 only those manual regions and is staged for this branch, not published upstream.
+
+## Porter / Ioniq automatic branch handoff
+
+`auto-vehicle-switch.patch` documents `AutoVehicleSwitch` on both c3-pht-porter
+and c3-pht: confirmed vehicle mapping, Park/zero-wheel/noOutput startup guards,
+checkout plus OS restart, seven-setting restore and recalibration. Generate
+from the matching fork branch, apply with `git apply --check --unidiff-zero`
+and `git apply --unidiff-zero`, regenerate and validate. Both branches retain
+compatible handoff code and persistent setting registrations. This is a staged
+fork-specific patch, not an upstream live Wiki publication.

@@ -1,69 +1,69 @@
---- a/KO-포터·아이오닉5-자동-설정-전환.md
-+++ b/KO-포터·아이오닉5-자동-설정-전환.md
+--- a/KO-포터·아이오닉5-차종·브랜치-자동-전환.md
++++ b/KO-포터·아이오닉5-차종·브랜치-자동-전환.md
 @@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="7a3a9225788080eb94f4df8c144c81b5a4154d5e1d96ded487393fb8c2a5e34c" reviewed-at="2026-11-08T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="4e3743b52a197cfae5634d4b7d2cdf8e959a455a81199950481cda6f3585f13a" reviewed-at="2026-11-09T00:00:00Z" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+아이오닉5 HDA2로 확인되면 CAMERA SCC=2, 레이더트랙=3, HDA2=1, CustomSR=140을 적용하고 포터 자동 SET·저속 취소·전용 GAP 사용을 끕니다. 포터로 돌아오면 저장한 일곱 값을 복원합니다. 다른 설정은 유지합니다. 실제 차종 변경 때 카메라 보정·조향 및 제어 지연 학습값을 초기화하며, 같은 차종 재부팅은 유지합니다. 돌아올 때도 과거 보정값을 복원하지 않고 새로 보정합니다.
++확인된 포터2 EV는 c3-pht-porter, 2022~24 아이오닉5 HDA2는 c3-pht를 선택합니다. 다른 브랜치이면 시작 중 P단·네 바퀴 정지 1초·Panda noOutput을 확인해 전환·재부팅하고, 차종 설정과 실제 차종 변경 재보정을 적용합니다. 주행 중에는 전환하지 않습니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+현재 포터 설정 상태에서 켠 뒤 포터에서 재시작해 기준값을 저장합니다. 차량을 옮길 때는 전원을 끄고 해당 차량의 하네스로 연결합니다. 주행 중 토글 변경은 다음 시작에 적용되며, 끄면 현재 값은 유지하고 수동 차종 선택을 사용합니다.
++현재 포터 설정으로 켠 뒤 포터에서 재시작해 일곱 값의 기준을 저장합니다. 기기 이동 전 전원을 끄고 맞는 하네스를 연결하세요. 처음 다른 브랜치를 설치하려면 인터넷과 parkhantae/openpilot 원격이 필요하며, 같은 전환 코드가 설치된 로컬 브랜치는 오프라인 왕복이 가능합니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+이 기능은 확인된 포터 CAN 패턴과 2022~24 아이오닉5 HDA2만 대상으로 합니다. 아이오닉5 ECU 정보와 HDA2 신호가 함께 확인되지 않거나 포터 패턴이 불완전하면 이전 차량으로 추정해 제어하지 않습니다. 자동 SET 자체의 차량 수락 문제를 해결하는 기능은 아닙니다.
++로컬 수정·충돌·전환 코드 불일치·불확실한 식별이면 제어를 보류하고 강제 초기화하지 않습니다. 전환 상태는 AutoVehicleBranchStatus에서 확인합니다. OFF는 다음 시작부터 적용하며 진행 중 전환은 OS 재부팅을 마쳐야 합니다. 실제 정지 유지·자동 SET 수락을 보장하는 기능은 아닙니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
 +
---- a/EN-Automatic-Porter–Ioniq-5-settings-switch.md
-+++ b/EN-Automatic-Porter–Ioniq-5-settings-switch.md
+--- a/EN-Porter–Ioniq-5-Automatic-Branch-Switch.md
++++ b/EN-Porter–Ioniq-5-Automatic-Branch-Switch.md
 @@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="7a3a9225788080eb94f4df8c144c81b5a4154d5e1d96ded487393fb8c2a5e34c" reviewed-at="2026-11-08T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="4e3743b52a197cfae5634d4b7d2cdf8e959a455a81199950481cda6f3585f13a" reviewed-at="2026-11-09T00:00:00Z" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+Confirmed Ioniq 5 HDA2 applies CAMERA SCC=2, radar tracks=3, HDA2=1 and CustomSR=140, and turns Porter automatic SET, low-speed cancellation and dedicated GAP OFF. Returning to Porter restores the seven saved values. Other settings remain unchanged. Actual vehicle changes reset camera calibration and learned steering/control-delay values; same-car restarts retain them. Returning to a car starts calibration again rather than restoring its old values.
++Confirmed Porter II EV selects c3-pht-porter; 2022–24 Ioniq 5 HDA2 selects c3-pht. A different branch requires Park, four zero-speed wheels for one second and Panda noOutput during startup, then checkout and reboot, vehicle settings and recalibration on actual vehicle changes. No mid-drive switching.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Enable with the current Porter configuration and restart on the Porter to save its baseline. Power down before moving the device and connect through the appropriate harness. Mid-drive toggle changes take effect at the next startup; OFF retains current values and uses manual car selection.
++Enable and restart on the Porter first to save its seven-setting baseline. Power down before moving the device and use the matching harness. Initial installation of the other branch requires internet and a parkhantae/openpilot remote; compatible installed local branches can switch offline.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Only the observed Porter CAN signature and 2022–24 Ioniq 5 HDA2 are supported. Missing exact Ioniq ECU identification/HDA2 traffic or an incomplete Porter signature never falls back to the previous car for control. This feature does not resolve stock acceptance of automatic SET.
++Local edits, conflicts, mismatched handoff code or unresolved identity hold control without a forced reset. Inspect AutoVehicleBranchStatus for progress. OFF applies at the next startup; an in-progress handoff must complete an OS reboot. This feature does not guarantee stop hold or vehicle acceptance of automatic SET.
 +<!-- CARROT:SECTION:END REFERENCE -->
 +
---- a/ZH-波特与IONIQ-5自动切换设置.md
-+++ b/ZH-波特与IONIQ-5自动切换设置.md
+--- a/ZH-波特与IONIQ-5车型及分支自动切换.md
++++ b/ZH-波特与IONIQ-5车型及分支自动切换.md
 @@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="7a3a9225788080eb94f4df8c144c81b5a4154d5e1d96ded487393fb8c2a5e34c" reviewed-at="2026-11-08T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="4e3743b52a197cfae5634d4b7d2cdf8e959a455a81199950481cda6f3585f13a" reviewed-at="2026-11-09T00:00:00Z" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
 +
-+确认IONIQ 5 HDA2后应用CAMERA SCC=2、雷达轨迹=3、HDA2=1和CustomSR=140，并关闭波特自动SET、低速取消和专用GAP。返回波特时恢复七项已保存值，其他设置保持不变。实际切换车型时清除摄像头校准及转向、控制延迟学习值，同车型重启保留。返回原车时重新校准，不恢复旧值。
++确认波特II EV后选择c3-pht-porter；2022–24款IONIQ 5 HDA2选择c3-pht。分支不符时，在启动阶段确认P挡、四轮零速持续1秒及Panda禁止输出，再切换并重启，应用车型设置及实际车型变化后的重新校准。行驶中不切换。
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 使用
 +
-+保持当前波特配置，开启后在波特上重启以保存基准值。移动车载设备前断电，并连接对应车型的线束。行驶中更改开关仅在下次启动生效；关闭后保留当前值并使用手动车型选择。
++先在波特当前配置下开启并重启，保存七项基准。移动车载设备前断电并连接对应线束。首次安装另一分支需要网络及parkhantae/openpilot远程；已安装且转换代码一致的本地分支可离线往返。
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 参考
 +
-+仅支持已观察的波特CAN特征和2022–2024款IONIQ 5 HDA2。缺少IONIQ精确ECU识别与HDA2信号或波特特征不完整时，不沿用上次车型控制。本功能不解决原厂车辆是否接受自动SET的问题。
++本地修改、冲突、转换代码不匹配或车型不明确时保持控制阻断，不强制重置。进度见AutoVehicleBranchStatus。关闭后下次启动生效；进行中的切换必须完成系统重启。本功能不保证停车保持或车辆接受自动SET。
 +<!-- CARROT:SECTION:END REFERENCE -->
 +

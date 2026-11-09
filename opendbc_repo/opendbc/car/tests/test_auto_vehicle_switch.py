@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from openpilot.common import auto_vehicle as av
+from openpilot.common import auto_vehicle_branch as branches
 from openpilot.common.params import Params
 from opendbc.car import car_helpers
 from opendbc.car.hyundai.porter_fingerprint import PORTER_BUS0, PORTER_CAMERA
@@ -12,6 +13,7 @@ from opendbc.car.vin import VIN_UNKNOWN
 
 @pytest.fixture
 def setup(tmp_path, monkeypatch):
+  monkeypatch.setattr(branches, 'await_correct_branch', lambda *args: None)
   params = Params(str(tmp_path / 'params'))
   for key in av.IONIQ_SETTINGS:
     params.put(key, params.get_default_value(key))
@@ -126,3 +128,43 @@ def test_real_hyundai_params_equal_manual_settings_and_porter_profile_survives(s
   restored = interface.CarInterface.get_params(CAR.HYUNDAI_PORTER_II_EV, porter_fp, [], False, False, docs=False)
   assert restored.to_dict() == original.to_dict()
   assert restored.safetyConfigs[0].safetyParam == 15489
+
+
+@pytest.mark.parametrize('vehicle', [av.PORTER, av.IONIQ5])
+def test_branch_mismatch_blocks_before_presets_and_interface(setup, monkeypatch, vehicle):
+  params, calls = setup
+  before = {k: params.get(k) for k in av.IONIQ_SETTINGS}
+  class Pending(Exception):
+    pass
+  def await_branch(*args):
+    assert args[1] == vehicle
+    raise Pending
+  monkeypatch.setattr(branches, 'await_correct_branch', await_branch)
+  with pytest.raises(Pending):
+    if vehicle == av.PORTER:
+      detect(monkeypatch, None, {0: PORTER_BUS0, 2: PORTER_CAMERA})
+    else:
+      detect(monkeypatch, av.IONIQ5, {2: {0x50: 16}})
+  assert calls == []
+  assert {k: params.get(k) for k in av.IONIQ_SETTINGS} == before
+  assert not params.get_bool('AutoVehicleReady')
+
+
+@pytest.mark.parametrize('journal', [True, False])
+def test_handoff_card_restart_never_requeries_firmware_or_constructs_interface(setup, monkeypatch, journal):
+  params, calls = setup
+  monkeypatch.setattr(branches, 'boot_id', lambda: 'same-boot')
+  params.put_bool('AutoVehicleBranchPending', True)
+  key = 'AutoVehicleBranchHandoff' if journal else 'AutoVehicleBranchRequest'
+  params.put(key, {'boot': 'same-boot', 'vehicle': av.IONIQ5})
+  class Pending(Exception):
+    pass
+  def await_branch(*args):
+    raise Pending
+  def forbidden_query(*args, **kwargs):
+    raise AssertionError('firmware query restarted during noOutput handoff')
+  monkeypatch.setattr(branches, 'await_correct_branch', await_branch)
+  monkeypatch.setattr(car_helpers, 'fingerprint', forbidden_query)
+  with pytest.raises(Pending):
+    car_helpers.get_car(lambda **kw: [], lambda m: None, lambda e: None, False, False)
+  assert calls == []
