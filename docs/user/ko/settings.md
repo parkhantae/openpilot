@@ -126,9 +126,9 @@ Carrot Web 설정 화면에서는 다음 기능을 사용할 수 있습니다.
 | 시작 동작 | `AlwaysLateral`, `TeslaAutoTurnSignals`, `AutoEngage`, `DisableMinSteerSpeed` | 상시 조향, Tesla 방향지시등, 주행 시작 시 자동 활성화, 저속 조향 제한 |
 | 오토크루즈 | `AutoCruiseControl`, `AutoGasTokSpeed`, `AutoGasCancelSpeed`, `AutoGasSyncSpeed`, `CruiseOnDist` | 크루즈 자동 활성화와 가속 페달 입력 시 동작 |
 
-- `AlwaysLateral`: 크루즈가 켜져 있지 않아도 조향 제어를 허용합니다. 지원 Tesla 차량에서는 전진 기어의 실제 정차 상태에서도 조향할 수 있으며, 최소 조향 속도 이하로 이동할 때의 제한은 유지됩니다. [Tesla 제어 진입](tesla.md#engagement-and-standstill)을 참고하세요. 2022~24 아이오닉5 HDA2·CAMERA SCC=2 토크 조향에서는 변경 후 콤마를 재시작해야 하며, Panda가 유효하고 최신인 차량 입력을 계속 확인합니다. 크루즈 해제 상태의 상시 조향 허가는 가감속 시작 권한과 별개입니다.
+- `AlwaysLateral`: 크루즈가 켜져 있지 않아도 조향 제어를 허용합니다. 지원 Tesla 차량에서는 전진 기어의 실제 정차 상태에서도 조향할 수 있으며, 최소 조향 속도 이하로 이동할 때의 제한은 유지됩니다. [Tesla 제어 진입](tesla.md#engagement-and-standstill)을 참고하세요.
 - 상시 조향도 시스템 시작 후 최초 준비 확인 전에는 조향하지 않습니다. 모델·차량 파라미터·자세 정보 등 필수 입력이 한 번 정상으로 확인되면 이 시작 검사는 종료되며, 이후 입력의 일시적 불량이나 조향 해제·재작동으로 다시 차단하지 않습니다. 기존 주행 중 안전 처리는 그대로 유지됩니다. 초기 대기시간 경과만으로 준비를 통과하지 않습니다.
-- `AutoEngage`: `0` 끄기, `1` 조향 ON, `2` 조향 ON과 크루즈 대기입니다. 2022~24 아이오닉5 HDA2·CAMERA SCC=2 토크 조향의 강화 안전 프로필에서는 이 설정만으로 가감속 권한을 켜지 않으며, 시작과 브레이크·CANCEL·MAIN 조작 후 실제 SET−/RES+ 입력이 필요합니다.
+- `AutoEngage`: `0` 끄기, `1` 조향 ON, `2` 조향 ON과 크루즈 대기입니다.
 - `TeslaAutoTurnSignals`: 기본 꺼짐이며 재부팅 후 적용됩니다. 차량 CAN과 실제 스토크 입력이 유효한 Model 3/Y의 기존 ATC 요청을 사용하며 조향·출발 권한을 늘리지 않습니다. 조건과 폐쇄 시험장 검증은 [Tesla 자동 방향지시등](tesla.md#자동-방향지시등)을 참고하세요.
 - `AutoCruiseControl`: 현대·기아 차량용 오토크루즈와 소프트홀드 관련 설정입니다.
 - `DisableMinSteerSpeed`: SMDPS 장착 차량의 저속 조향 제한과 관련된 차량별 설정입니다.

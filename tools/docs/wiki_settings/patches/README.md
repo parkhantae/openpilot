@@ -128,16 +128,6 @@ with `git apply --unidiff-zero` **after** `porter-dedicated-gap.patch`; regenera
 and validate. The zero-context format requires the same flag for `--check`. This is a staged
 branch-specific explanation, with no live upstream Wiki publication.
 
-## Ioniq 5 control safety
-
-`ioniq5-control-safety.patch` supplies reviewed Korean, English and Chinese
-`AlwaysLateral` and `AutoEngage` explanations for the strict torque-steering
-Ioniq 5 profile on c3-pht-porter. It documents separate lateral permission,
-continuous RX validation, restarting after changes, and physical SET/RES for
-longitudinal authorization. Generate from this branch, apply with
-`git apply --check --unidiff-zero` / `git apply --unidiff-zero`, regenerate and
-validate. This branch-specific patch is not a live upstream Wiki publication.
-
 ## Porter driver-torque release
 
 `porter-steering-release.patch` documents the Porter-specific protective release
