@@ -22,7 +22,7 @@ from openpilot.system.camerad.cameras.nv12_info import get_nv12_info
 from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
 from openpilot.selfdrive.controls.lib.desire_lib.boundary_observer import BoundaryObserver
-from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, smooth_value, get_curvature_from_plan
+from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, smooth_value, get_curvature_from_plan, supports_low_speed_torque_response
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
 from openpilot.selfdrive.modeld.compile_modeld import make_input_queues, WARP_INPUTS, POLICY_INPUTS
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_driving_model_data, fill_pose_msg, PublishState
@@ -419,7 +419,8 @@ def main(demo=False):
 
   from opendbc.car.tesla.values import TeslaFlags
   DH = DesireHelper(tesla_auto_signals=CP.brand == "tesla" and bool(CP.flags & TeslaFlags.AUTO_TURN_SIGNALS),
-                    boundary_indicator_supported=CP.carFingerprint == 'HYUNDAI_IONIQ_5_PE')
+                    boundary_indicator_supported=CP.carFingerprint == 'HYUNDAI_IONIQ_5_PE',
+                    turn_completion_guard=supports_low_speed_torque_response(CP))
   boundary_observer = BoundaryObserver(cloudlog.event) if DH.boundary_indicator_supported else None
   nav_input = MapInput()
 
@@ -586,7 +587,9 @@ def main(demo=False):
         sm.valid[k] and sm.alive[k] and 0 <= indicator_now-sm.recv_time[k] < .35
         for k in ('carState', 'carControl'))
       DH.update(sm['carState'], modelv2_send.modelV2, sm['carControl'].latActive, lane_change_prob, sm['carrotMan'], sm['radarState'],
-                indicator_valid=indicator_valid, indicator_curvature=sm['carControl'].actuators.curvature)
+                indicator_valid=indicator_valid, indicator_curvature=sm['carControl'].actuators.curvature,
+                turn_input_valid=indicator_valid and sm.valid['carrotMan'] and sm.alive['carrotMan'] and
+                                 0 <= indicator_now-sm.recv_time['carrotMan'] < .35)
       modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
       modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
       modelv2_send.modelV2.meta.desireLog = DH.desireLog #carrot

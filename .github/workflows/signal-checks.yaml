@@ -53,6 +53,8 @@ jobs:
             openpilot/selfdrive/controls/tests/test_tesla_auto_signal_intent.py \
             openpilot/selfdrive/controls/tests/test_desire_helper_stalk.py \
             openpilot/selfdrive/controls/tests/test_lever_forced_turn.py \
+            openpilot/selfdrive/controls/tests/test_low_speed_steering_response.py \
+            openpilot/selfdrive/controls/tests/test_navigation_turn_completion.py \
             openpilot/selfdrive/carrot/tests/test_xiaoge_data.py \
             tools/signal_validation/test_trial_integration.py \
             tools/signal_validation/test_lane_line_time.py \
