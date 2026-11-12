@@ -736,13 +736,17 @@ class CarController(CarControllerBase):
       pair_busy = (self.porter_main_set.two_press and
                    (self.porter_main_set.pressing or self.porter_main_set.pair_remaining > 0 or
                     self.porter_main_set.pending_release))
+      # Real dispatch time, not frame * DT_CTRL: a delayed controller update
+      # can dispatch 20 ms later while advancing only one control frame.
+      button_clock = porter_can_clock_nanos(apply_now_nanos) if apply_now_nanos is not None else None
       button = self.porter_buttons.update(
         self.frame * DT_CTRL, CC.hudControl.setSpeed * CV.MS_TO_KPH, CS.out.cruiseState.speed * CV.MS_TO_KPH,
         (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
         enabled=CC.enabled and CS.out.cruiseState.enabled and not cancel_busy and not pair_busy,
         blocked=blocked or cancel_busy or pair_busy, manual=manual, cancel=False,
         acceleration_ready=getattr(CC.hudControl, "porterAccelReady", False),
-        press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL)
+        press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL,
+        tx_now_s=button_clock * 1e-9 if button_clock is not None else None)
       porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
                        self.porter_buttons.acks, self.porter_buttons.timeouts)
       if porter_status != getattr(self, "porter_button_status", None):
@@ -772,6 +776,7 @@ class CarController(CarControllerBase):
                  not CS.out.gasPressed and main_set_vehicle_ready),
         release_eligible=main_set_vehicle_ready,
         sample_age_s=(sample_clock - timestamp) * 1e-9 if fresh and sample_clock is not None else float("inf"),
+        tx_now_s=sample_clock * 1e-9 if apply_now_nanos is not None else None,
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
         pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
         configured=main_set_enabled and main_set_profile_ready)

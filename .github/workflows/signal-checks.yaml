@@ -37,6 +37,9 @@ jobs:
       - name: Tesla intent, card, feedback, native safety and existing Ioniq indicators
         run: |
           python tools/signal_validation/run.py \
+            opendbc_repo/opendbc/car/hyundai/tests/test_porter_press_spacing.py \
+            opendbc_repo/opendbc/car/hyundai/tests/test_porter_pulse.py \
+            opendbc_repo/opendbc/car/hyundai/tests/test_porter_single_long.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_pedal_interceptor.py \
             opendbc_repo/opendbc/safety/tests/test_pedal_interceptor.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_alt2_adas_buttons.py \

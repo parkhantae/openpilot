@@ -523,6 +523,8 @@ Porter II EV `PorterAutoCancelBelow30` defaults OFF and applies in `SpeedFromPCM
 
 Porter-only `PorterAutoSetMain` enables automatic SET from MAIN standby, default OFF. Turn ON, restart and verify CRUISE standby; target and dashboard speed must both be at least 30 km/h. See [behavior and disarming](buttons-presets.md#porter-automatic-set-from-main-standby). Automatic SET OFF revokes transmission permission without overwriting tracked MAIN state; enabling again still requires existing MAIN and fresh-pedal authorization. Porter MAIN tracking starts OFF independently of AutoEngage; restart with MAIN OFF, then press MAIN ON after boot to establish standby. Each qualified fresh gas release requests one SET− press and release, stopping remaining SET frames on actual stock ON; update Panda and host, then restart.
 
+Porter II EV automatic speed-button matching and the current single-press automatic SET skip a receive sample when consecutive positive requests at the actual host dispatch clock would be less than 15ms apart. Ordinary approximately 19–20ms spacing is preserved; skipped samples are not replayed later, and press deadlines and frame budgets are not extended. Release and driver, brake or cancel interruptions do not wait for this spacing guard. This prevents bunched requests; it does not guarantee vehicle acceptance.
+
 
 With `PorterAutoSetMain` ON, gas release after accelerating above 30 km/h in MAIN standby requests SET− at current speed on the next available sample without extra release-confirmation delay. All other authorization and revocation guards remain.
 

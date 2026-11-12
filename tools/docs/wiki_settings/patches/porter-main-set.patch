@@ -1,33 +1,8 @@
---- a/KO-포터-MAIN-대기-중-자동-SET.md
-+++ b/KO-포터-MAIN-대기-중-자동-SET.md
-@@ -29 +29,21 @@
--<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="67fdb6ecaef017cea9dab1c43c613bcba1aa58325d1c7d99eb1b5553860e30cb" reviewed-at="2026-11-07T01:43:54+00:00" -->
-+
-+<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
-+### 동작
-+
-+MAIN ON이 확인된 대기에서 새 엑셀을 0.1초 이상 밟았다 놓을 때마다 인게이지·조향 활성과 무관하게 SET− 한 번·해제를 요청합니다. 추가 해제 확인 지연이나 두 번째 누름은 없으며 실제 순정 ON이면 남은 SET도 중단합니다. 브레이크·CANCEL·MAIN OFF·새 엑셀·운전자 버튼·조건 이탈·취소 요청은 입력을 중단하고 자동 취소가 우선합니다.
-+
-+수신 CAN 묶음 생성 시각부터 호스트 송신 판단 시각까지 같은 부트 시간 시계로 비교해 8ms 이내인 새 CLU11만 새 SET에 사용하며, 로그 재생은 재생 시각을 사용합니다. 오래된 묶음이 최신 CAN 묶음이라는 이유만으로 0ms로 취급되지 않으며, 늦은 샘플은 건너뛰되 기한 연장·10ms 추가 지연·성공 위상 기억 없이 기존 제한을 유지합니다. 이 시간은 USB·물리 버스 전송 완료나 ECU 수락을 증명하지 않습니다.
-+<!-- CARROT:SECTION:END BEHAVIOR -->
-+
-+<!-- CARROT:SECTION:BEGIN USAGE -->
-+### 사용
-+
-+설정을 ON으로 바꾼 뒤 정차 중 MAIN OFF로 업데이트·재시작하고 부팅 후 MAIN ON으로 대기를 설정하세요. MAIN 초기값은 AutoEngage와 무관하게 OFF입니다. 유효한 해제마다 최대 한 누름이며 다음 시도에는 마지막 송신 뒤 최소 3초와 새 페달 입력이 필요합니다. 막히거나 만료된 입력은 나중에 실행하지 않습니다. OFF나 비허가 프로필은 자동 SET을 보내지 않으며 설정 OFF는 MAIN 추적을 유지합니다.
-+<!-- CARROT:SECTION:END USAGE -->
-+
-+<!-- CARROT:SECTION:BEGIN REFERENCE -->
-+### 참고
-+
-+한 누름은 최대 6프레임/120ms 뒤 해제합니다. 새 Panda 프로필은 한 누름을 최대 120ms·6프레임으로 제한하고 해제 후 같은 페달 입력의 두 번째 누름을 차단합니다. MAIN ON 후 0.5초, 시작 목표·계기판 30~160km/h와 신호·운전자 우선 조건을 유지합니다. 현재 자동 SET 프로필은 앞왼쪽·뒤오른쪽 바퀴 속도도 모두 30~160km/h여야 합니다. 계기판만 30을 넘고 바퀴가 그보다 느릴 때의 해제 입력은 버리며, 속도가 회복된 뒤 새 페달 입력이 필요합니다. `sample_age_ms`와 `late_samples`는 수신 경과 시간과 늦은 샘플 수입니다. 순정 MAIN 절대 상태를 해독하지 않으며 대기가 켜진 채 재시작했다면 MAIN OFF 재시작 또는 수동 SET의 실제 ON으로 동기화해야 합니다. TX echo는 차량 수락 증거가 아니며 직접 제동·정지 출발·실차 수락 보장은 없습니다.
-+<!-- CARROT:SECTION:END REFERENCE -->
 --- a/EN-Porter-automatic-SET-from-MAIN-standby.md
 +++ b/EN-Porter-automatic-SET-from-MAIN-standby.md
-@@ -29 +29,21 @@
+@@ -29 +29,22 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="67fdb6ecaef017cea9dab1c43c613bcba1aa58325d1c7d99eb1b5553860e30cb" reviewed-at="2026-11-07T01:43:54+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="b3b917d9bd208499ad85897b3e5f4dea66b608a63e0b04d33c1eda9e0a9ea547" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -35,6 +10,7 @@
 +In confirmed MAIN standby, each fresh gas press of at least 0.1s and release requests one SET− press/release regardless of engagement or lateral activity. No extra release dwell or second press; actual stock ON stops remaining SET frames. Brake, CANCEL, MAIN OFF, renewed gas, driver buttons, lost eligibility or cancellation interrupt input. Cancellation takes priority.
 +
 +For new SET frames, compare the CAN receive-envelope timestamp with host dispatch time in the same boot-time clock and require newly observed CLU11 within 8ms; replay uses replay time. A buffered envelope cannot appear 0ms old merely because it is the latest CAN envelope; skip late samples without extending deadlines, adding a 10ms delay or remembering a timing phase. This age does not prove USB/wire completion or ECU acceptance.
++Skip a new sample when consecutive positive automatic requests at the actual host dispatch clock would be less than 15ms apart. Preserve ordinary approximately 19–20ms spacing, without replaying skipped samples later or extending press deadlines or frame budgets. Release and driver, brake or cancel interruptions do not wait for this spacing guard. This does not guarantee wire timing or ECU acceptance.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -48,11 +24,37 @@
 +
 +One press is at most six frames/120ms followed by release. The new Panda profile bounds one press to 120ms/six frames and ends its authorization on release, without a second press. Retain 0.5s MAIN settling, initial target/dashboard 30–160km/h and existing input/driver-priority guards. The current automatic-SET profile also requires front-left and rear-right wheel speeds at 30–160km/h. Discard releases below that wheel floor even if the dashboard exceeds 30; a fresh pedal cycle is required after speed recovers. `sample_age_ms` and `late_samples` report sample age and late-sample count. Absolute MAIN state is not decoded; standby already ON at restart needs a MAIN-OFF restart or actual stock ON from physical SET for synchronization. TX echo is not ECU acceptance; no direct braking, standstill launch or vehicle acceptance guarantee is provided.
 +<!-- CARROT:SECTION:END REFERENCE -->
+--- a/KO-포터-MAIN-대기-중-자동-SET.md
++++ b/KO-포터-MAIN-대기-중-자동-SET.md
+@@ -29 +29,22 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="b3b917d9bd208499ad85897b3e5f4dea66b608a63e0b04d33c1eda9e0a9ea547" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++MAIN ON이 확인된 대기에서 새 엑셀을 0.1초 이상 밟았다 놓을 때마다 인게이지·조향 활성과 무관하게 SET− 한 번·해제를 요청합니다. 추가 해제 확인 지연이나 두 번째 누름은 없으며 실제 순정 ON이면 남은 SET도 중단합니다. 브레이크·CANCEL·MAIN OFF·새 엑셀·운전자 버튼·조건 이탈·취소 요청은 입력을 중단하고 자동 취소가 우선합니다.
++
++수신 CAN 묶음 생성 시각부터 호스트 송신 판단 시각까지 같은 부트 시간 시계로 비교해 8ms 이내인 새 CLU11만 새 SET에 사용하며, 로그 재생은 재생 시각을 사용합니다. 오래된 묶음이 최신 CAN 묶음이라는 이유만으로 0ms로 취급되지 않으며, 늦은 샘플은 건너뛰되 기한 연장·10ms 추가 지연·성공 위상 기억 없이 기존 제한을 유지합니다. 이 시간은 USB·물리 버스 전송 완료나 ECU 수락을 증명하지 않습니다.
++실제 호스트 송신 판단 시계에서 연속 자동 누름 요청 간격이 15ms 미만이면 해당 새 샘플을 건너뜁니다. 정상적인 약 19~20ms 간격은 유지하며, 건너뛴 샘플을 나중에 재사용하거나 누름 기한·프레임 상한을 늘리지 않습니다. 해제와 운전자·브레이크·취소에 따른 중단은 이 간격을 기다리지 않습니다. 물리 버스 타이밍이나 차량 수락을 보장하지 않습니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++설정을 ON으로 바꾼 뒤 정차 중 MAIN OFF로 업데이트·재시작하고 부팅 후 MAIN ON으로 대기를 설정하세요. MAIN 초기값은 AutoEngage와 무관하게 OFF입니다. 유효한 해제마다 최대 한 누름이며 다음 시도에는 마지막 송신 뒤 최소 3초와 새 페달 입력이 필요합니다. 막히거나 만료된 입력은 나중에 실행하지 않습니다. OFF나 비허가 프로필은 자동 SET을 보내지 않으며 설정 OFF는 MAIN 추적을 유지합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++한 누름은 최대 6프레임/120ms 뒤 해제합니다. 새 Panda 프로필은 한 누름을 최대 120ms·6프레임으로 제한하고 해제 후 같은 페달 입력의 두 번째 누름을 차단합니다. MAIN ON 후 0.5초, 시작 목표·계기판 30~160km/h와 신호·운전자 우선 조건을 유지합니다. 현재 자동 SET 프로필은 앞왼쪽·뒤오른쪽 바퀴 속도도 모두 30~160km/h여야 합니다. 계기판만 30을 넘고 바퀴가 그보다 느릴 때의 해제 입력은 버리며, 속도가 회복된 뒤 새 페달 입력이 필요합니다. `sample_age_ms`와 `late_samples`는 수신 경과 시간과 늦은 샘플 수입니다. 순정 MAIN 절대 상태를 해독하지 않으며 대기가 켜진 채 재시작했다면 MAIN OFF 재시작 또는 수동 SET의 실제 ON으로 동기화해야 합니다. TX echo는 차량 수락 증거가 아니며 직접 제동·정지 출발·실차 수락 보장은 없습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
 --- a/ZH-波特-MAIN待机自动SET.md
 +++ b/ZH-波特-MAIN待机自动SET.md
-@@ -29 +29,21 @@
+@@ -29 +29,22 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="67fdb6ecaef017cea9dab1c43c613bcba1aa58325d1c7d99eb1b5553860e30cb" reviewed-at="2026-11-07T01:43:54+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="b3b917d9bd208499ad85897b3e5f4dea66b608a63e0b04d33c1eda9e0a9ea547" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
@@ -60,6 +62,7 @@
 +在确认MAIN开启的待机状态，每次重新踩油门至少0.1秒再松开，均请求一次SET−并释放，与接合或横向控制无关。不增加松油门确认延迟，不再第二次按下；确认原厂巡航开启后结束剩余SET帧。制动、CANCEL、MAIN关闭、再次踩油门、驾驶员按钮、条件失效或取消请求中断输入，取消优先。
 +
 +新SET帧仅使用从CAN接收消息包生成到主机发送判断不超过8毫秒的新CLU11，实车采用相同的启动时间时钟，日志回放采用回放时间。旧消息包不会因其也是最新CAN消息包而显示为0毫秒；跳过过旧样本，不延长截止时间、不增加10毫秒延迟或记忆时序。该时间不证明USB或物理总线发送完成或车辆接受。
++按主机实际发送决策时钟计算，连续自动按下请求间隔小于15毫秒时跳过该新样本。保留正常约19–20毫秒间隔，不稍后重放跳过的样本，也不延长按下期限或增加帧数上限。释放及驾驶员、制动或取消中断不等待此间隔。不保证物理总线时序或车辆接收成功。
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->

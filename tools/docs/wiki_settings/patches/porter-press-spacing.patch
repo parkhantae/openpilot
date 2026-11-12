@@ -1,0 +1,69 @@
+--- a/EN-Cruise-Button-spam1(8).md
++++ b/EN-Cruise-Button-spam1(8).md
+@@ -30 +30,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="614614d47dd57e47e428d155762ef4c1d752b041a9c4343509ff3b272fdde325" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++For Porter II EV conventional cruise, the value times 0.01s remains bounded to 40–60ms and two or three fresh samples. Skip a new sample when consecutive positive automatic requests at the actual host dispatch clock would be less than 15ms apart. Preserve ordinary approximately 19–20ms spacing, without replaying skipped samples later or extending press deadlines or frame budgets. Release and driver, brake or cancel interruptions do not wait for this spacing guard. This does not guarantee wire timing or ECU acceptance.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Existing request spacing and response waits remain. This setting does not bypass MAIN, pedal or brake conditions.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++This is a Porter-specific host bound; it adds no new limit to other Hyundai/Kia paths.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/KO-크루즈버튼스팸쏘기(8).md
++++ b/KO-크루즈버튼스팸쏘기(8).md
+@@ -30 +30,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="614614d47dd57e47e428d155762ef4c1d752b041a9c4343509ff3b272fdde325" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++포터2 EV 일반 크루즈에서는 설정값×0.01초를 누름 시간으로 사용하되 기존 40~60ms·신선한 샘플 2~3개 한도를 적용합니다. 실제 호스트 송신 판단 시계에서 연속 자동 누름 요청 간격이 15ms 미만이면 해당 새 샘플을 건너뜁니다. 정상적인 약 19~20ms 간격은 유지하며, 건너뛴 샘플을 나중에 재사용하거나 누름 기한·프레임 상한을 늘리지 않습니다. 해제와 운전자·브레이크·취소에 따른 중단은 이 간격을 기다리지 않습니다. 물리 버스 타이밍이나 차량 수락을 보장하지 않습니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++기존 최소 요청 간격과 응답 대기를 유지합니다. 이 값으로 MAIN·페달·브레이크 조건을 우회할 수 없습니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++최소 간격은 포터 전용 호스트 제한이며 다른 현대·기아 경로에 새 제한을 추가하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/ZH-巡航按钮连发1(8).md
++++ b/ZH-巡航按钮连发1(8).md
+@@ -30 +30,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="614614d47dd57e47e428d155762ef4c1d752b041a9c4343509ff3b272fdde325" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++波特2 EV普通巡航将设置值乘以0.01秒作为按下时间，仍限制为40–60毫秒和2–3个新样本。 按主机实际发送决策时钟计算，连续自动按下请求间隔小于15毫秒时跳过该新样本。保留正常约19–20毫秒间隔，不稍后重放跳过的样本，也不延长按下期限或增加帧数上限。释放及驾驶员、制动或取消中断不等待此间隔。不保证物理总线时序或车辆接收成功。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++保留现有请求间隔和响应等待，不能通过此设置绕过MAIN、油门或制动条件。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++这是波特专用主机限制，不为其他现代或起亚路径增加新限制。
++<!-- CARROT:SECTION:END REFERENCE -->

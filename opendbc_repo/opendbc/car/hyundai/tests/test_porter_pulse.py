@@ -40,7 +40,9 @@ class TestPorterPulse(unittest.TestCase):
     times = (3.042276, 3.0523, 3.0713, 3.0918, 3.1117)
     sent = [self.step(t, target=35, current=34, key=i)
             for i, t in enumerate(times)]
-    self.assertEqual(sent, [1, 1, 1, 0, 0])
+    # Do not bunch the new sample into the adjacent 10 ms update or make up
+    # the skipped press at what was already a release opportunity.
+    self.assertEqual(sent, [1, None, 1, 0, 0])
 
   def test_duplicate_samples_do_not_consume_press_budget(self):
     self.assertEqual(self.step(2000, key=1), 1)

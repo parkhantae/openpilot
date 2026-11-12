@@ -13,6 +13,9 @@ PORTER_LEAD_REACTION_S = 8.0
 PORTER_LEAD_HOLD_S = 0.6
 PORTER_LEAD_OPENING_CONFIRM_S = 0.5
 PORTER_BUTTON_ACCEL_CONFIRM_S = 0.5
+# Leave room for normal ~19–20 ms RX jitter while rejecting bunched 10 ms
+# dispatches. This is a host pacing bound, not an OEM timing spec.
+PORTER_BUTTON_MIN_PRESS_INTERVAL_S = 0.015
 PORTER_GAP_TIME_S = (1.0, 1.3, 1.6, 2.0)
 PORTER_PLANNER_GAP_TIME_S = (1.1, 1.2, 1.4, 1.6)
 
@@ -267,12 +270,14 @@ class PorterCruiseButtons:
     self.request_sample_delay = 0.0
     self.slot_wait_since = None
     self.last_time = None
+    self.last_press_time = None
     self.next_request = 0.0
     self.direction = 0
     self.baseline = 0
     self.started = 0.0
     self.hold = 0.06
     self.press_count = 0
+    self.press_slots = 0
     self.press_limit = 3
     self.release_count = 0
     self.pending_release = False
@@ -301,7 +306,8 @@ class PorterCruiseButtons:
     return None
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
-             manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3, acceleration_ready=False):
+             manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3, acceleration_ready=False,
+             tx_now_s=None):
     if frame_key != self.sample_frame:
       self.sample_frame = frame_key
       self.sample_seen = now
@@ -438,7 +444,7 @@ class PorterCruiseButtons:
           self.next_request = now + max(0.5, gap_seconds)
           self.status = "retry_wait"
         return self._interrupt(fresh)
-      if self.phase == "press" and (self.acknowledged or self.press_count >= self.press_limit or
+      if self.phase == "press" and (self.acknowledged or self.press_slots >= self.press_limit or
                                     now - self.started >= self.hold - 1e-9):
         self.phase = "release"
         self.release_count = 0
@@ -483,12 +489,24 @@ class PorterCruiseButtons:
       self.hold = min(0.06, max(0.04, press_seconds))
       self.press_limit = math.ceil(self.hold / 0.02 - 1e-9)
       self.press_count = 0
+      self.press_slots = 0
       self.next_request = now + max(0.3, gap_seconds)
       self.acknowledged = False
       self.phase = "press"
       self.requests += 1
     self.status = "press"
     if fresh:
+      # A skipped early opportunity consumes its slot. Never compensate by
+      # sending another positive frame at a later release opportunity.
+      self.press_slots += 1
+    press_clock = now if tx_now_s is None else tx_now_s
+    if (fresh and math.isfinite(press_clock) and
+        (self.last_press_time is None or press_clock - self.last_press_time >= PORTER_BUTTON_MIN_PRESS_INTERVAL_S - 1e-9)):
+      # RX samples can bunch into adjacent 10 ms control updates. Preserve
+      # ordinary ~20 ms presses, but never compress another positive request
+      # into that short slot. The sample was consumed above: no queued replay.
+      # Releases and all interruption checks remain ahead of this guard.
+      self.last_press_time = press_clock
       self.press_count += 1
       return 1 if self.direction > 0 else 2
     return None

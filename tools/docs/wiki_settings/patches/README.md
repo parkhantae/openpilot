@@ -113,11 +113,18 @@ This patch is not published to the upstream live Wiki.
 
 ## Porter MAIN standby SET
 
-`porter-main-set.patch` supplies reviewed Korean/English manual regions for
-`PorterAutoSetMain` on c3-pht-porter, including the automatic-SET sample deadline.
+`porter-main-set.patch` supplies reviewed Korean/English/Chinese manual regions for
+`PorterAutoSetMain` on c3-pht-porter, including the automatic-SET sample deadline
+and the 15 ms minimum between positive requests at the actual host dispatch clock.
 Apply to staged pages generated from this branch with `git apply --check --unidiff-zero` and `git apply --unidiff-zero`, then
 regenerate and validate.
 The zero-context patch requires that flag. No live upstream Wiki publication.
+
+`porter-press-spacing.patch` supplies Korean/English/Chinese manual regions for
+`CruiseButtonTest1`. Generate fresh pages from this branch, apply with
+`git apply --check --unidiff-zero` and `git apply --unidiff-zero`, regenerate and validate. It describes the
+Porter-only pacing guard, skipped-sample consumption and unchanged driver/release
+priority and pulse budgets. This is a staged patch, not a live Wiki publication.
 
 ## Porter comma 3 GAP touch selection
 

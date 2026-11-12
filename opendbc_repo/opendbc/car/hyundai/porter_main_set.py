@@ -3,6 +3,8 @@ import math
 import os
 import time
 
+from opendbc.car.hyundai.porter import PORTER_BUTTON_MIN_PRESS_INTERVAL_S
+
 
 # CLU11 normally arrives every 20 ms. Preserve transport headroom rather than
 # holding its counter for another 10 ms control tick before automatic SET.
@@ -26,6 +28,7 @@ class PorterMainSet:
     self.previous_stock = False
     self.armed = False
     self.last_time = None
+    self.last_press_time = None
     self.last_key = None
     self.sample_key = None
     self.sample_seen = 0.
@@ -36,6 +39,7 @@ class PorterMainSet:
     self.pedal_started = False
     self.started = 0.
     self.frames = 0
+    self.press_slots = 0
     self.next_request = 0.
     self.unknown_retry_at = 0.
     self.attempts = 0
@@ -72,7 +76,7 @@ class PorterMainSet:
     self.response_started = 0.
 
   def update(self, now, key, *, main_pressed, manual_button, blocked, request, stock_enabled, configured,
-             gas_pressed=False, pedal_only=False, release_eligible=True, sample_age_s=None):
+             gas_pressed=False, pedal_only=False, release_eligible=True, sample_age_s=None, tx_now_s=None):
     # The versioned short-pulse policy always needs a fresh pedal cue, including
     # while lateral control is active. Legacy profiles/tests retain their path.
     pedal_only = pedal_only or self.two_press
@@ -101,9 +105,16 @@ class PorterMainSet:
       # and leaves a known-OFF latch after the option is enabled again.
       self.armed = False
     tx_fresh = key is not None and key != self.sent_key
+    press_clock = now if tx_now_s is None else tx_now_s
+    press_ready = (not self.long_press or
+                   (math.isfinite(press_clock) and
+                    (self.last_press_time is None or
+                     press_clock - self.last_press_time >= PORTER_BUTTON_MIN_PRESS_INTERVAL_S - 1e-9)))
 
     def send(button):
       self.sent_key = key
+      if button == 2:
+        self.last_press_time = press_clock
       # A missing response does not reveal whether Panda accepted the pulse.
       # Cover its maximum three-second wait from the last possible SET/release,
       # rather than guessing native attempt phase from intended requests.
@@ -279,7 +290,7 @@ class PorterMainSet:
       return None
     if self.pressing:
       if (now - self.started >= (.06 if self.two_press and not self.long_press else .12) - 1e-9 or
-          self.frames >= (3 if self.two_press and not self.long_press else 6)):
+          self.press_slots >= (3 if self.two_press and not self.long_press else 6)):
         self.pressing = False
         self.startup_grant = False
         self.pending_release = True
@@ -289,8 +300,12 @@ class PorterMainSet:
           return send(0)
       elif set_fresh and tx_fresh:
         # Only the newly received, timely sample may carry another SET frame.
-        self.frames += 1
-        return send(2)
+        # An early sample still consumes its slot; do not make up skipped
+        # positive frames at a later release opportunity.
+        self.press_slots += 1
+        if press_ready:
+          self.frames += 1
+          return send(2)
       return None
     if pedal_only:
       self.since = None
@@ -308,7 +323,7 @@ class PorterMainSet:
       # A pedal release or retry deadline between RX updates must wait for
       # the next sample, rather than sending its predecessor late. Normal
       # engaged speed matching keeps its independent timing policy.
-      if not set_fresh or not tx_fresh:
+      if not set_fresh or not tx_fresh or not press_ready:
         return None
       second_press = pair_ready and not release_ready
       self.pedal_started = release_ready or second_press
@@ -328,6 +343,7 @@ class PorterMainSet:
       self.pressing = True
       self.started = now
       self.frames = 1
+      self.press_slots = 1
       self.attempts += 1
       self.retry_wait = 3. if self.attempts >= 3 else 1.
       if self.attempts >= 3:

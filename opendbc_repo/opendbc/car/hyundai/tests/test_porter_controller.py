@@ -333,7 +333,7 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cc.hudControl.setSpeed = 30.81 / 3.6
     self.cs.out.cruiseState.speed = 32 / 3.6
     self.assertEqual(self.tick(0), [2])
-    self.assertEqual(self.tick(1), [2])
+    self.assertEqual(self.tick(1), [])  # Bunched 10 ms sample is consumed without SET.
     self.assertEqual(self.tick(4), [2])
     self.controller.frame = 5
     self.cs.cp._last_update_nanos += 10_000_000
