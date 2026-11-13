@@ -1,4 +1,5 @@
 import math
+import time
 import numpy as np
 
 from openpilot.cereal import car
@@ -7,6 +8,7 @@ from openpilot.selfdrive.carrot.carrot_man_input import get_carrot_man
 from openpilot.selfdrive.carrot.cruise_gap import cruise_gap_levels, next_gap_personality, supported_gap_levels
 from openpilot.selfdrive.carrot.bluetooth.model import BLUETOOTH_CANCEL, CommandReader, REMOTE_BUTTONS
 from openpilot.selfdrive.car.toyota_pcm_speed import ToyotaPcmSetSpeedSync
+from openpilot.selfdrive.car.porter_set_speed import PorterSetSpeedSync
 
 from opendbc.car import structs
 from opendbc.car.hyundai.porter import pcm_cruise_min_kph
@@ -170,6 +172,8 @@ class VCruiseCarrot:
     self.v_cruise_kph_last = 20
     self._cruise_speed_initialized = False
     self.toyota_pcm_speed_sync = ToyotaPcmSetSpeedSync(V_CRUISE_MAX)
+    self.porter_set_speed_sync = PorterSetSpeedSync()
+    self.porter_auto_set_main = False
 
     self.enabled_last = False
 
@@ -276,6 +280,7 @@ class VCruiseCarrot:
       self.autoGasTokSpeed = self.params.get_int("AutoGasTokSpeed") * unit_factor
       self.autoGasCancelSpeed = self.params.get_int("AutoGasCancelSpeed") * unit_factor
       self.autoGasSyncSpeed = self.params.get_int("AutoGasSyncSpeed")
+      self.porter_auto_set_main = self.params.get_bool("PorterAutoSetMain")
       self.applyModelSpeed = self.params.get_float("ApplyModelSpeed") * 0.01
       self.autoSpeedUptoRoadSpeedLimit = self.params.get_float("AutoSpeedUptoRoadSpeedLimit") * 0.01
       self.autoRoadSpeedAdjust = self.params.get_float("AutoRoadSpeedAdjust") * 0.01
@@ -323,7 +328,7 @@ class VCruiseCarrot:
       self.carrot_cmd = ""
       self.carrot_arg = ""
 
-  def update_v_cruise(self, CS, sm, is_metric):
+  def update_v_cruise(self, CS, sm, is_metric, now=None):
     prior_cruise_kph = self.v_cruise_kph
     self._add_log("")
     self.update_params(is_metric)
@@ -378,6 +383,13 @@ class VCruiseCarrot:
       self.CP, self.speed_from_pcm, CS,
       local_changed=abs(v_cruise_kph - prior_cruise_kph) > 1e-3,
     )
+
+    porter_start_speed = self.porter_set_speed_sync.update(
+      time.monotonic() if now is None else now, self.CP, CS, CC, configured=self.porter_auto_set_main,
+      speed_from_pcm=self.speed_from_pcm, manual=self._gas_sync_manual_input)
+    if porter_start_speed is not None:
+      v_cruise_kph = porter_start_speed
+      self._add_log(f"Porter SET confirmed speed: {porter_start_speed:.1f}")
 
     if self._activate_cruise > 0:
       #self.events.append(EventName.buttonEnable)

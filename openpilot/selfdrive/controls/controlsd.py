@@ -434,6 +434,7 @@ class Controls:
           CS.cruiseState.speed * CV.MS_TO_KPH, CS.vEgo, lead.dRel, lead.vRel,
           self.sm['selfdriveState'].personality.raw + 1, lead_visible=lead.status,
           recovery_allowed=self.sm.all_checks(['longitudinalPlan', 'radarState']),
+          adaptive=self.params.get_bool("PorterGapUse"),
           reaction_s=porter_lead_reaction_s(self.params),
           gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                       getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None))

@@ -260,6 +260,8 @@ This comparison trial restores only the `4757bccb` 120ms/six-frame single press.
 
 Settings > Vehicle & Hardware > Porter Only includes **Porter: automatic SET from MAIN standby** (`PorterAutoSetMain`), default OFF. **Turn ON, then restart** to apply the automatic-SET Panda profile. While parked, update/restart with MAIN OFF, then press MAIN ON after boot for CRUISE standby. OFF or a non-authorized profile sends no automatic SET on gas release. MAIN tracking starts OFF independently of AutoEngage; `AutoEngage=2` is not required.
 
+If actual stock cruise ON is observed within 0.5s of the qualified automatic-SET release cue, initialize the comma target once from the first confirmed stock setting. No response, driver input, cancellation or lost eligibility does not automatically raise the old target.
+
 In confirmed MAIN standby, each fresh gas press of at least 0.1s followed by release requests **one SET− press → release**, regardless of engagement/lateral activity. Send on the next new CAN sample without extra release-confirmation dwell; do not schedule a second press. A press is at most six frames/120ms. Actual stock ON stops remaining SET frames and sends release. This does not mean one CAN frame or guarantee exact speed latching at pedal release.
 
 Initial target, dashboard and both front-left/rear-right wheel speeds must be 30–160km/h, with `SpeedFromPCM=0`, drive gear, 0.5s MAIN settling and valid vehicle/planner/radar inputs. Dashboard speed alone or MAIN OFF cannot authorize a start. Releases at low speed or invalid conditions require a new pedal cycle after recovery; they are never executed later.

@@ -131,6 +131,7 @@ class PorterLeadTracker:
   """Keep brief radar dropouts from releasing a conventional-cruise lead cap."""
   def __init__(self, hold_seconds=PORTER_LEAD_HOLD_S):
     self.hold_seconds = hold_seconds
+    self.adaptive_tracker = None
     self.last_seen = None
     self.last_update = None
     self.distance = 0.0
@@ -143,7 +144,18 @@ class PorterLeadTracker:
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
-             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True):
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False):
+    if adaptive:
+      if self.adaptive_tracker is None:
+        self.__init__(self.hold_seconds)
+        self.adaptive_tracker = PorterAdaptiveLeadTracker(self.hold_seconds)
+      result = self.adaptive_tracker.update(
+        now, target_kph, stock_target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level,
+        lead_visible=lead_visible, gap_time_s=gap_time_s, reaction_s=reaction_s, recovery_allowed=recovery_allowed)
+      self.recovery_ready = self.adaptive_tracker.recovery_ready
+      return result
+    if self.adaptive_tracker is not None:
+      self.__init__(self.hold_seconds)
     self.recovery_ready = False
     if (self.last_update is not None and
         (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):
@@ -213,6 +225,72 @@ class PorterLeadTracker:
       target_kph = min(target_kph, stock_target_kph)
     return target_kph
 
+
+class PorterAdaptiveLeadTracker:
+  """Distance-error speed cap with bounded recovery; never commands acceleration."""
+  # Target rise limit only, not a calibrated vehicle acceleration guarantee.
+  RECOVERY_KPH_PER_S = 1.8
+
+  def __init__(self, hold_seconds=PORTER_LEAD_HOLD_S):
+    self.hold_seconds = hold_seconds
+    self.last_time = None
+    self.last_seen = None
+    self.distance = self.relative = 0.
+    self.last_target = None
+    self.clear_since = None
+    self.recovery_ready = False
+
+  def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
+             lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True):
+    self.recovery_ready = False
+    valid = all(math.isfinite(v) for v in (now, target_kph, stock_target_kph, ego_speed)) and ego_speed >= 0
+    dt = 0. if self.last_time is None else now - self.last_time
+    clock_ok = valid and 0 <= dt <= .1 + 1e-9
+    if not clock_ok:
+      previous_target = self.last_target
+      self.__init__(self.hold_seconds)
+      if valid:
+        self.last_time = now
+        self.last_target = min(target_kph, stock_target_kph,
+                               previous_target if previous_target is not None else stock_target_kph)
+        return self.last_target
+      return PORTER_CRUISE_MIN_KPH
+    self.last_time = now
+    fresh = (lead_visible and all(math.isfinite(v) for v in (lead_distance, lead_relative_speed)) and
+             lead_distance > 0)
+    if fresh:
+      self.distance, self.relative, self.last_seen = lead_distance, lead_relative_speed, now
+    held = (not fresh and self.last_seen is not None and 0 <= now - self.last_seen <= self.hold_seconds)
+    if held:
+      self.distance = max(.1, self.distance + min(0., self.relative) * dt)
+    cap = target_kph
+    clear = not lead_visible and not held
+    if fresh or held:
+      response_s = reaction_s if math.isfinite(reaction_s) and 4 <= reaction_s <= 8 else PORTER_LEAD_REACTION_S
+      # Unlike the legacy threshold's immediate jump to lead speed, permit a
+      # shrinking approach speed while outside the selected distance. At or
+      # inside that distance the cap is at or below lead speed.
+      margin = _porter_projected_gap_margin(ego_speed, self.distance, 0., gap_level, gap_time_s, response_s)
+      lead_speed = max(0., ego_speed + self.relative)
+      cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / response_s) * 3.6))
+      clear = fresh and margin + min(0., self.relative) * response_s >= 0
+    if not recovery_allowed or not clear:
+      self.clear_since = None
+    elif self.clear_since is None:
+      self.clear_since = now
+    self.recovery_ready = (self.clear_since is not None and
+                           now - self.clear_since >= PORTER_LEAD_OPENING_CONFIRM_S - 1e-9)
+    if self.last_target is None:
+      cap = min(cap, stock_target_kph)
+    elif cap > self.last_target:
+      # No recovery during dropouts, stale input or a transient gap crossing.
+      # Lower planner/navigation targets pass through immediately.
+      cap = min(cap, self.last_target + (self.RECOVERY_KPH_PER_S * dt if self.recovery_ready else 0.))
+    if not recovery_allowed or not clear:
+      cap = min(cap, stock_target_kph)
+    self.last_target = cap
+    return cap
 
 def update_porter_state(ret, cp, main_enabled, is_metric):
   ret.cruiseState.nonAdaptive = True

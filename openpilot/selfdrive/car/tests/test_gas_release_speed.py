@@ -230,3 +230,32 @@ def test_stock_cruise_off_during_pedal_revokes_porter_capture(setup):
   s.tick(True, 100, 15)
   s.tick(False, 85)
   assert not s.logs
+
+
+def test_production_cruise_update_replaces_35_only_after_porter_stock_response(setup, monkeypatch):
+  s = setup
+  # The fixture also runs the Ioniq direct-long profile as an exclusion test.
+  s.helper.CP.safetyConfigs = [car.CarParams.SafetyConfig(safetyModel='hyundai', safetyParam=15489)]
+  s.params.put_bool('PorterAutoSetMain', True)
+  s.helper.porter_auto_set_main = True
+  s.params.put_int('AutoGasSyncSpeed', 0)
+  s.helper.v_cruise_kph = s.helper.v_cruise_cluster_kph = 35
+  s.cc.enabled = False
+  s.cc.cruiseControl.resume = True
+  s.cs.cruiseState.enabled = False
+  clock = [0.0]
+  monkeypatch.setattr('openpilot.selfdrive.car.cruise.time.monotonic', lambda: clock[0])
+  for i in range(65):
+    clock[0] = i * 0.01
+    s.tick(True, 50.37)
+  clock[0] = 0.65
+  assert s.tick(False, 50.37) == 35
+  clock[0] = 0.69
+  s.cs.cruiseState.enabled = True
+  s.cs.cruiseState.speed = 50 * CV.KPH_TO_MS
+  s.cc.enabled = True
+  expected = 50 if s.helper.CP.pcmCruise else 35
+  assert s.tick(False, 50.37) == pytest.approx(expected)
+  clock[0] = 0.71
+  s.cs.cruiseState.speed = 49 * CV.KPH_TO_MS
+  assert s.tick(False, 50) == pytest.approx(expected)

@@ -1,8 +1,8 @@
 --- a/EN-Porter-automatic-SET-from-MAIN-standby.md
 +++ b/EN-Porter-automatic-SET-from-MAIN-standby.md
-@@ -29 +29,22 @@
+@@ -29 +29,23 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="b3b917d9bd208499ad85897b3e5f4dea66b608a63e0b04d33c1eda9e0a9ea547" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="7ca59483b9a494a63a31e572a0668fe8ba840bf0a528c92614623615e1485a85" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -11,6 +11,7 @@
 +
 +For new SET frames, compare the CAN receive-envelope timestamp with host dispatch time in the same boot-time clock and require newly observed CLU11 within 8ms; replay uses replay time. A buffered envelope cannot appear 0ms old merely because it is the latest CAN envelope; skip late samples without extending deadlines, adding a 10ms delay or remembering a timing phase. This age does not prove USB/wire completion or ECU acceptance.
 +Skip a new sample when consecutive positive automatic requests at the actual host dispatch clock would be less than 15ms apart. Preserve ordinary approximately 19–20ms spacing, without replaying skipped samples later or extending press deadlines or frame budgets. Release and driver, brake or cancel interruptions do not wait for this spacing guard. This does not guarantee wire timing or ECU acceptance.
++If actual stock cruise ON is observed within 0.5s of the qualified automatic-SET release cue, initialize the comma target once from the first confirmed stock setting. No response, driver input, cancellation or lost eligibility does not automatically raise the old target.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -26,9 +27,9 @@
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/KO-포터-MAIN-대기-중-자동-SET.md
 +++ b/KO-포터-MAIN-대기-중-자동-SET.md
-@@ -29 +29,22 @@
+@@ -29 +29,23 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="b3b917d9bd208499ad85897b3e5f4dea66b608a63e0b04d33c1eda9e0a9ea547" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="7ca59483b9a494a63a31e572a0668fe8ba840bf0a528c92614623615e1485a85" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -37,6 +38,7 @@
 +
 +수신 CAN 묶음 생성 시각부터 호스트 송신 판단 시각까지 같은 부트 시간 시계로 비교해 8ms 이내인 새 CLU11만 새 SET에 사용하며, 로그 재생은 재생 시각을 사용합니다. 오래된 묶음이 최신 CAN 묶음이라는 이유만으로 0ms로 취급되지 않으며, 늦은 샘플은 건너뛰되 기한 연장·10ms 추가 지연·성공 위상 기억 없이 기존 제한을 유지합니다. 이 시간은 USB·물리 버스 전송 완료나 ECU 수락을 증명하지 않습니다.
 +실제 호스트 송신 판단 시계에서 연속 자동 누름 요청 간격이 15ms 미만이면 해당 새 샘플을 건너뜁니다. 정상적인 약 19~20ms 간격은 유지하며, 건너뛴 샘플을 나중에 재사용하거나 누름 기한·프레임 상한을 늘리지 않습니다. 해제와 운전자·브레이크·취소에 따른 중단은 이 간격을 기다리지 않습니다. 물리 버스 타이밍이나 차량 수락을 보장하지 않습니다.
++유효한 자동 SET 엑셀 해제 후 0.5초 안에 실제 순정 크루즈 ON이 확인되면, 콤마 목표속도를 처음 확인된 순정 설정속도에 한 번 맞춥니다. 무응답·운전자 버튼·취소·조건 이탈 시에는 이전 목표를 자동으로 올리지 않습니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -52,9 +54,9 @@
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/ZH-波特-MAIN待机自动SET.md
 +++ b/ZH-波特-MAIN待机自动SET.md
-@@ -29 +29,22 @@
+@@ -29 +29,23 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="b3b917d9bd208499ad85897b3e5f4dea66b608a63e0b04d33c1eda9e0a9ea547" reviewed-at="2026-11-12T23:27:07.684936+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="7ca59483b9a494a63a31e572a0668fe8ba840bf0a528c92614623615e1485a85" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
@@ -63,6 +65,7 @@
 +
 +新SET帧仅使用从CAN接收消息包生成到主机发送判断不超过8毫秒的新CLU11，实车采用相同的启动时间时钟，日志回放采用回放时间。旧消息包不会因其也是最新CAN消息包而显示为0毫秒；跳过过旧样本，不延长截止时间、不增加10毫秒延迟或记忆时序。该时间不证明USB或物理总线发送完成或车辆接受。
 +按主机实际发送决策时钟计算，连续自动按下请求间隔小于15毫秒时跳过该新样本。保留正常约19–20毫秒间隔，不稍后重放跳过的样本，也不延长按下期限或增加帧数上限。释放及驾驶员、制动或取消中断不等待此间隔。不保证物理总线时序或车辆接收成功。
++有效自动SET松油门触发后0.5秒内确认原厂巡航开启时，仅一次将comma目标同步为首次确认的原厂设定速度。无响应、驾驶员按钮、取消或条件失效不自动提高旧目标。
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->

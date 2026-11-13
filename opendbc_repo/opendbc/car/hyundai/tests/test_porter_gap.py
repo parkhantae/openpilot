@@ -28,8 +28,8 @@ class TestPorterGap(unittest.TestCase):
                 'self.CP.carFingerprint == \'HYUNDAI_PORTER_II_EV\'' in ast.unparse(n.test) and
                 'lead_target_kph =' in ast.unparse(n))
     code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_lead_gap', 'exec')
-    for applied, fresh, reaction, expected in ((1., True, 8, 60), (2., True, 8, 30),
-                                              (2., False, 8, 60), (2., True, 6, 60)):
+    for applied, fresh, reaction, expected in ((1., True, 8, 40.05), (2., True, 8, 35.55),
+                                              (2., False, 8, 40.05), (2., True, 6, 39.0)):
       class SM(dict):
         frame = 0
 
@@ -67,7 +67,7 @@ class TestPorterGap(unittest.TestCase):
               'self.CP.carFingerprint == \'HYUNDAI_PORTER_II_EV\'' in ast.unparse(n.test) and
               'lead_target_kph =' in ast.unparse(n))
     code=compile(ast.Module(body=[node],type_ignores=[]),'actual_porter_recovery','exec')
-    for valid,expected in ((True,68.3),(False,63)):
+    for valid,expected in ((True,63),(False,63)):
       class SM(dict):
         frame=0
 

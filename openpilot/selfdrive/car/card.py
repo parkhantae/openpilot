@@ -301,7 +301,8 @@ class Car:
     #self.v_cruise_helper.update_v_cruise(CS, self.sm['carControl'].enabled, self.is_metric)
     # A gas tap spent on a camera skip must not also raise the set speed by +10.
     self.v_cruise_helper.speedcam_gas_tok_consumed = getattr(self.CI.CS, "speedcam_gas_tok_consumed", False)
-    self.v_cruise_helper.update_v_cruise(CS, self.sm, self.is_metric)
+    self.v_cruise_helper.update_v_cruise(
+      CS, self.sm, self.is_metric, now=self.can_log_mono_time / 1e9 if REPLAY else None)
     #self.t3 = time.monotonic()
     if self.sm['carControl'].enabled and not self.CC_prev.enabled:
       # Use CarState w/ buttons from the step selfdrived enables on

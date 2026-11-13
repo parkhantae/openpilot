@@ -163,3 +163,17 @@ regenerate and validate. It documents the low-speed duplicate-filter removal,
 measured wheel-return completion and the bounded ten-second navigation request.
 Torque, rate and driver-override limits remain. This branch-specific patch does
 not publish to the live upstream Wiki.
+
+## Porter adaptive following and confirmed SET speed
+
+`porter-main-set.patch` includes one-shot comma-speed initialization from the
+first confirmed OEM setting within 0.5 seconds of a qualified pedal-release cue.
+It does not continuously mirror stock speed or grant engagement permission.
+
+`porter-adaptive-gap.patch` updates Korean, English and Chinese MANUAL regions
+for `PorterGapUse` and `PorterLeadReactionTime`. Generate from the branch catalog,
+apply `porter-dedicated-gap.patch`, then `porter-gap-touch.patch`, then this patch
+with `git apply --unidiff-zero`, and regenerate/validate. Dedicated GAP ON uses
+own-speed distance plus lead speed/distance error and bounded target recovery;
+OFF retains legacy following. This is staged branch documentation, not a live
+publication to the upstream Wiki.
