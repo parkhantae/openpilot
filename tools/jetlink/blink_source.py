@@ -215,7 +215,8 @@ def main(fd, spas=False, ble=False):
                                   str(cs.gearShifter), remote, auto, policy_valid)
     observation_feedback.prepare(now, hold, meta, cs)
     receiver_override = fresh(feedback.get('stamp'), now, .35) and feedback.get('state') == 'driver_override'
-    native_hold = not ble or fingerprint == 'HYUNDAI_IONIQ_5_PE'
+    relay_output = ble and feedback.get('relay') is True
+    native_hold = (not ble or fingerprint == 'HYUNDAI_IONIQ_5_PE') and not relay_output
     tbt_turn_hold = bool(not spas and native_hold and hold and hold['source'] == 'turn' and automatic.journey.active)
     # A confirmed TBT lamp is maintained by the comma-side lease. Receiver
     # one-touch ownership ending must not erase the ongoing turn. This cannot
@@ -241,7 +242,7 @@ def main(fd, spas=False, ble=False):
       automatic.journey.pending = None
       automatic.journey.active = None
       automatic.journey.cancelled_until = now+3.
-    if not spas and policy.relight(now, activated_id, acknowledged and not receiver_override, cs.leftBlinker, cs.rightBlinker,
+    if not spas and not relay_output and policy.relight(now, activated_id, acknowledged and not receiver_override, cs.leftBlinker, cs.rightBlinker,
                                   retry_unlit=auto_valid and automatic.direction is not None and feedback.get('state') == 'ready'):
       hold, activated_id = policy.hold, None
     model_fresh = ('modelV2' in sm.services and sm.valid['modelV2'] and sm.alive['modelV2'] and fresh(sm.recv_time['modelV2'], now, .35))
@@ -283,7 +284,7 @@ def main(fd, spas=False, ble=False):
     try:
       sock.send(encode({'stamp': now, 'ok': bool(ok), 'events': commands, 'hold': wire_hold(hold), 'devices':devices,
                         'activated':activated_id is not None, 'relights':policy.relights,
-                        'b1_hold':ble and fingerprint != 'HYUNDAI_IONIQ_5_PE',
+                        'b1_hold':ble and (relay_output or fingerprint != 'HYUNDAI_IONIQ_5_PE'),
                         'turn_phase':automatic.reason, 'turn_position':bool(automatic.journey.active and automatic.journey.active['target'] is not None),
                         'tbt_phase':tbt.reason, 'observation_phase':observed_source,
                         'indicator_origin':hold['source'] if hold else None}))

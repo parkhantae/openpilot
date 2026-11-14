@@ -6,6 +6,10 @@ import time
 ENROLLED = Path('/data/carrot/b1-monitor.json')
 STATUS = Path('/dev/shm/carrot-b1-link.json')
 LABELS = {
+  'relay_ready': ('S3 · 접점 준비', (96, 232, 162)),
+  'relay_waiting': ('S3 · 접점 대기', (96, 218, 243)),
+  'relay_on': ('S3 · 접점 출력', (96, 218, 243)),
+  'relay_error': ('S3 · 접점 차단', (252, 128, 110)),
   'updating': ('S3 · 업데이트', (96, 218, 243)),
   'offline': ('S3 · 연결 대기', (170, 178, 188)),
   'auth': ('S3 · 인증 중', (255, 197, 89)),
@@ -23,8 +27,12 @@ def status(now, enrolled=ENROLLED, path=STATUS):
     return None
   try:
     with path.open('rb') as stream:
-      record = json.loads(stream.read(256))
+      record = json.loads(stream.read(4096))
     if 0 <= now-record['time'] < 2 and record['state'] in LABELS:
+      if record.get('mode') == 'relay' and record['state'] == 'waiting' and record.get('outputs') in (1, 2):
+        return 'relay_on'
+      if record.get('mode') == 'relay' and 'relay_' + record['state'] in LABELS:
+        return 'relay_' + record['state']
       return record['state']
   except (OSError, KeyError, ValueError, TypeError):
     pass

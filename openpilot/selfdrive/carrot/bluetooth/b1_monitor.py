@@ -98,6 +98,55 @@ class Intent:
     return 0, None, guard
 
 
+class RelayIntent(Intent):
+  """Contact v3: exact output ACK, immediate hold cancellation, no auto re-tap."""
+  def __init__(self):
+    super().__init__()
+    self.active_event = None
+
+  def choose(self, source, state, ack, now):
+    if (not source or not source.get('ok') or not 0 <= now-source['stamp'] < .20 or
+        state in ('error', 'driver_override', 'missing')):
+      self.inflight = self.queued = self.active_event = None
+      return 3, None, .35
+    guard = source['stamp'] + .35 - now
+    hold = source.get('hold')
+    devices = source.get('devices', [])
+    if self.active_event:
+      event, held = self.active_event
+      if ((event.get('device') and event['device'] not in devices) or
+          (held and (not hold or (hold['id'], hold['direction']) != (event['id'], event['direction'])))):
+        self.inflight = self.queued = self.active_event = None
+        return 3, None, guard
+    candidates = [(e, False) for e in source.get('events', [])]
+    if hold:
+      candidates.append((hold, True))
+    for event, held in candidates:
+      if (event['id'] in self.seen or not self.started <= event['time'] <= now or
+          now-event['time'] >= .4 or (event.get('device') and event['device'] not in devices)):
+        continue
+      self.seen.append(event['id'])
+      self.queued = event, held, event['time'] + .4
+    if self.queued:
+      event, held, until = self.queued
+      if (now >= until or (event.get('device') and event['device'] not in devices) or
+          (held and (not hold or hold['id'] != event['id']))):
+        self.queued = None
+      elif state == 'ready':
+        self.queued = None
+        self.active_event = dict(event), held
+        return (1 if event['direction'] == 'left' else 2), event['id'], min(guard, until-now)
+      elif self.active_event:
+        # Break the old contact before admitting a newly queued request.
+        self.inflight = self.active_event = None
+        return 3, None, guard
+    if self.active_event and self.inflight:
+      event, held = self.active_event
+      if held and ack == self.inflight[0] and state == 'waiting':
+        return (4 if event['direction'] == 'left' else 5), None, guard
+    return 0, None, guard
+
+
 class Monitor:
   def __init__(self):
     self.client = Bluez()
@@ -108,6 +157,7 @@ class Monitor:
     self.owned = None
     self.worker = None
     self.intent = Intent()
+    self.protocol_version = 2
     self.attrs = None
     self.session = None
     self.next_start = 0.
@@ -124,16 +174,17 @@ class Monitor:
     self.last_command = None
     self.next_discovery = 0.
 
-  def publish_badge(self, state, now, lamps, accepted_id):
-    display = (state, lamps, accepted_id)
+  def publish_badge(self, state, now, lamps, accepted_id, outputs=None):
+    display = (state, lamps, accepted_id, outputs)
     if display != self.last_display and self.report and self.last_command and 0 <= now-self.last_command['time'] < 5:
       self.report('b1TapFeedback', request_id=self.last_command['id'], seq=self.last_command['seq'],
-                  receiver_state=state, lamps=lamps, accepted_id=accepted_id)
+                  receiver_state=state, lamps=lamps, accepted_id=accepted_id, outputs=outputs)
     if display != self.last_display or now >= self.next_badge:
       self.last_display = display
       self.next_badge = now + .35
       with suppress(OSError):
         atomic_json(BADGE, {'state':state, 'time':now, 'lamps':lamps, 'accepted_id':accepted_id,
+                            'outputs':outputs, 'mode':'relay' if self.protocol_version == 3 else 'can',
                             'source_ready':bool(self.source and self.source.get('ok') and 0 <= now-self.source['stamp'] < .2),
                             'last_command':self.last_command})
 
@@ -187,13 +238,16 @@ class Monitor:
     # Conservative board-clock sample: GATT latency can only shorten the lease.
     raw = await self.client.call(self.attrs[META], GATT, 'ReadValue', 'a{sv}', ({},), reply_timeout=.35)
     nonce, stamp, ack, state_id, lamps, version, last_seq = struct.unpack('<IIHBBBH', bytes(raw[0]))
-    if not nonce or version != 2 or state_id >= len(STATES):
+    if not nonce or version not in (2, 3) or lamps not in (0, 1, 2, 3) or (version == 3 and lamps == 3) or state_id >= len(STATES):
       raise ValueError('unsupported B1 report')
     state = STATES[state_id]
+    outputs = lamps if version == 3 else None
+    lamps = None if version == 3 else lamps
     now = time.monotonic()
-    if nonce != self.session:
+    if nonce != self.session or version != self.protocol_version:
       self.stop_source()
-      self.session, self.intent = nonce, Intent()
+      self.protocol_version = version
+      self.session, self.intent = nonce, RelayIntent() if version == 3 else Intent()
       self.intent.seq = last_seq
       self.sent_sequences.clear()
       self.last_signal_at = now
@@ -216,14 +270,15 @@ class Monitor:
     if pending and state != 'sending' and ack != pending[0] and now-pending[2] > .45:
       self.intent.inflight = self.intent.queued = pending = None
     if self.worker:
-      self.worker.send({'stamp':now, 'state':state, 'accepted_id': pending[1] if pending and ack==pending[0] else None})
+      self.worker.send({'stamp':now, 'state':state, 'accepted_id': pending[1] if pending and ack==pending[0] else None,
+                        'relay':version == 3, 'outputs':outputs, 'lamps':lamps})
       latest = self.worker.latest()
       if latest is not None:
         self.source = latest
     # The worker can publish a newer timestamp while latest() drains its socket.
     now = time.monotonic()
     op, ident, ttl = self.intent.choose(self.source, state, ack, now)
-    if (lamps or state not in ('ready', 'missing') or ident or self.intent.queued or
+    if (outputs or lamps or state not in ('ready', 'missing') or ident or self.intent.queued or
         (self.source and (self.source.get('hold') or self.source.get('events')))):
       self.last_signal_at = now
     self.intent.seq = (self.intent.seq + 1) % 65536 or 1
@@ -235,8 +290,9 @@ class Monitor:
       if self.report:
         self.report('b1TapRequest', request_id=ident, seq=self.intent.seq, direction='left' if op==1 else 'right')
       self.intent.inflight = self.intent.seq, ident, now
-    self.state = f'{state} · L={lamps & 1} R={(lamps >> 1) & 1}' if authenticated else 'verifying board key'
-    self.publish_badge(state if authenticated else 'auth', now, lamps, pending[1] if pending and pending[0]==ack else None)
+    detail = f'relay L={outputs & 1} R={(outputs >> 1) & 1}' if version == 3 else f'L={lamps & 1} R={(lamps >> 1) & 1}'
+    self.state = f'{state} · {detail}' if authenticated else 'verifying board key'
+    self.publish_badge(state if authenticated else 'auth', now, lamps, pending[1] if pending and pending[0]==ack else None, outputs)
 
   async def enroll(self):
     # Setup is automatic while parked. Only an explicitly selected device can
@@ -291,7 +347,7 @@ class Monitor:
                            (struct.pack('<I',nonce)+seed, {'type':('s','request')}))
     await asyncio.sleep(.12)
     sid, stamp, _, _, _, version, seq = await report()
-    if sid != nonce or version!=2:
+    if sid != nonce or version not in (2, 3):
       return
     seq = (seq+1)%65536 or 1
     await self.client.call(self.attrs[CONTROL], GATT, 'WriteValue', 'aya{sv}',

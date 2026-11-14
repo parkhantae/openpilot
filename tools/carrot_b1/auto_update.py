@@ -49,6 +49,9 @@ def decision(report, target, record, mac, now):
 
 async def check(monitor, image, target, mac, session):
   import fcntl
+
+  if getattr(monitor, 'protocol_version', 2) == 3:
+    return 'relay firmware: manual bench update only'
   from .comma_update import Client
 
   def check_session():
@@ -69,6 +72,9 @@ async def check(monitor, image, target, mac, session):
       check_session()
       if not idle(monitor) or maintenance_active():
         return 'waiting for indicators'
+      meta = await asyncio.wait_for(client.read_gatt_char(META), .35)
+      if struct.unpack('<IIHBBBH', bytes(meta))[5] != 2:
+        return 'different actuator: automatic update blocked'
       report = await asyncio.wait_for(client.read_gatt_char(TRACE), .35) if TRACE in attrs else b''
       previous = read_json(RECEIPT, {})
       timestamp = time.time()  # noqa: TID251 -- retry receipts survive comma reboots

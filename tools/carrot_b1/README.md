@@ -1,5 +1,8 @@
 # Carrot B1 BLE indicator controller
 
+Porter 2-channel contact variant: see [RELAY_PORTER.md](RELAY_PORTER.md).
+It uses the separate `CarrotB1Relay/` sketch; the instructions below describe CAN hardware only.
+
 ESP32-S3 N16R8, Arduino-ESP32 3.3.5, one 500 kbit/s classic CAN bus.
 Build and upload from the repository root with Arduino CLI:
 

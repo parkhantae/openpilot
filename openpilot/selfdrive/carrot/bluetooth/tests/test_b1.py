@@ -3,6 +3,8 @@ import hashlib
 import hmac
 import struct
 
+import pytest
+
 from openpilot.selfdrive.carrot.bluetooth.b1_monitor import Intent, command, compatible, SERVICE
 
 
@@ -111,7 +113,8 @@ def test_monitor_joins_source_only_after_board_authentication(monkeypatch):
   asyncio.run(run())
 
 
-def test_enrollment_requires_one_named_service_and_proof(monkeypatch, tmp_path):
+@pytest.mark.parametrize('version', [2, 3])
+def test_enrollment_requires_one_named_service_and_proof(monkeypatch, tmp_path, version):
   import asyncio
   from types import SimpleNamespace
   from openpilot.selfdrive.carrot.bluetooth import b1_monitor as b1
@@ -133,7 +136,7 @@ def test_enrollment_requires_one_named_service_and_proof(monkeypatch, tmp_path):
     async def call(path, interface, method, sig, body):
       nonlocal seq, key
       if method=='ReadValue':
-        return (struct.pack('<IIHBBBH', 42, 1000, 0, 0, 0, 2, seq),)
+        return (struct.pack('<IIHBBBH', 42, 1000, 0, 0, 0, version, seq),)
       if path=='claim':
         key=hashlib.sha256(body[0][4:]).digest()
       else:
