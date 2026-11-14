@@ -64,7 +64,8 @@ async def exercise(client, key, check, mode='stop', direction='left'):
     if mode == 'limit':
       raise RuntimeError('No maximum-time cutoff observed; stopping')
     if mode == 'disconnect':
-      await asyncio.wait_for(client.disconnect(), .5)
+      # BlueZ may acknowledge after link teardown; output leases still expire at 350ms.
+      await asyncio.wait_for(client.disconnect(), 5.)
       disconnected = True
       await asyncio.sleep(1.)
       return {'test':'disconnect', 'disconnect_confirmed':True, 'physical_OFF_requires_user_observation':True}
