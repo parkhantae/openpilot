@@ -173,6 +173,19 @@ class Monitor:
     self.proven_at = -10.
     self.last_command = None
     self.next_discovery = 0.
+    self.last_link_report = None
+
+  def unavailable(self, detail, error=None):
+    self.state = detail
+    # Link loss makes physical output state unknown. Never renew an old ready
+    # report or claim output OFF without receiving it from the board.
+    self.source = None
+    self.publish_badge('missing', time.monotonic(), None, None)
+    report = (detail, type(error).__name__ if error is not None else None)
+    if report != self.last_link_report:
+      if self.report:
+        self.report('b1LinkState', link_state=report[0], error_type=report[1])
+      self.last_link_report = report
 
   def publish_badge(self, state, now, lamps, accepted_id, outputs=None):
     display = (state, lamps, accepted_id, outputs)
@@ -195,12 +208,16 @@ class Monitor:
     self.source = None
 
   async def release(self):
+    self.unavailable('disconnected')
     self.stop_source()
     if self.owned:
       with suppress(Exception):
         await self.client.device_action(self.owned, 'disconnect')
     self.owned = self.attrs = self.session = None
     self.intent = Intent()
+    self.sent_sequences.clear()
+    self.proven_at = -10.
+    self.last_command = None
     await self.client.close()
 
   async def discover(self, mac):
@@ -210,9 +227,12 @@ class Monitor:
       if device.get('Address', '').upper() != mac or not compatible({'name':device.get('Name'), 'uuids':device.get('UUIDs', [])}):
         continue
       if not device.get('Connected'):
-        if device.get('RSSI') is None:
+        if not device.get('Paired') and device.get('RSSI') is None:
           await self.client.scan()
           return 'scanning'
+        # BlueZ removes transient RSSI after discovery/connection. An enrolled,
+        # bonded board can still be connected using its cached device address.
+        # Waiting for RSSI here can leave it scanning forever after link loss.
         await self.client.device_action(mac, 'connect')
         self.owned = mac
         return 'connecting'
@@ -292,6 +312,7 @@ class Monitor:
       self.intent.inflight = self.intent.seq, ident, now
     detail = f'relay L={outputs & 1} R={(outputs >> 1) & 1}' if version == 3 else f'L={lamps & 1} R={(lamps >> 1) & 1}'
     self.state = f'{state} · {detail}' if authenticated else 'verifying board key'
+    self.last_link_report = None
     self.publish_badge(state if authenticated else 'auth', now, lamps, pending[1] if pending and pending[0]==ack else None, outputs)
 
   async def enroll(self):
@@ -389,7 +410,7 @@ class Monitor:
             finally:
               await self.release()
           elif registration:
-            self.state = 'waiting for radio'
+            self.unavailable('waiting for radio')
           await asyncio.sleep(.5)
           continue
         try:
@@ -404,11 +425,11 @@ class Monitor:
                 await self.exchange(registration[1])
             await asyncio.sleep(.035 if self.state != 'firmware update' else .15)
           else:
-            self.state = await self.discover(registration[0])
+            self.unavailable(await self.discover(registration[0]))
             await asyncio.sleep(.5 if self.owned else 3)
-        except Exception:
+        except Exception as exc:
           await self.release()
-          self.state = 'waiting to reconnect'
+          self.unavailable('waiting to reconnect', exc)
           await asyncio.sleep(2)
     finally:
       await self.release()
