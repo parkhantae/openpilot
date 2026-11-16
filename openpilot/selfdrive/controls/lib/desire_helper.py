@@ -24,6 +24,8 @@ from openpilot.selfdrive.controls.lib.desire_lib.lever import LEVER_REQUEST_WAIT
 # Without a model-detected crossing, a lever press this early in laneChangeFinishing is still the driver
 # re-lighting the lamp of the change that just crossed, not a request for the next one.
 STALK_QUEUE_GUARD_S = 0.3
+# A held nudge from the completed maneuver is not permission for another lane.
+NEXT_LANE_CHANGE_RELEASE_FRAMES = max(1, int(0.2 / DT_MDL))
 # An accepted App action may wait for interlocks, but must not start unexpectedly much later.
 AUTO_APP_WAIT_S = 10.0
 
@@ -78,6 +80,8 @@ class DesireHelper:
     # auto lane change
     self.auto_lane_change_enable = False
     self.next_lane_change = False
+    self.next_lane_change_release_frames = 0
+    self.next_lane_change_torque_armed = False
 
     # turn-signal lever presses (carState.*BlinkerStalkCount): an explicit request for the next lane change
     self.stalk_counts = None
@@ -597,6 +601,16 @@ class DesireHelper:
             # torque direction cond
             torque_cond = (carstate.steeringTorque > 0) if blinker_state == BLINKER_LEFT else (carstate.steeringTorque < 0)
             torque_applied = carstate.steeringPressed and torque_cond
+            if self.next_lane_change:
+              if carstate.steeringPressed:
+                self.next_lane_change_release_frames = 0
+              else:
+                self.next_lane_change_release_frames = min(self.next_lane_change_release_frames + 1,
+                                                          NEXT_LANE_CHANGE_RELEASE_FRAMES)
+                if self.next_lane_change_release_frames >= NEXT_LANE_CHANGE_RELEASE_FRAMES:
+                  self.next_lane_change_torque_armed = True
+            next_request_ready = (not self.next_lane_change or
+                                  (self.next_lane_change_torque_armed and torque_applied))
 
             # BSD config
             ignore_bsd = (self.laneChangeBsd < 0)
@@ -634,7 +648,7 @@ class DesireHelper:
               signal_ready = (not self.tesla_auto_signals or driver_enabled or
                               (self.auto_signal_request_id != 0 and
                                getattr(carstate, "autoTurnSignalReadyRequestId", 0) == self.auto_signal_request_id))
-              if start_gate and not lever_undecided and signal_ready:
+              if start_gate and not lever_undecided and signal_ready and next_request_ready:
                 if solid_line_blocked:
                   if atc_line_release or (torque_applied and not (bsd_active and block_lanechange_bsd)):
                     self.lane_change_state = LaneChangeState.laneChangeStarting
@@ -708,6 +722,10 @@ class DesireHelper:
       self.lane_change_direction = LaneChangeDirection.none
       self.lane_change_state = LaneChangeState.off
       self.blinker_ignore = True
+
+    if self.lane_change_state != LaneChangeState.preLaneChange or not self.next_lane_change:
+      self.next_lane_change_release_frames = 0
+      self.next_lane_change_torque_armed = False
 
     if self.lane_change_state in (LaneChangeState.off, LaneChangeState.preLaneChange):
       self.crossing = LaneCrossing()
