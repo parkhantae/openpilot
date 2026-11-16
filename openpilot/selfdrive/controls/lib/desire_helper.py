@@ -29,8 +29,10 @@ AUTO_APP_WAIT_S = 10.0
 
 
 class DesireHelper:
-  def __init__(self, tesla_auto_signals=False, boundary_indicator_supported=False, *, turn_completion_guard=False):
+  def __init__(self, tesla_auto_signals=False, boundary_indicator_supported=False, *, turn_completion_guard=False,
+               blinker_lever_supported=True):
     self.params = Params()
+    self.blinker_lever_supported = blinker_lever_supported
     self.boundary_indicator_supported = boundary_indicator_supported
     self.boundary_indicator_enabled = False
     self.boundary_indicator = BoundaryIndicator(
@@ -151,8 +153,11 @@ class DesireHelper:
       self.laneChangeBsd = self.params.get_int("LaneChangeBsd")
       self.laneLineCheck = self.params.get_int("LaneLineCheck")
       self.laneChangeDelay = self.params.get_float("LaneChangeDelay") * 0.1
-      self.blinkerLatchedTurn = self.params.get_int("BlinkerLatchedTurn") * CV.KPH_TO_MS
-      self.laneChangeLeverWait = self.params.get_bool("LaneChangeLeverWait")
+      # Classic Porter has lamp feedback, but no CAN-FD lever position/counts.
+      # A saved lever option must not reinterpret its lamp as a lever gesture.
+      self.blinkerLatchedTurn = (self.params.get_int("BlinkerLatchedTurn") * CV.KPH_TO_MS
+                                if self.blinker_lever_supported else 0.0)
+      self.laneChangeLeverWait = self.blinker_lever_supported and self.params.get_bool("LaneChangeLeverWait")
 
   def _check_desire_state(self, modeldata, carstate, maneuver_type):
     desire_state = modeldata.meta.desireState
