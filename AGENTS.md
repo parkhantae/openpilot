@@ -1,5 +1,41 @@
 # Repository memory
 
+- 2026-11-17: Carnival c4dcf95545dafe68 route299/14 on2b202df126 has
+  card state_tail71.409ms and per-frame threadCPUmax13.191ms in the same
+  aggregate, bounding at least58ms of that tail outside thread CPU execution.
+  Original state-publication timing reproduces radarcan inputTimeout within2ms.
+  Stock SCC retains mode1/StopReq1 through the fault, while host inactive output
+  reaches vehicle CAN at51.223s, TCS ACC_REQ clears38ms later, wheels move451ms
+  later. Production builder matches20 packets on mode/stop/acceleration/band.
+  Exact waiting operation remains unrecorded. Add bounded cruise phase wall/CPU
+  timings for Params, Bluetooth, assistant read/completion and button/total work.
+  Existing1Hz card diagnostics retain one correlated state-tail peak with frame,
+  refresh flag and receive timestamp. Eight delay-injection and three card-step
+  checks cover localization/reset/publication. Fixed recorded-input A/B matches
+  all82 scalar helper states on5974 frames, external command channels silent
+  assumed. Local331pass/2skip, six Linux-import cases await native CI. Same-device
+  stock reference12rlogs/34321SCC pairs agrees bus0/bus2 with no host longActive.
+  No historical per-call attribution, live install or physical cure proof.
+  Private evidence .analysis/archive/2026-11-17/carnival-299-14.
+
+- 2026-11-17: Evening11ee and morning11ef/f0 add23 full rlogs to retained
+  indicator audit, now426segments/55routes/477798aligned inputs. Bound invalid
+  lane-width gaps by existing150ms continuity while clearing new-admission time.
+  Recover video-confirmed11ee/6+41.508 left crossing; external replay324->325,
+  all existing starts/sides/sources/ends exact. Remove duplicate source adjacency
+  lookup for fresh already-admitted manual edges. Native Kick samples time after
+  reading worker to avoid concurrent publication appearing future-dated, and
+  records one bounded request-end diagnostic. Nine baseline regressions reproduced;
+  96 source-loop comparisons/768 ordinary packets exact; local1249pass/9skip.
+  Reject rearm steering accumulation (new parked-car avoidance indications),
+  invalid-width admission accumulation (11ee/9), and broader2s native tail (five
+  historical requests suppressed in fixed-input counterfactual). Normal-completion
+  minimum retained; two actual f0 short outputs each report two lamp pulses.
+  Unknown-left11f0/5, close opposite turn11f0/8 and other intersection misses remain.
+  Historical11ef/1 handshake cancellation cause and11ee/0 startup admission remain
+  unproven. No vehicle writes/physical cure proof. Details in existing replay doc
+  and private .analysis/scratch/2026-11-17-indicator-fixes. Native/full CI follows.
+
 - 2026-11-16: Owner requests at least two visible flashes for manual CAN-FD
   indication. Panda/SPAS manual lane/turn normal completion now has a two-second
   minimum, bound to the first submitted SPAS frame and original model request.
