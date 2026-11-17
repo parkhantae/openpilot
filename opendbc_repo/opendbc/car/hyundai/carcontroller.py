@@ -779,7 +779,9 @@ class CarController(CarControllerBase):
         sample_age_s=(sample_clock - timestamp) * 1e-9 if fresh and sample_clock is not None else float("inf"),
         tx_now_s=sample_clock * 1e-9 if apply_now_nanos is not None else None,
         stock_enabled=CS.out.cruiseState.enabled, gas_pressed=CS.out.gasPressed,
-        pedal_only=not (CC.enabled or getattr(CC, "latActive", False)),
+        # Only a fresh driver accelerator release may authorize automatic SET.
+        # Never fall back to the old timed SET while lateral control is active.
+        pedal_only=True,
         configured=main_set_enabled and main_set_profile_ready)
       config_status = (main_set_enabled, main_set_profile_ready, self.porter_main_set.single_press)
       if config_status != getattr(self, "porter_main_config_status", None):
