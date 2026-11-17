@@ -746,7 +746,8 @@ class CarController(CarControllerBase):
         blocked=blocked or cancel_busy or pair_busy, manual=manual, cancel=False,
         acceleration_ready=getattr(CC.hudControl, "porterAccelReady", False),
         press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL,
-        tx_now_s=button_clock * 1e-9 if button_clock is not None else None)
+        tx_now_s=button_clock * 1e-9 if button_clock is not None else None,
+        retry_limit=self.button_spam3)
       porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
                        self.porter_buttons.acks, self.porter_buttons.timeouts)
       if porter_status != getattr(self, "porter_button_status", None):
