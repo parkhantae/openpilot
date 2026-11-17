@@ -369,6 +369,8 @@ class PorterCruiseButtons:
     self.timeouts = 0
     self.consecutive_timeouts = 0
     self.max_consecutive_timeouts = 3
+    self.retry_attempts = 0
+    self.retry_exhausted = False
     self.ack_timeout = 0.5
     self.retry_backoff = 3.0
 
@@ -385,7 +387,7 @@ class PorterCruiseButtons:
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
              manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3, acceleration_ready=False,
-             tx_now_s=None):
+             tx_now_s=None, retry_limit=None):
     if frame_key != self.sample_frame:
       self.sample_frame = frame_key
       self.sample_seen = now
@@ -431,6 +433,8 @@ class PorterCruiseButtons:
       self.pending_release = False
       self.fault = False
       self.consecutive_timeouts = 0
+      self.retry_attempts = 0
+      self.retry_exhausted = False
       self.cancel_seen = False
       self.next_request = now + 0.3
       self.status = "manual"
@@ -451,6 +455,8 @@ class PorterCruiseButtons:
       self.accel_since = None
       self.fault = False
       self.consecutive_timeouts = 0
+      self.retry_attempts = 0
+      self.retry_exhausted = False
       self.next_request = now + 0.3
       self.status = "inactive"
       return self._interrupt(fresh)
@@ -485,6 +491,9 @@ class PorterCruiseButtons:
     if self.fault:
       self.status = "fault"
       return None
+    if self.retry_exhausted:
+      self.status = "retry_exhausted"
+      return None
     if self.phase != "idle":
       change = current - self.baseline
       if change and change * self.direction < 0:
@@ -495,6 +504,8 @@ class PorterCruiseButtons:
         if not self.acknowledged:
           self.acks += 1
           self.consecutive_timeouts = 0
+          self.retry_attempts = 0
+          self.retry_exhausted = False
           # Remember only a positively acknowledged request in this controller
           # session. Manual/disabled paths cannot learn from physical buttons.
           # Attribute a late ACK to the slot used to start this request, even
@@ -504,6 +515,14 @@ class PorterCruiseButtons:
       if now - self.started >= self.ack_timeout and not self.acknowledged:
         self.timeouts += 1
         self.consecutive_timeouts += 1
+        if retry_limit is not None:
+          # A fresh unanswered speed request consumes one bounded attempt.
+          # Preserve the existing release obligation and all OEM safety gates.
+          self.retry_attempts += 1
+          if self.retry_attempts > min(2, max(0, int(retry_limit))):
+            self.retry_exhausted = True
+            self.status = "retry_exhausted"
+            return self._interrupt(fresh)
         # Do not spend a full failed group repeating a slot already unanswered.
         # Keep the existing quiet periods and three-miss backoff; only the
         # next request's timing changes, never the successful-slot memory.
