@@ -548,6 +548,8 @@ Porter GAP1–4 range from 40 to 300 in steps of 5; 50=0.50s. Initial defaults a
 
 With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. After 0.5s of confirmed gap recovery, raise the button target by at most 1.8km/h per second. Lower urgent targets are not delayed; missing or invalid lead inputs inhibit recovery. Sub-30km/h cancellation and transmission limits remain.
 
+On Porter conventional cruise, a valid stock OFF followed by ON clears the preceding session’s GAP deceleration/recovery state and reevaluates current lead, planner and navigation limits. A CAN gap during continuous stock ON or an invalid OFF sample does not clear protection. Saved GAP values and transmission/cancel limits remain.
+
 The 7m distance floor, existing button/cancel limits and model-stop/navigation targets remain. GAP or lookahead changes do not remove deceleration requested by a model stop judgment. This does not guarantee physical braking, stopping, actual spacing or stock button acceptance.
 
 The current profile does not infer MAIN ON or automatic SET permission from AutoEngage=2. Confirm MAIN standby, the automatic SET option and a fresh pedal cycle.

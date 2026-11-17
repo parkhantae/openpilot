@@ -1,0 +1,21 @@
+--- a/KO-포터-전용-GAP-사용.md
++++ b/KO-포터-전용-GAP-사용.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="e1f234c3a05c844b06ffe0d600491c374a8f9b5c08c13b736f92f33d7371ec82" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.031706+00:00" -->
+@@ -34,0 +35 @@
++포터 일반 크루즈에서 유효한 순정 OFF 뒤 ON이 확인되면 이전 주행의 GAP 감속·회복 상태를 초기화하고 현재 앞차·계획·내비 조건으로 다시 판단합니다. 순정 ON이 계속된 상태의 CAN 공백이나 무효 OFF 신호는 초기화 근거로 쓰지 않습니다. GAP 저장값과 송신·취소 한도는 유지합니다.
+--- a/EN-Porter-dedicated-GAP.md
++++ b/EN-Porter-dedicated-GAP.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="e1f234c3a05c844b06ffe0d600491c374a8f9b5c08c13b736f92f33d7371ec82" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.036473+00:00" -->
+@@ -34,0 +35 @@
++On Porter conventional cruise, a valid stock OFF followed by ON clears the preceding session’s GAP deceleration/recovery state and reevaluates current lead, planner and navigation limits. A CAN gap during continuous stock ON or an invalid OFF sample does not clear protection. Saved GAP values and transmission/cancel limits remain.
+--- a/ZH-波特-专用车距.md
++++ b/ZH-波特-专用车距.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="e1f234c3a05c844b06ffe0d600491c374a8f9b5c08c13b736f92f33d7371ec82" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.040320+00:00" -->
+@@ -34,0 +35 @@
++波特普通巡航在有效原厂关闭后确认重新开启时，清除上一行程的GAP减速与恢复状态，并按当前前车、规划与导航限制重新判断。原厂巡航持续开启期间的CAN间断或无效关闭样本不清除保护。保留GAP保存值及发送、取消限制。

@@ -115,7 +115,7 @@ class TestPorterMessagePath(unittest.TestCase):
     self.controller = NS(porter_cancel_buttons=PorterCancelButtons(), porter_main_set=PorterMainSet(),
                          porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
                          porter_buttons=self.buttons_class(), speed_from_pcm=0,
-                         button_spam1=8, button_spam2=30)
+                         button_spam1=8, button_spam2=30, button_spam3=2)
     self.cc = NS(enabled=True, cruiseControl=NS(cancel=False, resume=False),
                  hudControl=NS(setSpeed=55/3.6))
     self.cs = NS(is_metric=True, cruise_buttons=[0], main_buttons=[0],
@@ -374,6 +374,8 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.main_buttons = [0]
     outputs = []
     for frame in range(1, 60):
+      # A fresh pedal release is required even with lateral control active.
+      self.cs.out.gasPressed = 20 <= frame < 51
       outputs.extend((frame, value) for value in self.tick(frame))
     self.assertEqual(outputs[:7], [(51, 2), (52, 2), (53, 2), (54, 2), (55, 2), (56, 2), (57, 0)])
     self.cs.out.brakePressed = True

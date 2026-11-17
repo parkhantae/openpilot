@@ -131,6 +131,7 @@ class PorterLeadTracker:
   """Keep brief radar dropouts from releasing a conventional-cruise lead cap."""
   def __init__(self, hold_seconds=PORTER_LEAD_HOLD_S):
     self.hold_seconds = hold_seconds
+    self.stock_enabled = None
     self.adaptive_tracker = None
     self.last_seen = None
     self.last_update = None
@@ -142,12 +143,26 @@ class PorterLeadTracker:
     self.decel_cap_time = None
     self.recovery_ready = False
 
+  def _reset_tracking(self):
+    stock_enabled = self.stock_enabled
+    self.__init__(self.hold_seconds)
+    self.stock_enabled = stock_enabled
+
+  def observe_stock_cruise(self, enabled, *, valid):
+    """Clear the preceding session only after valid stock OFF then ON."""
+    if not valid:
+      return
+    previous = self.stock_enabled
+    self.stock_enabled = bool(enabled)
+    if enabled and previous is False:
+      self._reset_tracking()
+
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
              reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False):
     if adaptive:
       if self.adaptive_tracker is None:
-        self.__init__(self.hold_seconds)
+        self._reset_tracking()
         self.adaptive_tracker = PorterAdaptiveLeadTracker(self.hold_seconds)
       result = self.adaptive_tracker.update(
         now, target_kph, stock_target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level,
@@ -155,7 +170,7 @@ class PorterLeadTracker:
       self.recovery_ready = self.adaptive_tracker.recovery_ready
       return result
     if self.adaptive_tracker is not None:
-      self.__init__(self.hold_seconds)
+      self._reset_tracking()
     self.recovery_ready = False
     if (self.last_update is not None and
         (not math.isfinite(now) or now < self.last_update or now - self.last_update > self.hold_seconds)):

@@ -410,6 +410,13 @@ class Controls:
       hudControl.naviEventSpeed = navi_event_speed
 
     lp = self.sm['longitudinalPlan']
+    if (self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and self.CP.pcmCruise and
+        not self.CP.openpilotLongitudinalControl):
+      # Observe OFF even while control is disengaged. An RX dropout is not a
+      # confirmed OFF and must retain the in-drive gap protection.
+      self.porter_lead_tracker.observe_stock_cruise(
+        CS.cruiseState.enabled, valid=self.sm.all_checks(['carState']) and
+        CS.canValid and not CS.canTimeout and not CS.accFaulted)
     if self.CP.pcmCruise:
       speed_from_pcm = self.params.get_int("SpeedFromPCM")
       pcm_min_kph = pcm_cruise_min_kph(self.CP)

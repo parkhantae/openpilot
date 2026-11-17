@@ -177,3 +177,14 @@ with `git apply --unidiff-zero`, and regenerate/validate. Dedicated GAP ON uses
 own-speed distance plus lead speed/distance error and bounded target recovery;
 OFF retains legacy following. This is staged branch documentation, not a live
 publication to the upstream Wiki.
+
+## Porter GAP state on stock-cruise restart
+
+`porter-gap-restart.patch` adds Korean, English and Chinese `PorterGapUse`
+MANUAL explanations for clearing the preceding session's GAP state after valid
+stock OFF followed by ON. Current lead/navigation limits still apply; continuous
+ON CAN gaps and invalid OFF samples retain protection. Generate fresh pages,
+apply `porter-dedicated-gap.patch`, `porter-gap-touch.patch`,
+`porter-adaptive-gap.patch`, then this patch with `git apply --unidiff-zero`.
+Regenerate and validate. This staged fork-specific patch is not published to the
+upstream live Wiki.
