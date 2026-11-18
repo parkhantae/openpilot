@@ -1,58 +1,138 @@
---- a/KO-포터-목표-30km-h-미만-크루즈-취소.md
-+++ b/KO-포터-목표-30km-h-미만-크루즈-취소.md
-@@ -26,7 +26,25 @@
- <!-- CARROT:AUTO:END PorterAutoCancelBelow30 -->
- 
- <!-- CARROT:MANUAL:BEGIN PorterAutoCancelBelow30 -->
+--- a/KO-포터-저속-목표-시-크루즈-취소.md
++++ b/KO-포터-저속-목표-시-크루즈-취소.md
+@@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="1c394ee9e42ddd08018fc4fb967f93b915b0ec506e6ca558a057b547c05f5e7a" reviewed-at="2026-11-06T06:27:21+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="bffc2fe914e07abae7de7352e6a22529220a371fb464c9bd9a4ae7718a9682b8" reviewed-at="2026-11-18T01:10:29.451113+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
-+양수인 미래 계획 속도만 30km/h 미만이면 버튼 감속은 유지하되, 현재 계획 속도도 30km/h 미만일 때 취소를 확인합니다. 명시적인 계획 0, 선택·내비·근접 앞차의 낮은 목표는 기존 조건을 유지합니다. 확인 시간은 0.3초이며, 미래의 낮은 목표는 자동 SET을 계속 막습니다. 실제 차량속도 기준이나 자동 제동 기능은 아닙니다.
++취소 기준속도 설정 미만의 목표를 0.3초 확인한 뒤 순정 OFF까지 취소를 요청합니다. 양수 미래 계획만 낮으면 버튼 감속을 유지하고 현재 계획도 기준 미만인지 확인합니다. 계획 0·선택·내비·근접 앞차 목표도 판단합니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 사용
 +
-+포터2 EV와 SpeedFromPCM=0에서 사용합니다. 자동 SET은 별도 설정이며 이 설정의 OFF 전환만으로 크루즈를 다시 켜지 않습니다.
++포터2 EV의 SpeedFromPCM=0에서 ON일 때 사용합니다. 자동 SET 목표는 취소 기준과 기존 최저 목표 중 높은 값 이상이어야 하며 OFF 전환은 크루즈를 다시 켜지 않습니다.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+취소는 자동 제동·정차가 아닙니다. TX echo는 순정 차량의 취소 수락을 뜻하지 않으므로 실제 OFF 응답을 확인해야 합니다.
++목표속도 기준이며 실제 차량속도 기준이나 자동 제동·정차 기능이 아닙니다. 순정 최저 설정속도와 버튼·Panda 송신 한도는 바뀌지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterAutoCancelBelow30 -->
- 
- <!-- CARROT:SETTING:END PorterAutoCancelBelow30 -->
---- a/EN-Porter-cancel-cruise-below-30-km-h-target.md
-+++ b/EN-Porter-cancel-cruise-below-30-km-h-target.md
-@@ -26,7 +26,25 @@
- <!-- CARROT:AUTO:END PorterAutoCancelBelow30 -->
- 
- <!-- CARROT:MANUAL:BEGIN PorterAutoCancelBelow30 -->
+--- a/EN-Porter-cancel-cruise-at-low-target.md
++++ b/EN-Porter-cancel-cruise-at-low-target.md
+@@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="1c394ee9e42ddd08018fc4fb967f93b915b0ec506e6ca558a057b547c05f5e7a" reviewed-at="2026-11-06T06:27:21+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="bffc2fe914e07abae7de7352e6a22529220a371fb464c9bd9a4ae7718a9682b8" reviewed-at="2026-11-18T01:10:29.454785+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+A positive sub-30 future plan keeps button deceleration, while cancellation waits for a sub-30 current planned speed too. Explicit zero-plan, selected, navigation and close-lead low targets retain their existing conditions. Confirmation remains 0.3s; a low forecast still blocks automatic SET. This is not a measured-vehicle-speed threshold or automatic braking.
++A target strictly below the configured cancel speed for 0.3s requests cancellation until stock OFF. A positive low future plan retains button deceleration and also requires a low current plan. Zero-plan, selected, navigation and close-lead targets also apply.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Use for Porter II EV with SpeedFromPCM=0. Automatic SET is a separate setting; switching this setting OFF does not itself re-engage cruise.
++Enable for Porter II EV with SpeedFromPCM=0. Automatic SET requires a target at least the higher of the cancel threshold and its existing minimum; switching OFF does not re-engage cruise.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Cancellation does not brake or stop the vehicle. TX echo does not prove ECU acceptance; actual stock OFF feedback must be checked.
++This uses target speed rather than measured vehicle speed and does not brake or stop. OEM minimum set speed and button/Panda transmission limits remain.
 +<!-- CARROT:SECTION:END REFERENCE -->
- <!-- CARROT:MANUAL:END PorterAutoCancelBelow30 -->
- 
- <!-- CARROT:SETTING:END PorterAutoCancelBelow30 -->
+--- a/ZH-波特-低目标速度时取消巡航.md
++++ b/ZH-波特-低目标速度时取消巡航.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="bffc2fe914e07abae7de7352e6a22529220a371fb464c9bd9a4ae7718a9682b8" reviewed-at="2026-11-18T01:10:29.458579+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++目标持续0.3秒严格低于取消阈值后请求取消直至原厂巡航关闭。仅正值未来计划较低时保持按钮减速，并要求当前计划也低于阈值。零速计划、选择速度、导航及近距离前车目标同样参与判断。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++适用于波特II EV且SpeedFromPCM=0。自动SET目标须不低于取消阈值与原最低目标中的较大值；关闭此功能不会重新启动巡航。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++依据目标速度而非实际车速，不提供制动或停车。原厂最低设定速度及按钮/Panda发送限制保持不变。
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/KO-포터-크루즈-취소-기준속도.md
++++ b/KO-포터-크루즈-취소-기준속도.md
+@@ -31 +31,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="033ec4af4fb890e224f40c575ec2ee3f9a2f8fb13682d9301d2eae4293db3bc7" reviewed-at="2026-11-18T01:10:29.462053+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++높이면 더 높은 목표에서 취소하고 낮추면 더 낮은 목표까지 기다립니다. 같은 기준속도의 목표는 취소하지 않으며 미래 계획과 현재 계획의 확인 구분을 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++포터 전용의 저속 목표 취소를 켠 상태에서 조절합니다. 변경은 즉시 반영하고 대기 확인 시간을 다시 시작하지만 이미 시작된 취소는 순정 OFF까지 유지합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++목표속도 기준이며 실제 차량속도 기준이나 자동 제동·정차 기능이 아닙니다. 순정 최저 설정속도와 버튼·Panda 송신 한도는 바뀌지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/EN-Porter-cruise-cancel-threshold.md
++++ b/EN-Porter-cruise-cancel-threshold.md
+@@ -31 +31,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="033ec4af4fb890e224f40c575ec2ee3f9a2f8fb13682d9301d2eae4293db3bc7" reviewed-at="2026-11-18T01:10:29.465555+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Higher values cancel at higher targets; lower values wait for lower targets. A target equal to the threshold does not cancel. Future and current plan confirmation remain separate.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Adjust with Porter low-target cancellation enabled. Changes apply immediately and restart pending confirmation; an active cancellation continues until stock OFF.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++This uses target speed rather than measured vehicle speed and does not brake or stop. OEM minimum set speed and button/Panda transmission limits remain.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/ZH-波特-巡航取消阈值.md
++++ b/ZH-波特-巡航取消阈值.md
+@@ -31 +31,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="033ec4af4fb890e224f40c575ec2ee3f9a2f8fb13682d9301d2eae4293db3bc7" reviewed-at="2026-11-18T01:10:29.469627+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++增大在更高目标速度取消，减小等待更低目标速度。目标等于阈值时不取消，并保持未来计划与当前计划的确认区分。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++开启波特低目标速度取消后调整。立即生效并重新计时待确认状态，已开始的取消保持至原厂巡航关闭。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++依据目标速度而非实际车速，不提供制动或停车。原厂最低设定速度及按钮/Panda发送限制保持不变。
++<!-- CARROT:SECTION:END REFERENCE -->

@@ -102,6 +102,29 @@ def test_porter_dedicated_gap_controls_are_registered_and_editable_below_one_sec
   assert clamp_numeric(60,item) == 60
 
 
+def test_porter_cancel_speed_menu_and_persistent_web_round_trip(settings, tmp_path, monkeypatch):
+  from openpilot.common.params import Params
+  from openpilot.selfdrive.carrot.server.services import params as service
+
+  _, by_name, _ = group_index(settings)
+  item = by_name['PorterAutoCancelSpeed']
+  categories = build_menu_categories(settings, by_name)
+  section = next(section for category in categories for group in category['groups'] for section in group['sections']
+                 if 'PorterAutoCancelBelow30' in section['items'])
+  assert section['items'].index('PorterAutoCancelSpeed') == section['items'].index('PorterAutoCancelBelow30') + 1
+  assert (item['min'], item['max'], item['default'], item['unit']) == (10, 60, 30, 1)
+  assert (item['control'], item['display_unit']) == ('slider', 'speedKph')
+  store = Params(str(tmp_path / 'params'))
+  assert store.get_default_value('PorterAutoCancelSpeed') == 30
+  monkeypatch.setattr(service, 'Params', lambda: store)
+  monkeypatch.setattr(service, 'HAS_PARAMS', True)
+  for requested, expected in ((25, 25), (40, 40), (10, 10), (60, 60)):
+    service.set_param_value('PorterAutoCancelSpeed', requested, item)
+    assert store.get_int('PorterAutoCancelSpeed') == expected
+    assert service.get_param_values(['PorterAutoCancelSpeed']) == {'PorterAutoCancelSpeed': expected}
+    assert Params(str(tmp_path / 'params')).get_int('PorterAutoCancelSpeed') == expected
+
+
 def test_rear_camera_hold_uses_meter_values_and_persistent_default(settings, params):
   hold = next(p for p in params if p["name"] == "AutoNaviRearCameraHoldDistance")
   assert (hold["min"], hold["max"], hold["default"], hold["unit"]) == (0, 300, 100, 10)

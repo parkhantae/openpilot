@@ -266,6 +266,8 @@ In confirmed MAIN standby, each fresh gas press of at least 0.1s followed by rel
 
 Initial target, dashboard and both front-left/rear-right wheel speeds must be 30–160km/h, with `SpeedFromPCM=0`, drive gear, 0.5s MAIN settling and valid vehicle/planner/radar inputs. Dashboard speed alone or MAIN OFF cannot authorize a start. Releases at low speed or invalid conditions require a new pedal cycle after recovery; they are never executed later.
 
+With low-target cancellation ON, automatic SET requires an initial target at least the higher of `PorterAutoCancelSpeed` and 30km/h. Lowering the cancel threshold does not lower the OEM set-speed floor or Panda startup speed checks.
+
 Brake, CANCEL, MAIN OFF, renewed gas, driver buttons, lost eligibility or cancellation interrupt remaining input. Cancellation takes priority. Ordinary RES+/SET− speed matching resumes after the automatic press/release. Waiting without a pedal cue cannot start cruise.
 
 Each qualified release permits at most one press. No ECU response does not repeat that cue. Another attempt requires at least three seconds after the last TX and a fresh pedal cycle. Retry-blocked cues are discarded. The first request opportunity expires 0.1s after release; brake/CANCEL also require MAIN ON and a new qualifying pedal cycle.

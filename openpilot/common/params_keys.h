@@ -412,6 +412,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     {"PorterAutoSetMain", {PERSISTENT, BOOL, "0"}},
     {"PorterAutoCancelBelow30", {PERSISTENT, BOOL, "0"}},
+    {"PorterAutoCancelSpeed", {PERSISTENT, INT, "30"}},
     {"PorterGap1", {PERSISTENT, INT, "100"}},
     {"PorterGap2", {PERSISTENT, INT, "130"}},
     {"PorterGap3", {PERSISTENT, INT, "160"}},

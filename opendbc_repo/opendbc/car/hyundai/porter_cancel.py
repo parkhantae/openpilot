@@ -4,9 +4,18 @@ import math
 from opendbc.car.hyundai.porter import PORTER_CRUISE_MAX_KPH, PORTER_LEAD_REACTION_S, porter_lead_target_kph
 
 
+def porter_cancel_speed_kph(value=30):
+  """Missing or invalid stored values retain the original cancellation speed."""
+  try:
+    speed = float(value)
+  except (TypeError, ValueError, OverflowError):
+    return 30.
+  return speed if math.isfinite(speed) and 10 <= speed <= 60 else 30.
+
+
 def porter_cancel_target(planner, selected, navigation, ego, distance, relative, gap, *,
                          lead_visible=False, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S,
-                         planner_now=None):
+                         planner_now=None, cancel_speed=30):
   # Zero navigation/selected values mean unavailable; zero planner speed is a stop.
   candidates = [v for v in (selected, navigation) if v is not None and math.isfinite(v) and 0 < v <= 250]
   if planner is not None and math.isfinite(planner) and 0 <= planner <= 250:
@@ -23,7 +32,8 @@ def porter_cancel_target(planner, selected, navigation, ego, distance, relative,
     # Reuse the existing selected-lead constraint without changing its 30 floor.
     cap = porter_lead_target_kph(PORTER_CRUISE_MAX_KPH, ego, distance, relative, gap,
                                gap_time_s=gap_time_s, reaction_s=reaction_s)
-    if cap <= 30 and lead_speed < 30:
+    threshold = porter_cancel_speed_kph(cancel_speed)
+    if cap <= max(30., threshold) and lead_speed < threshold:
       candidates.append(lead_speed)
   return min(candidates) if candidates else None
 
@@ -33,8 +43,13 @@ class PorterLowSpeedCancel:
     self.since = None
     self.last_time = None
     self.active = False
+    self.cancel_speed = 30.
 
-  def update(self, now, target, *, eligible, cruise_enabled):
+  def update(self, now, target, *, eligible, cruise_enabled, cancel_speed=30):
+    threshold = porter_cancel_speed_kph(cancel_speed)
+    if threshold != self.cancel_speed:
+      self.since = None
+      self.cancel_speed = threshold
     clock_ok = math.isfinite(now) and (self.last_time is None or 0 <= now - self.last_time <= .1 + 1e-9)
     self.last_time = now if math.isfinite(now) else None
     if not eligible or not cruise_enabled:
@@ -45,7 +60,7 @@ class PorterLowSpeedCancel:
     if not clock_ok:
       self.since = None
       return False
-    below = target is not None and math.isfinite(target) and 0 <= target < 30 - 1e-5
+    below = target is not None and math.isfinite(target) and 0 <= target < threshold - 1e-5
     if not below:
       self.since = None
       return False

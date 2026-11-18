@@ -15,7 +15,7 @@ from collections import deque
 
 from opendbc.car.car_helpers import interfaces
 from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph, porter_auto_set_speed_valid, porter_lead_reaction_s
-from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
+from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target, porter_cancel_speed_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -110,6 +110,9 @@ class Controls:
     self.porter_low_speed_cancel = PorterLowSpeedCancel()
 
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
+    cancel_enabled = self.params.get_bool("PorterAutoCancelBelow30")
+    cancel_speed = porter_cancel_speed_kph(self.params.get_int("PorterAutoCancelSpeed"))
+    auto_set_min = max(30., cancel_speed) if cancel_enabled else 30.
     auto_set = (self.params.get_bool("PorterAutoSetMain") and
                 any(c.safetyParam in (9217, 11265, 15361, 15489, 25601, 58369, 60417) for c in getattr(self.CP, 'safetyConfigs', ())))
     # MAIN standby plus a fresh pedal release may request stock SET even when
@@ -137,28 +140,28 @@ class Controls:
                                     if self.sm.all_checks(['longitudinalPlan']) else None)}
       # Auto SET must still respect the full forecast; postponing CANCEL must
       # never authorize re-engagement into an anticipated low-speed stop.
-      target = porter_cancel_target(*target_args, **target_options)
+      target = porter_cancel_target(*target_args, **target_options, cancel_speed=auto_set_min)
       ratio = CS.vCluRatio if getattr(CS, 'vCluRatio', 0) > .5 else 1.
       now_kph = getattr(self.sm['longitudinalPlan'], 'vTargetNow', None)
       if now_kph is not None:
         now_kph = now_kph * CV.MS_TO_KPH / ratio
-      cancel_target = porter_cancel_target(*target_args, **target_options, planner_now=now_kph)
+      cancel_target = porter_cancel_target(*target_args, **target_options, planner_now=now_kph, cancel_speed=cancel_speed)
     previous = self.porter_low_speed_cancel.active
     if self.porter_low_speed_cancel.update(self.sm.frame * DT_CTRL, cancel_target,
-                                           eligible=eligible and CC.enabled and self.params.get_bool("PorterAutoCancelBelow30"),
-                                           cruise_enabled=CS.cruiseState.enabled):
+                                           eligible=eligible and CC.enabled and cancel_enabled,
+                                           cruise_enabled=CS.cruiseState.enabled, cancel_speed=cancel_speed):
       CC.cruiseControl.cancel = True
       CC.cruiseControl.resume = False
     if (eligible and auto_set and
         self.sm.all_checks(['longitudinalPlan', 'radarState']) and
         CS.cruiseState.available and not CS.cruiseState.enabled and
-        target is not None and 30 - 1e-5 <= target <= 160 and porter_auto_set_speed_valid(self.CP, CS) and
+        target is not None and auto_set_min - 1e-5 <= target <= 160 and porter_auto_set_speed_valid(self.CP, CS) and
         not CC.cruiseControl.cancel):
       # Controller and Panda independently check MAIN/pedal authority and speed.
       CC.cruiseControl.resume = True
     if previous != self.porter_low_speed_cancel.active:
-      cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s forecast=%s",
-                    self.porter_low_speed_cancel.active, cancel_target, target)
+      cloudlog.info("PorterAutoCancelBelow30: active=%s target=%s forecast=%s threshold=%.0f",
+                    self.porter_low_speed_cancel.active, cancel_target, target, cancel_speed)
 
   def update(self):
     self.sm.update(15)

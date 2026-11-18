@@ -4,7 +4,7 @@ from types import SimpleNamespace as NS
 import unittest
 
 from opendbc.car.hyundai.porter import porter_gap_time_s, porter_auto_set_speed_valid, porter_lead_reaction_s
-from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target
+from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target, porter_cancel_speed_kph
 
 
 class TestPorterCancelTarget(unittest.TestCase):
@@ -33,8 +33,32 @@ class TestPorterLowSpeedCancel(unittest.TestCase):
   def setUp(self):
     self.c = PorterLowSpeedCancel()
 
-  def step(self, tick, target=20, eligible=True, enabled=True):
-    return self.c.update(tick * .01, target, eligible=eligible, cruise_enabled=enabled)
+  def step(self, tick, target=20, eligible=True, enabled=True, speed=30):
+    return self.c.update(tick * .01, target, eligible=eligible, cruise_enabled=enabled, cancel_speed=speed)
+
+  def test_configurable_strict_boundary_and_unchanged_confirmation(self):
+    for speed in (10, 20, 25, 30, 40, 60):
+      with self.subTest(speed=speed):
+        self.setUp()
+        for tick in range(40):
+          self.assertFalse(self.step(tick, target=speed, speed=speed))
+        for tick in range(40, 70):
+          self.assertFalse(self.step(tick, target=speed - .1, speed=speed))
+        self.assertTrue(self.step(70, target=speed - .1, speed=speed))
+
+  def test_live_threshold_change_restarts_pending_but_does_not_revoke_active_cancel(self):
+    for tick in range(20):
+      self.assertFalse(self.step(tick))
+    for tick in range(20, 50):
+      self.assertFalse(self.step(tick, speed=40))
+    self.assertTrue(self.step(50, speed=40))
+    self.assertTrue(self.step(51, target=50, speed=10))
+    self.assertFalse(self.step(52, target=50, speed=10, enabled=False))
+
+  def test_invalid_configuration_retains_original_thirty_threshold(self):
+    for value in (None, 0, -1, 9, 61, float('nan'), float('inf'), 'invalid'):
+      with self.subTest(value=value):
+        self.assertEqual(porter_cancel_speed_kph(value), 30)
 
   def test_continuous_confirmation_latches_until_oem_off_then_rearms(self):
     for tick in range(30):
@@ -76,6 +100,7 @@ class TestPorterCancelPublish(unittest.TestCase):
     env = dict(porter_auto_set_speed_valid=porter_auto_set_speed_valid, porter_gap_time_s=porter_gap_time_s,
                porter_lead_reaction_s=porter_lead_reaction_s,
                PorterLowSpeedCancel=PorterLowSpeedCancel, porter_cancel_target=porter_cancel_target,
+               porter_cancel_speed_kph=porter_cancel_speed_kph,
                DT_CTRL=.01, CV=NS(MS_TO_KPH=3.6), cloudlog=NS(info=lambda *args: None))
     exec(compile(ast.Module(body=[fn], type_ignores=[]), 'actual_porter_cancel_adapter', 'exec'), env)
     cls.function = staticmethod(env['update_porter_cancel'])
@@ -141,6 +166,51 @@ class TestPorterCancelPublish(unittest.TestCase):
     self.cs.vEgo = 2
     self.run_frames(planner=50)
     self.assertFalse(self.cc.cruiseControl.cancel)
+
+  def test_live_setting_controls_current_plan_confirmation(self):
+    self.values.update(PorterAutoCancelBelow30=True, PorterAutoCancelSpeed=25)
+    self.sm['longitudinalPlan'].vTargetNow = 27 / 3.6
+    self.run_frames(planner=20)
+    self.assertFalse(self.cc.cruiseControl.cancel)
+    self.values['PorterAutoCancelSpeed'] = 40
+    self.sm['longitudinalPlan'].vTargetNow = 45 / 3.6
+    self.run_frames(planner=35, start=40)
+    self.assertFalse(self.cc.cruiseControl.cancel)
+    self.sm['longitudinalPlan'].vTargetNow = 39 / 3.6
+    self.run_frames(planner=35, start=80)
+    self.assertTrue(self.cc.cruiseControl.cancel)
+
+  def test_custom_threshold_applies_to_close_lead_without_canceling_for_distant_lead(self):
+    for distance, expected in ((12, True), (100, False)):
+      self.setUp()
+      self.values.update(PorterAutoCancelBelow30=True, PorterAutoCancelSpeed=40)
+      self.cs.vEgo = 40 / 3.6
+      self.sm['radarState'].leadOne = NS(status=True, dRel=distance, vRel=-5 / 3.6)
+      self.run_frames(planner=50)
+      self.assertEqual(self.cc.cruiseControl.cancel, expected)
+
+  def test_auto_set_respects_enabled_cancel_threshold_and_original_thirty_floor(self):
+    for enabled, threshold, target, expected in (
+      (True, 40, 35, False), (True, 40, 40, True),
+      (False, 40, 35, True), (True, 20, 29, False), (True, 20, 30, True)):
+      self.setUp()
+      self.values.update(PorterAutoSetMain=True, PorterAutoCancelBelow30=enabled, PorterAutoCancelSpeed=threshold)
+      self.obj.CP.safetyConfigs = [NS(safetyParam=9217)]
+      self.cs.cruiseState.enabled, self.cs.cruiseState.available = False, True
+      self.cs.vEgo = 45 / 3.6
+      self.cc.cruiseControl.resume = False
+      self.run_frames(planner=target)
+      self.assertEqual(self.cc.cruiseControl.resume, expected, (enabled, threshold, target))
+
+    self.setUp()
+    self.values.update(PorterAutoSetMain=True, PorterAutoCancelBelow30=True, PorterAutoCancelSpeed=40)
+    self.obj.CP.safetyConfigs = [NS(safetyParam=9217)]
+    self.cs.cruiseState.enabled, self.cs.cruiseState.available = False, True
+    self.cs.vEgo = 40 / 3.6
+    self.sm['radarState'].leadOne = NS(status=True, dRel=12, vRel=-5 / 3.6)
+    self.cc.cruiseControl.resume = False
+    self.run_frames(planner=50)
+    self.assertFalse(self.cc.cruiseControl.resume)
 
   def test_applied_planner_gap_drives_cancellation_with_the_speed_path(self):
     for applied, fresh, expected in ((1., True, False), (2., True, True), (2., False, False)):

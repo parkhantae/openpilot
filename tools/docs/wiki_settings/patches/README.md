@@ -91,11 +91,14 @@ git apply --unidiff-zero /absolute/path/to/rav4-radar-display.patch
 Only the matching manual regions are edited. Validate both pages and regenerate
 the catalog before publishing, following the authoring guide.
 
-## Porter below-30 target cancellation
+## Porter configurable low-target cancellation
 
-`porter-auto-cancel-below30.patch` supplies Korean/English manual regions for
-`PorterAutoCancelBelow30` on c3-pht-porter. Generate initial pages from that branch's
-catalog, then use `git apply --check` and `git apply` on this patch in the staged
+`porter-auto-cancel-below30.patch` supplies Korean/English/Chinese manual regions for
+`PorterAutoCancelBelow30` and `PorterAutoCancelSpeed` on c3-pht-porter. The legacy
+toggle key is retained; the adjacent speed setting controls the threshold, with
+pending confirmation restarted on changes and the original automatic-SET speed
+floor retained. Generate initial pages from that branch's current catalog, then
+use `git apply --check --unidiff-zero` and `git apply --unidiff-zero` in the staged
 Wiki directory; regenerate to preserve the reviewed manual content. Validate
 before publishing. This branch-specific patch is not a live Wiki publication
 and must not be generated from a catalog that lacks this setting.
