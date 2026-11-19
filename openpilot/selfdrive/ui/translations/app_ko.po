@@ -1544,3 +1544,23 @@ msgstr "자동 가감속 불가"
 #: openpilot/selfdrive/selfdrived/events.py
 msgid "Buttons Unresponsive · Take Control"
 msgstr "속도 버튼 무응답 · 직접 조작하세요"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Vehicle (manual)"
+msgstr "차량 (수동)"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Porter II EV"
+msgstr "포터2 EV"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Ioniq 5 HDA2"
+msgstr "아이오닉5 HDA2"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Porter II EV: CAMERA SCC 0, radar tracks 0, HDA2 0. Ioniq 5 HDA2: 2, 3, 1. Only the vehicle and these three settings change; other manual settings stay unchanged. Select while offroad, choose the matching branch manually and restart before driving."
+msgstr "포터2 EV: CAMERA SCC 0, 레이더트랙 0, HDA2 0. 아이오닉5 HDA2: 2, 3, 1. 차종과 이 세 설정만 바꾸며 다른 수동 설정은 유지합니다. 주행 종료 상태에서 선택하고 해당 브랜치를 직접 선택한 뒤 주행 전에 재시작하세요."
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Vehicle selection could not finish. Restart before driving."
+msgstr "차량 선택을 완료하지 못했습니다. 주행 전에 재시작하세요."

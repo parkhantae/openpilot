@@ -157,15 +157,14 @@ Chinese. Generate initial pages from the current c3-pht-porter catalog, apply
 with `git apply --check` and `git apply`, then regenerate and validate. It changes
 only those manual regions and is staged for this branch, not published upstream.
 
-## Porter / Ioniq automatic branch handoff
+## Porter / Ioniq manual selection
 
-`auto-vehicle-switch.patch` documents `AutoVehicleSwitch` on both c3-pht-porter
-and c3-pht: confirmed vehicle mapping, Park/zero-wheel/noOutput startup guards,
-checkout plus OS restart, seven-setting restore and recalibration. Generate
-from the matching fork branch, apply with `git apply --check --unidiff-zero`
-and `git apply --unidiff-zero`, regenerate and validate. Both branches retain
-compatible handoff code and persistent setting registrations. This is a staged
-fork-specific patch, not an upstream live Wiki publication.
+The automatic-switch setting and its staged patch have been removed from both
+fork catalogs. The comma Toggles action now writes the chosen vehicle and only
+CAMERA SCC, radar tracks and HDA2 values. This UI action has no catalog parameter
+or generated setting page; its current behavior is documented in the Korean and
+English user settings guides. Legacy automatic-switch Wiki pages must disappear
+when regenerating from the matching branch catalog. No live upstream Wiki is changed.
 
 ## Porter and Ioniq 5 low-speed steering response
 

@@ -102,6 +102,13 @@ jobs:
       - run: ./tools/op.sh setup
       - name: Build openpilot
         run: scons
+      - name: Check manual Porter and Ioniq vehicle selection
+        run: >-
+          python -m pytest --noconftest -o addopts='' -q
+          openpilot/common/tests/test_vehicle_selection.py
+          openpilot/selfdrive/ui/tests/test_vehicle_selection.py
+          openpilot/system/manager/test/test_manual_vehicle_startup.py
+          opendbc_repo/opendbc/car/tests/test_car_helpers.py
       - name: Bosch provider regression tests
         run: |
           python -m pytest -o addopts='' -q \
