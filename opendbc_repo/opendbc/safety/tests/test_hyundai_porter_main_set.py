@@ -3,6 +3,9 @@ from hyundai_porter_testlib import lib, packet, data, seed, init
 
 
 class TestPorterMainSetSafety(unittest.TestCase):
+  # Match the production Porter allowlist for cross-profile TX checks.
+  TX_MSGS = [[0x340, 0], [0x4F1, 0], [0x485, 0]]
+
   def test_selected_profile_allows_later_main_on_with_auto_engage_two(self):
     import ast
     from pathlib import Path

@@ -4,6 +4,17 @@ These patches preserve reviewed Wiki edits in the code branch when the author
 cannot push to the separate Wiki repository. Committing a patch here does not
 publish its content to the live Wiki.
 
+## Porter one-shot deceleration recovery trial
+
+`porter-decel-retry.patch` supplies Korean, English and Chinese MANUAL regions
+for `PorterDecelRetry` and `CruiseButtonTest3`. Generate initial pages from the
+current c3-pht-porter catalog, apply with `git apply --check --unidiff-zero` and
+`git apply --unidiff-zero`, then regenerate and validate. The trial defaults OFF
+and adds at most one deceleration-only press per stock-ON session after three
+unanswered deceleration requests and a three-second quiet period. The unavailable
+banner also applies with the trial OFF. This fork-specific patch is staged,
+not published to the upstream live Wiki.
+
 ## Cruise speed at accelerator release
 
 `gas-release-speed.patch` supplies Korean, English and Chinese manual regions

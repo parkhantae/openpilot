@@ -47,7 +47,7 @@ def test_porter_auto_set_keeps_its_button_profile_with_pedal_option_enabled():
     CP = CarInterface.get_params(CAR.HYUNDAI_PORTER_II_EV, pedal_fingerprint(), [], False, False, False)
   assert CP.pcmCruise and not CP.openpilotLongitudinalControl
   assert not CP.flags & HyundaiFlags.PEDAL_INTERCEPTOR
-  assert CP.safetyConfigs[-1].safetyParam == 15361
+  assert CP.safetyConfigs[-1].safetyParam == 15489
   assert get_pedal_interceptor_params(CP) is None
   assert Bus.party not in CarState.__new__(CarState).get_can_parsers(CP)
 

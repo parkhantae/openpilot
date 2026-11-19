@@ -388,6 +388,23 @@ class PorterCruiseButtons:
     self.retry_exhausted = False
     self.ack_timeout = 0.5
     self.retry_backoff = 3.0
+    self.recovery_due = None
+    self.recovery_due_tx = None
+    self.recovery_used = False
+    self.recovery_inflight = False
+    self.decel_only = False
+    self.decel_timeouts = 0
+
+  @property
+  def unavailable(self):
+    return self.retry_exhausted or self.fault or self.decel_only
+
+  def _discard_recovery(self):
+    self.recovery_due = None
+    self.recovery_due_tx = None
+    if self.recovery_inflight:
+      self.retry_exhausted = True
+      self.recovery_inflight = False
 
   def _interrupt(self, fresh):
     # A repeated/missing CLU11 sample cannot carry a new release frame. Keep
@@ -402,7 +419,12 @@ class PorterCruiseButtons:
 
   def update(self, now, target, current, frame_key, *, enabled, blocked=False,
              manual=False, cancel=False, press_seconds=0.08, gap_seconds=0.3, acceleration_ready=False,
-             tx_now_s=None, retry_limit=None):
+             tx_now_s=None, retry_limit=None, decel_recovery=False, stock_enabled=None):
+    # The extra attempt is a once-per-stock-session token. A transient control
+    # inhibit or manual button must not silently replenish it.
+    if not (enabled if stock_enabled is None else stock_enabled):
+      self.recovery_used = self.decel_only = False
+      self._discard_recovery()
     if frame_key != self.sample_frame:
       self.sample_frame = frame_key
       self.sample_seen = now
@@ -429,6 +451,7 @@ class PorterCruiseButtons:
     if fresh:
       self.last_frame = frame_key
     if not math.isfinite(now) or (self.last_time is not None and now < self.last_time):
+      self._discard_recovery()
       self.fault = True
       self.status = "clock_fault"
       if manual:
@@ -439,8 +462,12 @@ class PorterCruiseButtons:
     if self.last_time is not None and now - self.last_time > 0.1 + 1e-9:
       # A gap without observations is not continuous target confirmation.
       self.accel_since = None
+      self._discard_recovery()
     self.last_time = now
     if manual:
+      self._discard_recovery()
+      self.decel_only = False
+      self.decel_timeouts = 0
       self.retry_sample_delay = self.preferred_sample_delay
       self.confirm_acceleration = False
       self.accel_since = None
@@ -455,6 +482,7 @@ class PorterCruiseButtons:
       self.status = "manual"
       return None
     if cancel:
+      self._discard_recovery()
       self.accel_since = None
       self._interrupt(False)
       self.status = "cancel"
@@ -465,13 +493,16 @@ class PorterCruiseButtons:
       return None
     self.cancel_seen = False
     if not enabled:
+      self._discard_recovery()
+      self.decel_timeouts = 0
       self.retry_sample_delay = self.preferred_sample_delay
       self.confirm_acceleration = False
       self.accel_since = None
       self.fault = False
       self.consecutive_timeouts = 0
       self.retry_attempts = 0
-      self.retry_exhausted = False
+      if not self.decel_only:
+        self.retry_exhausted = False
       self.next_request = now + 0.3
       self.status = "inactive"
       return self._interrupt(fresh)
@@ -484,10 +515,18 @@ class PorterCruiseButtons:
              PORTER_CRUISE_MIN_KPH <= current <= PORTER_CRUISE_MAX_KPH and
              press_seconds > 0 and gap_seconds >= 0)
     if blocked or not valid or frame_key is None:
+      self._discard_recovery()
       self.accel_since = None
       self.next_request = now + 0.3
       self.status = "blocked" if valid else "invalid_input"
       return self._interrupt(fresh)
+    recovery_response = self.recovery_inflight and self.direction < 0 and current < self.baseline
+    if not decel_recovery or (requested_target - current > -1.0 + 1e-5 and not recovery_response):
+      was_recovery = self.recovery_inflight
+      self._discard_recovery()
+      if was_recovery:
+        self.status = "retry_exhausted"
+        return self._interrupt(fresh)
     if self.confirm_acceleration:
       # After SET-, require a continuously higher target before reversing to
       # RES+. Short planner/lead fluctuations must not undo the reduction.
@@ -507,8 +546,28 @@ class PorterCruiseButtons:
       self.status = "fault"
       return None
     if self.retry_exhausted:
-      self.status = "retry_exhausted"
-      return None
+      if self.recovery_due is None or now > self.recovery_due + .2:
+        self.recovery_due = None
+        self.recovery_due_tx = None
+        self.status = "retry_exhausted"
+        return None
+      recovery_clock = now if tx_now_s is None else tx_now_s
+      if not math.isfinite(recovery_clock):
+        self._discard_recovery()
+        self.status = "retry_exhausted"
+        return None
+      self.status = "recovery_wait"
+      if now < self.recovery_due or recovery_clock < self.recovery_due_tx or not fresh:
+        return None
+      self.recovery_due = None
+      self.recovery_due_tx = None
+      self.recovery_used = self.recovery_inflight = self.decel_only = True
+      self.retry_exhausted = False
+      self.phase = "idle"
+      self.next_request = now
+    if self.decel_only and (not decel_recovery or requested_target - current > -1.0 + 1e-5) and not recovery_response:
+      self.status = "decel_only"
+      return self._interrupt(fresh)
     if self.phase != "idle":
       change = current - self.baseline
       if change and change * self.direction < 0:
@@ -521,6 +580,8 @@ class PorterCruiseButtons:
           self.consecutive_timeouts = 0
           self.retry_attempts = 0
           self.retry_exhausted = False
+          self.recovery_inflight = False
+          self.decel_timeouts = 0
           # Remember only a positively acknowledged request in this controller
           # session. Manual/disabled paths cannot learn from physical buttons.
           # Attribute a late ACK to the slot used to start this request, even
@@ -530,12 +591,20 @@ class PorterCruiseButtons:
       if now - self.started >= self.ack_timeout and not self.acknowledged:
         self.timeouts += 1
         self.consecutive_timeouts += 1
+        self.decel_timeouts = self.decel_timeouts + 1 if self.direction < 0 else 0
         if retry_limit is not None:
           # A fresh unanswered speed request consumes one bounded attempt.
           # Preserve the existing release obligation and all OEM safety gates.
           self.retry_attempts += 1
-          if self.retry_attempts > min(2, max(0, int(retry_limit))):
+          if self.recovery_inflight or self.retry_attempts > min(2, max(0, int(retry_limit))):
             self.retry_exhausted = True
+            if decel_recovery and self.decel_timeouts == 3 and self.retry_attempts == 3 and not self.recovery_used:
+              recovery_clock = now if tx_now_s is None else tx_now_s
+              if math.isfinite(recovery_clock):
+                self.recovery_due = now + max(3., gap_seconds)
+                self.recovery_due_tx = recovery_clock + max(3., gap_seconds)
+                self.retry_sample_delay = .01 - self.request_sample_delay
+            self.recovery_inflight = False
             self.status = "retry_exhausted"
             return self._interrupt(fresh)
         # Do not spend a full failed group repeating a slot already unanswered.

@@ -1504,3 +1504,11 @@ msgstr ""
 #: openpilot/selfdrive/selfdrived/events.py
 msgid "Park safely before rebooting your device"
 msgstr ""
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Automatic Speed Control Unavailable"
+msgstr ""
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Buttons Unresponsive · Take Control"
+msgstr ""

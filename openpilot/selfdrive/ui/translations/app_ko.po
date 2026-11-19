@@ -1536,3 +1536,11 @@ msgstr "Dashcam 모드로 재부팅 중"
 #: openpilot/selfdrive/ui/impact_dashcam.py
 msgid "openpilot disabled"
 msgstr "openpilot 사용 꺼짐"
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Automatic Speed Control Unavailable"
+msgstr "자동 가감속 불가"
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Buttons Unresponsive · Take Control"
+msgstr "속도 버튼 무응답 · 직접 조작하세요"

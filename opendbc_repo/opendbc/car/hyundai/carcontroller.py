@@ -747,15 +747,18 @@ class CarController(CarControllerBase):
         acceleration_ready=getattr(CC.hudControl, "porterAccelReady", False),
         press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL,
         tx_now_s=button_clock * 1e-9 if button_clock is not None else None,
-        retry_limit=self.button_spam3)
+        retry_limit=self.button_spam3, stock_enabled=CS.out.cruiseState.enabled,
+        decel_recovery=(self.speed_from_pcm == 0 and self.porter_main_params.get_bool("PorterDecelRetry") and
+                        getattr(CC.hudControl, "porterRecoveryAllowed", False)))
       porter_status = (self.porter_buttons.status, self.porter_buttons.requests,
                        self.porter_buttons.acks, self.porter_buttons.timeouts)
       if porter_status != getattr(self, "porter_button_status", None):
         self.porter_button_status = porter_status
-        cloudlog.info("PorterButtons: status=%s req=%d ack=%d noack=%d target=%.2f stock=%.2f blocked=%s fresh=%s delay_ms=%.0f",
+        cloudlog.info("PorterButtons: status=%s req=%d ack=%d noack=%d target=%.2f stock=%.2f blocked=%s fresh=%s delay_ms=%.0f recovery_used=%s recovery_inflight=%s decel_only=%s",
                       *porter_status, CC.hudControl.setSpeed * CV.MS_TO_KPH,
                       CS.out.cruiseState.speed * CV.MS_TO_KPH, blocked, fresh,
-                      self.porter_buttons.retry_sample_delay * 1000)
+                      self.porter_buttons.retry_sample_delay * 1000,
+                      self.porter_buttons.recovery_used, self.porter_buttons.recovery_inflight, self.porter_buttons.decel_only)
       main_set_vehicle_ready = (CS.out.cruiseState.available and CS.is_metric and
                                 CS.out.gearShifter == structs.CarState.GearShifter.drive and
                                 porter_auto_set_speed_valid(self.CP, CS.out))

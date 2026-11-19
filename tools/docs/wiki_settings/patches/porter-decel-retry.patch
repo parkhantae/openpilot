@@ -1,0 +1,138 @@
+--- a/KO-포터-무응답-후-감속-1회-재시도-(시험).md
++++ b/KO-포터-무응답-후-감속-1회-재시도-(시험).md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="63b53c26d1f2027a6cd609ba712f9239ab59e62e4e13b160befde26f48784218" reviewed-at="2026-11-18T23:50:02.257843+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++감속 요청 3회가 연속 무응답이면 최소 3초 후 SET− 한 번만 추가 요청합니다. 성공해도 감속 전용으로 유지하고 RES+는 수동 버튼 또는 순정 OFF 전까지 차단하며, 다시 실패하면 계속 중단합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++포터2 EV 일반 크루즈에서 SpeedFromPCM=0 및 CruiseButtonTest3=2일 때 켭니다. 현재 차량·계획·레이더 신호와 낮은 목표가 유효해야 하며 조건 이탈·시간 공백·설정 OFF이면 대기 요청을 버립니다. 순정 ON 한 구간에 추가 요청은 최대 한 번이며 수동 버튼은 횟수를 보충하지 않습니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++중단·감속 전용 상태에서는 자동 가감속 불가 및 직접 조작 안내가 표시됩니다. 이 안내는 시험 OFF에서도 작동합니다. 버튼·Panda 한도는 유지되며 차량 수락이나 자동 제동을 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/EN-Porter-one-deceleration-retry-after-no-response-(trial).md
++++ b/EN-Porter-one-deceleration-retry-after-no-response-(trial).md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="63b53c26d1f2027a6cd609ba712f9239ab59e62e4e13b160befde26f48784218" reviewed-at="2026-11-18T23:50:02.261082+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++After three consecutive unanswered deceleration requests, allow one extra SET− after at least three seconds. Success keeps deceleration-only control and blocks RES+ until a manual button or stock OFF; another failure stays blocked.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Enable for Porter II EV conventional cruise with SpeedFromPCM=0 and CruiseButtonTest3=2. Current vehicle/planner/radar signals and a lower target must remain valid; lost conditions, clock gaps or switching OFF discard pending authority. Only one extra attempt per stock-ON session; manual buttons do not replenish it.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Blocked or deceleration-only states display an automatic-speed-control-unavailable banner requesting direct control, including with the trial OFF. Button/Panda limits remain; ECU acceptance and braking are not guaranteed.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/ZH-波特-无响应后单次减速重试(试验).md
++++ b/ZH-波特-无响应后单次减速重试(试验).md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="63b53c26d1f2027a6cd609ba712f9239ab59e62e4e13b160befde26f48784218" reviewed-at="2026-11-18T23:50:02.264498+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++三次减速请求连续无响应后等待至少3秒，仅增加一次SET−。成功后也保持仅减速，RES+须手动按键或原厂关闭后恢复；再次失败保持停止。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++适用于波特II EV普通巡航、SpeedFromPCM=0且CruiseButtonTest3=2。当前车辆、规划、雷达信号及较低目标须保持有效；条件失效、时钟间断或关闭设置即丢弃待执行权限。每个原厂开启周期最多增加一次，手动按键不补充次数。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++停止或仅减速状态会提示自动速度控制不可用并要求手动接管；试验关闭时同样显示。保留按钮/Panda限制，不保证ECU接受或制动。
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/KO-크루즈버튼-무응답-재시도-(포터-최대-2회).md
++++ b/KO-크루즈버튼-무응답-재시도-(포터-최대-2회).md
+@@ -30 +30,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-18T23:50:02.267740+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++포터2 EV는 무응답 추가 재시도를 최대 두 번으로 제한하고 소진하면 자동 속도 버튼을 중단합니다. PorterDecelRetry 시험을 별도로 켠 경우 감속 3회 무응답 뒤 최소 3초 후 감속 한 번만 추가할 수 있습니다. 다른 차량의 기존 의미는 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++무응답 중단은 수동 버튼 또는 순정 크루즈 OFF로 해제합니다. 시험 재시도 성공 후에도 가속 자동 복구는 허용하지 않습니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++중단·감속 전용 상태에서는 자동 가감속 불가 및 직접 조작 안내가 표시됩니다. 이 안내는 시험 OFF에서도 작동합니다. 버튼·Panda 한도는 유지되며 차량 수락이나 자동 제동을 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/EN-Cruise-button-unanswered-retries-(Porter-max-2).md
++++ b/EN-Cruise-button-unanswered-retries-(Porter-max-2).md
+@@ -30 +30,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-18T23:50:02.270639+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Porter II EV permits at most two extra unanswered retries, then stops automatic speed buttons. The separate PorterDecelRetry trial can add one deceleration-only request after three unanswered deceleration requests and at least three seconds. Other vehicles retain their existing meaning.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++A manual button or stock cruise OFF clears the unanswered stop. Successful trial recovery still does not restore automatic acceleration.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Blocked or deceleration-only states display an automatic-speed-control-unavailable banner requesting direct control, including with the trial OFF. Button/Panda limits remain; ECU acceptance and braking are not guaranteed.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/ZH-巡航按钮连发3(1).md
++++ b/ZH-巡航按钮连发3(1).md
+@@ -30 +30,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-18T23:50:02.273762+00:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++波特II EV最多允许额外两次无响应重试，耗尽后停止自动速度按钮。另行开启PorterDecelRetry试验时，三次减速无响应后等待至少3秒可再请求一次仅减速。其他车辆保持原含义。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++手动按键或原厂巡航关闭可解除无响应停止状态。试验恢复成功后仍不自动恢复加速。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++停止或仅减速状态会提示自动速度控制不可用并要求手动接管；试验关闭时同样显示。保留按钮/Panda限制，不保证ECU接受或制动。
++<!-- CARROT:SECTION:END REFERENCE -->

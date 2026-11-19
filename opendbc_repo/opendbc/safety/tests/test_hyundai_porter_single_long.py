@@ -6,6 +6,9 @@ from opendbc.car.hyundai.porter_main_set import PorterMainSet
 
 
 class TestPorterSingleLongSafety(unittest.TestCase):
+  # Match the production Porter allowlist for cross-profile TX checks.
+  TX_MSGS = [[0x340, 0], [0x4F1, 0], [0x485, 0]]
+
   def test_real_host_streams_pass_native_including_early_on_and_timer_wrap(self):
     for offset in (21000, (1 << 32) - 1_100_000):
       for on in (None, 103):

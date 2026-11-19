@@ -1515,3 +1515,11 @@ msgstr "请重启设备以应用更新"
 #: openpilot/selfdrive/selfdrived/events.py
 msgid "Park safely before rebooting your device"
 msgstr "请安全停车后再重启设备"
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Automatic Speed Control Unavailable"
+msgstr "自动速度控制不可用"
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Buttons Unresponsive · Take Control"
+msgstr "速度按钮无响应，请手动接管"

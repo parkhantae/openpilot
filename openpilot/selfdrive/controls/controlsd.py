@@ -453,6 +453,11 @@ class Controls:
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     self.update_porter_cancel(CS, CC, setSpeed * CV.MS_TO_KPH if len(speeds) else None, carrot_man)
+    hudControl.porterRecoveryAllowed = (
+      self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and self.CP.pcmCruise and
+      not self.CP.openpilotLongitudinalControl and
+      self.sm.all_checks(['carState', 'longitudinalPlan', 'radarState']) and
+      CS.canValid and not CS.canTimeout and not CS.accFaulted)
     hudControl.speedVisible = CC.enabled
     hudControl.lanesVisible = CC.enabled
     hudControl.leadVisible = self.sm['longitudinalPlan'].hasLead

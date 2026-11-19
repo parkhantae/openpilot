@@ -579,6 +579,14 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.LOW, VisualAlert.steerRequired, AudibleAlert.none, 1.8),
   },
 
+  EventName.porterButtonUnavailable: {
+    ET.PERMANENT: Alert(
+      "Automatic Speed Control Unavailable",
+      "Buttons Unresponsive · Take Control",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.HIGH, VisualAlert.none, AudibleAlert.none, .2),
+  },
+
   # Retain the schema event for historical logs, without a fallback banner.
   EventName.driverMonitorFallback: {},
 

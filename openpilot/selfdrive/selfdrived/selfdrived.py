@@ -17,6 +17,7 @@ from openpilot.common.runtime_diagnostics import communication_snapshot
 from openpilot.common.gps import get_gps_location_service
 
 from openpilot.selfdrive.car.car_specific import CarSpecificEvents
+from openpilot.selfdrive.car.porter_button_status import warn_porter_button_unavailable
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 from openpilot.selfdrive.selfdrived.camera_config import get_camera_packets
 from openpilot.selfdrive.selfdrived.events import Events, ET, EmptyAlert
@@ -237,6 +238,10 @@ class SelfdriveD:
     # Don't add any more events while in dashcam mode
     if self.CP.passive:
       return
+
+    if warn_porter_button_unavailable(self.CP, CS, self.sm['carOutput'],
+                                     self.sm.all_checks(['carState', 'carOutput'])):
+      self.events.add(EventName.porterButtonUnavailable)
 
     cutin_enabled = self.enabled and self.sm.valid['radarState']
     cutin_candidates = tuple(

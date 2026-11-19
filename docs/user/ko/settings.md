@@ -277,7 +277,7 @@ GAP 숫자·막대 주변의 넓은 영역을 짧게 눌러도 같은 순서로 
 | 레이더 | `EnableRadarTracks`, `RadarTrackFlip`, `EnableCornerRadar`, `CarrotRadarMode`, `CarrotRadarCutInSensitivity` | SCC 레이더, 전방 트랙 좌우 보정, 코너 레이더와 당근레이더 처리·컷인 감도 |
 | 운전자 모니터링 | `DriverMonitoringEnabled`(검색 전용), `DriverMonitoringMode`, `CarrotVisionEnabled`, `MuteDoor`, `MuteSeatbelt` | 운전자 모니터링과 일부 차량 경고음 처리 |
 | 차량 보조 | `AutoVehicleSwitch`, `MaxAngleFrames`, `SpeedFromPCM` | 포터·아이오닉5 차종·브랜치 전환, 최대 조향각 관련 프레임과 순정 SCC 속도 제어 방식 |
-| 포터 전용 | `PorterAutoCancelBelow30`, `PorterAutoCancelSpeed`, `PorterAutoSetMain`, `PorterGapUse`, `PorterGap1`~`PorterGap4`, `PorterLeadReactionTime` | 자동 취소·SET, 전용 GAP과 감속 예측 |
+| 포터 전용 | `PorterAutoCancelBelow30`, `PorterAutoCancelSpeed`, `PorterDecelRetry`, `PorterAutoSetMain`, `PorterGapUse`, `PorterGap1`~`PorterGap4`, `PorterLeadReactionTime` | 자동 취소·SET, 전용 GAP과 감속 예측 |
 | 기기 하드웨어 | `CommaPedalEnabled`, `HardwareC3xLite` | ACC 미장착 차량의 Comma Pedal 허용 설정, C3X Lite 하드웨어 구성 |
 
 포터2 EV의 `MaxAngleFrames`는 저장값이 89보다 작아도 실제 제어에서는 최소 89프레임을 적용합니다. 큰 조향각에서 조향 요청 비트를 잠시 끊는 간격을 Panda 안전 검사의 최소 정상 요청 간격에 맞추기 위한 제한입니다. 다른 차종의 설정값은 변경하지 않습니다.
@@ -549,6 +549,8 @@ ATC 세부 설정의 `AutoTurnControlRightLaneChange`는 1·2번 모드에서 10
 수동 차선변경 깜박이는 이전 요청 후 최소 3초·연속 1초 소등과 새로운 조향/접근 조건을 확인한 뒤 재요청합니다. 자동 조향 피드백 보호는 최소 12초 유지합니다.
 
 포터2 EV의 `PorterAutoCancelBelow30`는 기본 OFF이며 `SpeedFromPCM=0`에서 적용됩니다. Carrot Web의 차량·하드웨어 → 포터 전용에서 취소 ON/OFF와 `PorterAutoCancelSpeed`를 설정합니다. 취소 기준속도는 기본 30km/h이며 10~60km/h를 1km/h 단위로 조절합니다. 높이면 더 높은 목표에서, 낮추면 더 낮은 목표에서 취소합니다. 양수 미래 계획만 기준 미만이면 버튼 감속을 유지하고, 현재 계획도 기준 미만일 때 0.3초 확인합니다. 계획 0·선택·내비·근접 앞차 목표도 판단합니다. 실제 차량속도 기준이나 자동 제동 기능은 아니며 순정 최저 설정속도는 바뀌지 않습니다. 변경은 즉시 반영하고 진행 중인 확인 시간을 다시 시작하지만 이미 시작된 취소는 순정 OFF까지 유지합니다. OFF로 바꾸면 대기·취소 상태를 지우며 재시작하지 않습니다. 취소 ON일 때 자동 SET 목표는 취소 기준속도와 기존 30km/h 중 높은 값 이상이어야 합니다.
+
+`PorterDecelRetry`는 차량·하드웨어 → 포터 전용의 기본 OFF 시험 옵션입니다. `SpeedFromPCM=0`, `CruiseButtonTest3=2`에서 감속 요청 3회가 연속 무응답이면 최소 3초 후 SET− 한 번만 추가 요청합니다. 현재 차량·플래너·레이더 신호가 유효하고 목표가 순정 설정속도보다 1km/h 이상 낮아야 합니다. 조건 이탈·시간 공백·설정 OFF이면 대기 요청을 버리며 기한이 지난 요청을 나중에 실행하지 않습니다. 추가 요청은 순정 크루즈 ON 한 구간에 최대 한 번이고 수동 버튼으로 횟수가 보충되지 않습니다. 추가 요청도 실패하면 중단하며, 성공해도 수동 버튼 또는 순정 OFF 전까지 감속만 허용하고 RES+는 차단합니다. 무응답 중단·감속 전용 상태는 “자동 가감속 불가 / 직접 조작하세요”로 표시합니다. 시험 OFF에서도 무응답 중단 안내는 표시됩니다. 조향이나 버튼·Panda 한도를 바꾸지 않으며 차량 수락이나 자동 제동을 보장하지 않습니다.
 
 포터 전용 `PorterAutoSetMain`은 기본 OFF인 MAIN 대기 자동 SET 기능입니다. ON 후 재시작하고 계기판 CRUISE 대기를 확인해야 하며 목표·계기판 속도 모두 30km/h 이상에서만 요청합니다. [동작·해제 조건](buttons-presets.md#포터-main-대기-자동-set)을 확인하세요. 자동 SET OFF는 송신 허가를 해제하며 추적 중인 MAIN 상태를 OFF로 덮어쓰지 않습니다. 다시 ON으로 바꿔도 기존 MAIN·새 페달 허가 조건을 충족해야 합니다. 포터 MAIN 추적은 AutoEngage와 별개로 OFF에서 시작합니다. MAIN OFF 상태로 재시작한 뒤 부팅 후 MAIN ON 버튼을 눌러 대기를 설정하세요. 현재 버전은 각 유효한 새 엑셀 해제마다 SET− 한 번과 해제만 요청하며, 실제 순정 ON이 확인되면 남은 SET도 중단합니다. Panda를 포함해 업데이트·재시작해야 합니다. 유효한 자동 SET 엑셀 해제 후 0.5초 안에 실제 순정 크루즈 ON이 확인되면, 콤마 목표속도를 처음 확인된 순정 설정속도에 한 번 맞춥니다. 무응답·운전자 버튼·취소·조건 이탈 시에는 이전 목표를 자동으로 올리지 않습니다.
 

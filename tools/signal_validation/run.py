@@ -5,14 +5,19 @@ import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT), str(ROOT / 'opendbc_repo'), str(ROOT / 'tools/jetlink')]
+sys.path[:0] = [str(ROOT), str(ROOT / 'opendbc_repo'), str(ROOT / 'tools/jetlink'),
+               str(ROOT / 'opendbc_repo/opendbc/safety/tests')]
 
 
 class IsolatedParams:
   """Only the documented defaults used by vehicle fixtures; never device IO."""
   def get_bool(self, key):
-    assert key in {'TeslaAutoTurnSignals', 'NNFF', 'NNFFLite', 'DisableMinSteerSpeed'}, key
+    assert key in {'TeslaAutoTurnSignals', 'NNFF', 'NNFFLite', 'DisableMinSteerSpeed', 'PorterDecelRetry'}, key
     return False
+
+  def get(self, key):
+    assert key == 'LanguageSetting', key
+    return 'main_en'
 
   def put_int(self, key, value):
     assert (key, value) == ('LongitudinalPersonalityMax', 3)

@@ -3,6 +3,35 @@ from hyundai_porter_testlib import lib, packet, data, rx, seed, init, engage
 
 
 class TestNativePorter(unittest.TestCase):
+    # Match the production Porter allowlist for cross-profile TX checks.
+    TX_MSGS = [[0x340, 0], [0x4F1, 0], [0x485, 0]]
+
+    def test_opt_in_fourth_deceleration_request_passes_unchanged_native_limits(self):
+        from opendbc.car.hyundai.porter import PorterCruiseButtons
+
+        init(15489)
+        lib.set_timer(2000)
+        seed(counter=1, target=58, speed=58, button=2)
+        self.assertTrue(lib.get_controls_allowed())
+        pulse = PorterCruiseButtons()
+        positive = []
+        for tick in range(1200):
+            lib.set_timer(3000 + tick * 10000)
+            counter = tick // 2 + 2
+            if tick % 2 == 0:
+                seed(counter=counter, target=58, speed=58)
+            button = pulse.update(tick * .01, 47, 58, counter, enabled=True,
+                                  stock_enabled=True, decel_recovery=True,
+                                  retry_limit=2, press_seconds=.06, gap_seconds=.25)
+            if button is not None:
+                self.assertTrue(lib.safety_tx_hook(packet(
+                    0x4f1, data(0x4f1, button=button, counter=counter + 1, speed=58))))
+                if button:
+                    positive.append(button)
+        self.assertEqual(pulse.requests, 4)
+        self.assertEqual(positive, [2] * 12)
+        self.assertTrue(pulse.retry_exhausted)
+
     def test_driver_release_matches_native_envelope_across_both_directions(self):
         from types import SimpleNamespace as NS
         from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits

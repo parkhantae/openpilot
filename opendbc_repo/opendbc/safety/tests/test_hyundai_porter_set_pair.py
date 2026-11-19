@@ -5,6 +5,9 @@ from opendbc.car.hyundai.porter_main_set import PorterMainSet
 
 
 class TestPorterPairSafety(unittest.TestCase):
+  # Match the production Porter allowlist for cross-profile TX checks.
+  TX_MSGS = [[0x340, 0], [0x4F1, 0], [0x485, 0]]
+
   def prime(self, main=True, pedal=True, profile=15361, offset=21000):
     init(profile)
     self.offset = offset
@@ -242,6 +245,9 @@ class TestPorterPairSafety(unittest.TestCase):
 
 
 class TestPorterSinglePressSafety(unittest.TestCase):
+  # Match the production Porter allowlist for cross-profile TX checks.
+  TX_MSGS = [[0x340, 0], [0x4F1, 0], [0x485, 0]]
+
   def test_production_single_presses_pass_native_guards_across_new_pedal_cycles(self):
     for engage_at in (None, 103):
       init(15361)

@@ -1514,3 +1514,11 @@ msgstr "Driver camera unavailable"
 #: openpilot/selfdrive/selfdrived/events.py
 msgid "Monitoring driver controls"
 msgstr "Monitoring driver controls"
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Automatic Speed Control Unavailable"
+msgstr "Automatic Speed Control Unavailable"
+
+#: openpilot/selfdrive/selfdrived/events.py
+msgid "Buttons Unresponsive · Take Control"
+msgstr "Buttons Unresponsive · Take Control"

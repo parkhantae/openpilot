@@ -23,6 +23,7 @@ from opendbc.car.interfaces import CarInterfaceBase
 from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.alternative_experience import get_alternative_experience
 from openpilot.selfdrive.car.card_diagnostics import should_log_card_diagnostics
+from openpilot.selfdrive.car.porter_button_status import porter_button_unavailable
 from openpilot.selfdrive.car.cruise import VCruiseCarrot
 from openpilot.selfdrive.car.car_specific import MockCarState
 from openpilot.selfdrive.car.openpilot_toggle import CruiseMainOpenpilotToggle
@@ -354,6 +355,7 @@ class Car:
     co_send = messaging.new_message('carOutput')
     co_send.valid = self.sm.all_checks(['carControl'])
     co_send.carOutput.actuatorsOutput = self.last_actuators_output
+    co_send.carOutput.porterButtonUnavailable = porter_button_unavailable(self.CP, self.CI.CC, CS.cruiseState.enabled)
     self.pm.send('carOutput', co_send)
 
     now_ns = time.monotonic_ns()

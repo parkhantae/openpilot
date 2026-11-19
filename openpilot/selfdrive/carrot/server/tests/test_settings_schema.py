@@ -125,6 +125,25 @@ def test_porter_cancel_speed_menu_and_persistent_web_round_trip(settings, tmp_pa
     assert Params(str(tmp_path / 'params')).get_int('PorterAutoCancelSpeed') == expected
 
 
+def test_porter_deceleration_retry_is_an_opt_in_persistent_trial(settings, tmp_path, monkeypatch):
+  from openpilot.common.params import Params
+  from openpilot.selfdrive.carrot.server.services import params as service
+  _, by_name, _ = group_index(settings)
+  item = by_name['PorterDecelRetry']
+  assert item['control'] == 'toggle' and item['default'] == 0
+  categories = build_menu_categories(settings, by_name)
+  section = next(section for category in categories for group in category['groups'] for section in group['sections']
+                 if 'PorterAutoCancelSpeed' in section['items'])
+  assert 'PorterDecelRetry' in section['items']
+  store = Params(str(tmp_path / 'params'))
+  assert store.get_default_value('PorterDecelRetry') is False
+  monkeypatch.setattr(service, 'Params', lambda: store)
+  monkeypatch.setattr(service, 'HAS_PARAMS', True)
+  for value in (True, False):
+    service.set_param_value('PorterDecelRetry', value, item)
+    assert Params(str(tmp_path / 'params')).get_bool('PorterDecelRetry') is value
+
+
 def test_rear_camera_hold_uses_meter_values_and_persistent_default(settings, params):
   hold = next(p for p in params if p["name"] == "AutoNaviRearCameraHoldDistance")
   assert (hold["min"], hold["max"], hold["default"], hold["unit"]) == (0, 300, 100, 10)

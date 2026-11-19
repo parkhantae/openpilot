@@ -7,6 +7,9 @@ on:
       - 'openpilot/cereal/log.capnp'
       - 'openpilot/selfdrive/car/**'
       - 'openpilot/selfdrive/controls/**'
+      - 'openpilot/selfdrive/selfdrived/events.py'
+      - 'openpilot/selfdrive/selfdrived/selfdrived.py'
+      - 'openpilot/selfdrive/ui/translations/*.po'
       - 'openpilot/selfdrive/modeld/modeld.py'
       - 'openpilot/selfdrive/carrot/xiaoge_data.py'
       - 'openpilot/selfdrive/carrot/tests/test_xiaoge_data.py'
@@ -26,7 +29,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: pip install Cython==3.2.9 setuptools scons pytest pytest-subtests numpy pycapnp cffi setproctitle requests pycryptodome zstandard pyserial parameterized
+      - run: pip install Cython==3.2.9 setuptools scons pytest pytest-subtests numpy pycapnp cffi setproctitle requests pycryptodome zstandard pyserial parameterized pillow
       - name: Build production CAN kernels and safety hooks
         run: |
           scons -f tools/native_cpu/SConstruct -j2
@@ -38,6 +41,12 @@ jobs:
         run: |
           python tools/signal_validation/run.py \
             openpilot/selfdrive/car/tests/test_porter_set_speed.py \
+            openpilot/selfdrive/car/tests/test_porter_button_status.py \
+            opendbc_repo/opendbc/car/hyundai/tests/test_porter_decel_retry.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_porter.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_porter_main_set.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_porter_set_pair.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_porter_single_long.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_cancel.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_cancel_buttons.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_gap_restart.py \
