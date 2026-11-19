@@ -85,3 +85,15 @@ def test_existing_simulation_and_replay_policy(simulation, replay, initialized):
   state = startup(601)
   sample(state)
   assert state.initialized == initialized
+
+
+@pytest.mark.parametrize('received,valid,previous', [(True, True, False), (True, False, True), (False, True, True)])
+def test_dedicated_car_state_validity_is_updated_on_every_receive(received, valid, previous):
+  sample, _ = sample_method()
+  state = startup(200)
+  state.initialized = True
+  state.car_state_valid = previous
+  car_state = SimpleNamespace(valid=valid, carState=SimpleNamespace(canValid=True), logMonoTime=2_000_000_000) if received else None
+  sample.__globals__['messaging'].recv_one = lambda _: car_state
+  sample(state)
+  assert state.car_state_valid == (received and valid)

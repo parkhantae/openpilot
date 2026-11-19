@@ -3,10 +3,12 @@
 import ast
 from pathlib import Path
 from types import SimpleNamespace as NS
+from typing import Optional
 
 import pytest
 
 from openpilot.cereal import car, log
+from openpilot.cereal.services import SERVICE_LIST
 from openpilot.selfdrive.car.porter_button_status import porter_button_unavailable, warn_porter_button_unavailable
 from openpilot.selfdrive.selfdrived.events import EVENTS, ET
 from opendbc.car.hyundai.porter import PorterCruiseButtons
@@ -39,17 +41,38 @@ def publish(CP, CS, buttons):
     return decoded.carOutput.as_builder()
 
 
-def event(CP, CS, output, fresh=True):
+def event(CP, CS, output, fresh=True, car_fresh=True):
   source = ROOT / 'openpilot/selfdrive/selfdrived/selfdrived.py'
   tree = ast.parse(source.read_text())
   node = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and 'warn_porter_button_unavailable(' in ast.unparse(n.test))
 
+  subscription = next(n for n in ast.walk(tree) if isinstance(n, ast.Assign) and ast.unparse(n.targets[0]) == 'self.sm' and isinstance(n.value, ast.Call))
+  obj = NS(camera_packets=[], sensor_packets=[], gps_packets=[])
+  services = eval(compile(ast.Expression(subscription.value.args[0]), str(source), 'eval'), {'self': obj})
+  assert 'carOutput' in services and 'carState' not in services
+
   class SM(dict):
-    def all_checks(self, _):
-      return fresh
+    pass
+
+  # Run the actual health checks over the actual subscription keys. A mock
+  # that just returns True hid the production KeyError from this test before.
+  health_source = ROOT / 'openpilot/cereal/messaging/__init__.py'
+  health_tree = ast.parse(health_source.read_text())
+  health_class = next(n for n in health_tree.body if isinstance(n, ast.ClassDef) and n.name == 'SubMaster')
+  methods = [n for n in health_class.body if isinstance(n, ast.FunctionDef) and n.name in ('all_checks', 'all_alive', 'all_valid', 'all_freq_ok')]
+  namespace = {'Optional': Optional, 'List': list, 'SERVICE_LIST': SERVICE_LIST}
+  exec(compile(ast.Module(body=methods, type_ignores=[]), str(health_source), 'exec'), namespace)
+  for method in methods:
+    setattr(SM, method.name, namespace[method.name])
+  sm = SM(carOutput=output)
+  sm.services = services
+  sm.alive = sm.valid = sm.freq_ok = dict.fromkeys(services, fresh)
+  sm.ignore_alive = sm.ignore_valid = sm.ignore_average_freq = []
+  with pytest.raises(KeyError, match='carState'):
+    sm.all_checks(['carState'])
 
   found = []
-  obj = NS(CP=CP, sm=SM(carOutput=output), events=NS(add=found.append))
+  obj = NS(CP=CP, sm=sm, car_state_valid=car_fresh, events=NS(add=found.append))
   exec(
     compile(ast.Module(body=[node], type_ignores=[]), str(source), 'exec'),
     {'self': obj, 'CS': CS, 'warn_porter_button_unavailable': warn_porter_button_unavailable, 'EventName': log.OnroadEvent.EventName},
@@ -98,10 +121,20 @@ def test_warning_has_no_control_disable_override_or_actuation_side_effect():
   assert 'Take Control' in entry[ET.PERMANENT].alert_text_2
 
 
+def test_missing_or_invalid_dedicated_car_state_suppresses_warning_without_submaster_lookup():
+  CP, CS = cp(), state()
+  b = PorterCruiseButtons()
+  b.retry_exhausted = True
+  output = publish(CP, CS, b)
+  assert event(CP, CS, output, car_fresh=False) == []
+  assert event(CP, CS, output, car_fresh=True) == [log.OnroadEvent.EventName.porterButtonUnavailable]
+
+
 @pytest.mark.parametrize('language', ['en', 'ko', 'zh-CHS'])
 def test_new_warning_is_translated_and_fits_the_mid_alert(language):
   from PIL import ImageFont
   from openpilot.selfdrive.ui.translations.potools import parse_po
+
   alert = EVENTS[log.OnroadEvent.EventName.porterButtonUnavailable][ET.PERMANENT]
   _, entries = parse_po(ROOT / 'openpilot/selfdrive/ui/translations' / f'app_{language}.po')
   translations = {entry.msgid: entry.msgstr for entry in entries}

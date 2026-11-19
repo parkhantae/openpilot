@@ -42,6 +42,7 @@ jobs:
           python tools/signal_validation/run.py \
             openpilot/selfdrive/car/tests/test_porter_set_speed.py \
             openpilot/selfdrive/car/tests/test_porter_button_status.py \
+            openpilot/selfdrive/selfdrived/tests/test_initialization_timeout.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_decel_retry.py \
             opendbc_repo/opendbc/safety/tests/test_hyundai_porter.py \
             opendbc_repo/opendbc/safety/tests/test_hyundai_porter_main_set.py \

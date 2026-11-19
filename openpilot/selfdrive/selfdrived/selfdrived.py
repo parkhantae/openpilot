@@ -147,6 +147,7 @@ class SelfdriveD:
     self.cutin_audio_tracker = CutinAlertTracker()
     self.radar_only_warning = RadarOnlyWarning(front_radar_distance_delay_s(self.CP))
     self.car_state_time_s = 0.0
+    self.car_state_valid = False
     self.dm_uncertain_alerted = False
     self.dm_disabled_prev = False
     self.update_reboot_alerted = False
@@ -240,7 +241,7 @@ class SelfdriveD:
       return
 
     if warn_porter_button_unavailable(self.CP, CS, self.sm['carOutput'],
-                                     self.sm.all_checks(['carState', 'carOutput'])):
+                                     self.car_state_valid and self.sm.all_checks(['carOutput'])):
       self.events.add(EventName.porterButtonUnavailable)
 
     cutin_enabled = self.enabled and self.sm.valid['radarState']
@@ -588,6 +589,8 @@ class SelfdriveD:
 
   def data_sample(self):
     car_state = messaging.recv_one(self.car_state_sock)
+    # carState uses its dedicated blocking socket, not the SubMaster below.
+    self.car_state_valid = car_state is not None and car_state.valid
     CS = car_state.carState if car_state else self.CS_prev
     if car_state is not None:
       self.car_state_time_s = car_state.logMonoTime * 1e-9
