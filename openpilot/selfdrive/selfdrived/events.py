@@ -584,7 +584,7 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       "Automatic Speed Control Unavailable",
       "Buttons Unresponsive · Take Control",
       AlertStatus.userPrompt, AlertSize.mid,
-      Priority.HIGH, VisualAlert.none, AudibleAlert.none, .2),
+      Priority.HIGH, VisualAlert.none, AudibleAlert.promptRepeat, .2),
   },
 
   # Retain the schema event for historical logs, without a fallback banner.

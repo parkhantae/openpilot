@@ -12,7 +12,9 @@ current fork catalog, apply with `git apply --check --unidiff-zero` and
 `git apply --unidiff-zero`, then regenerate and validate. The trial defaults OFF
 and adds at most one deceleration-only press per stock-ON session after three
 unanswered deceleration requests and a three-second quiet period. The unavailable
-banner also applies with the trial OFF. This fork-specific patch is staged,
+banner also applies with the trial OFF. It now includes the display-bound double
+beep once per second, immediate cancellation and preserved alert priority/volume.
+This fork-specific patch is staged,
 not published to the upstream live Wiki.
 
 ## Cruise speed at accelerator release

@@ -196,3 +196,128 @@ class TestSoundd:
 
   # TODO: add test with micd for checking that soundd actually outputs sounds
 
+
+
+@pytest.fixture
+def porter_sound():
+  from openpilot.selfdrive.ui.soundd import make_porter_unavailable_sound
+  soundd = Soundd.__new__(Soundd)
+  soundd.current_alert = AudibleAlert.none
+  soundd.current_alert_type = ''
+  soundd.current_sound_frame = 0
+  soundd.current_volume = 1.0
+  soundd.carrot_count_down = 100
+  soundd.porter_unavailable_sound = make_porter_unavailable_sound()
+  soundd.loaded_sounds = {
+    AudibleAlert.promptRepeat: np.full(50000, .25, dtype=np.float32),
+    AudibleAlert.warningImmediate: np.full(50000, .5, dtype=np.float32),
+  }
+  return soundd
+
+
+def test_porter_tone_repeats_two_beeps_once_per_second_across_callback_boundaries(porter_sound):
+  from openpilot.selfdrive.ui.soundd import SAMPLE_RATE, PORTER_UNAVAILABLE_ALERT_TYPE
+  porter_sound.update_alert(AudibleAlert.promptRepeat, PORTER_UNAVAILABLE_ALERT_TYPE)
+  # Uneven chunks straddle both beep and one-second loop boundaries.
+  chunks = []
+  remaining = SAMPLE_RATE * 3
+  while remaining:
+    count = min(4096, remaining)
+    chunks.append(porter_sound.get_sound_data(count))
+    remaining -= count
+    # A fresh selfdriveState every frame must not restart the one-second cycle.
+    porter_sound.update_alert(AudibleAlert.promptRepeat, PORTER_UNAVAILABLE_ALERT_TYPE)
+  output = np.concatenate(chunks).reshape(3, SAMPLE_RATE)
+  np.testing.assert_array_equal(output[0], output[1])
+  np.testing.assert_array_equal(output[0], output[2])
+  for start, end in ((.01, .11), (.23, .33)):
+    assert np.max(np.abs(output[0, int(start*SAMPLE_RATE):int(end*SAMPLE_RATE)])) > .6
+  for start, end in ((.12, .22), (.34, 1.0)):
+    assert not np.any(output[0, int(start*SAMPLE_RATE):int(end*SAMPLE_RATE)])
+
+
+@pytest.mark.parametrize('elapsed', [1, 1000, 14000, 47000, 50001])
+def test_porter_warning_stops_in_the_next_audio_buffer_when_display_clears(porter_sound, elapsed):
+  from openpilot.cereal import log
+  from openpilot.selfdrive.selfdrived.events import Events, ET
+  from openpilot.selfdrive.selfdrived.alertmanager import AlertManager
+  events = Events()
+  events.add(log.OnroadEvent.EventName.porterButtonUnavailable)
+  manager = AlertManager()
+  manager.add_many(0, events.create_alerts([ET.PERMANENT]))
+  manager.process_alerts(0, set())
+  alert = manager.current_alert
+  sm = _SoundSubMaster(100, selfdrive_updated=True)
+  sm['selfdriveState'].alertSound.raw = alert.audible_alert
+  sm['selfdriveState'].alertType = alert.alert_type
+  porter_sound.get_audible_alert(sm)
+  porter_sound.get_sound_data(elapsed)
+  # The same alert manager that selects the screen also selects the sound.
+  manager.process_alerts(alert.duration + 1, set())
+  assert manager.current_alert.alert_text_1 == ''
+  sm['selfdriveState'].alertSound.raw = manager.current_alert.audible_alert
+  sm['selfdriveState'].alertType = manager.current_alert.alert_type
+  porter_sound.get_audible_alert(sm)
+  assert porter_sound.current_alert == AudibleAlert.none
+  assert not np.any(porter_sound.get_sound_data(4096))
+
+
+def test_porter_warning_yields_to_critical_alert_and_restarts_after_it(porter_sound):
+  from openpilot.selfdrive.ui.soundd import PORTER_UNAVAILABLE_ALERT_TYPE
+  porter_sound.update_alert(AudibleAlert.promptRepeat, PORTER_UNAVAILABLE_ALERT_TYPE)
+  porter_sound.get_sound_data(100)
+  porter_sound.update_alert(AudibleAlert.warningImmediate, 'driverDistracted3/permanent')
+  np.testing.assert_allclose(porter_sound.get_sound_data(100), .5)
+  porter_sound.update_alert(AudibleAlert.promptRepeat, PORTER_UNAVAILABLE_ALERT_TYPE)
+  assert porter_sound.current_sound_frame == 0
+  np.testing.assert_array_equal(porter_sound.get_sound_data(100), porter_sound.porter_unavailable_sound[:100])
+
+
+def test_porter_tone_does_not_replace_other_events_using_prompt_repeat(porter_sound):
+  from openpilot.selfdrive.ui.soundd import PORTER_UNAVAILABLE_ALERT_TYPE
+  porter_sound.update_alert(AudibleAlert.promptRepeat, 'otherWarning/warning')
+  np.testing.assert_allclose(porter_sound.get_sound_data(100), .25)
+  porter_sound.update_alert(AudibleAlert.promptRepeat, PORTER_UNAVAILABLE_ALERT_TYPE)
+  assert porter_sound.current_sound_frame == 0
+  porter_sound.get_sound_data(100)
+  porter_sound.update_alert(AudibleAlert.promptRepeat, 'otherWarning/warning')
+  assert porter_sound.current_sound_frame == 0
+  np.testing.assert_allclose(porter_sound.get_sound_data(100), .25)
+
+
+def test_alert_manager_selects_critical_warning_before_porter_tone(porter_sound):
+  from openpilot.cereal import log
+  from openpilot.selfdrive.selfdrived.events import Events, ET
+  from openpilot.selfdrive.selfdrived.alertmanager import AlertManager
+  events = Events()
+  events.add(log.OnroadEvent.EventName.porterButtonUnavailable)
+  events.add(log.OnroadEvent.EventName.controlsMismatch)
+  manager = AlertManager()
+  alerts = events.create_alerts([ET.PERMANENT, ET.IMMEDIATE_DISABLE])
+  manager.add_many(0, alerts)
+  manager.process_alerts(0, set())
+  assert manager.current_alert.alert_type == 'controlsMismatch/immediateDisable'
+  sm = _SoundSubMaster(100, selfdrive_updated=True)
+  sm['selfdriveState'].alertType = manager.current_alert.alert_type
+  sm['selfdriveState'].alertSound.raw = manager.current_alert.audible_alert
+  porter_sound.get_audible_alert(sm)
+  np.testing.assert_allclose(porter_sound.get_sound_data(100), .5)
+
+
+@pytest.mark.parametrize('volume', [0., .2, 1.])
+def test_porter_tone_obeys_existing_volume(porter_sound, volume):
+  from openpilot.selfdrive.ui.soundd import PORTER_UNAVAILABLE_ALERT_TYPE
+  porter_sound.current_volume = volume
+  porter_sound.update_alert(AudibleAlert.promptRepeat, PORTER_UNAVAILABLE_ALERT_TYPE)
+  np.testing.assert_allclose(porter_sound.get_sound_data(1000), porter_sound.porter_unavailable_sound[:1000] * volume)
+
+
+def test_production_sound_loader_prepares_the_porter_tone(monkeypatch):
+  from openpilot.selfdrive.ui import soundd as module
+  soundd = Soundd.__new__(Soundd)
+  soundd.lang = 'en'
+  monkeypatch.setattr(module, 'sound_list', {AudibleAlert.promptRepeat: sound_list[AudibleAlert.promptRepeat]})
+  soundd.load_sounds()
+  assert AudibleAlert.promptRepeat in soundd.loaded_sounds
+  assert len(soundd.porter_unavailable_sound) == module.SAMPLE_RATE
+  assert soundd.porter_unavailable_sound.dtype == np.float32

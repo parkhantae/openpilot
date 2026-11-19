@@ -141,6 +141,11 @@ jobs:
           openpilot/selfdrive/ui/tests/test_radar_display.py
       - name: Check coherent OS04C10 exposure updates
         run: openpilot/system/camerad/test/test_os04c10_exposure
+      - name: Check Porter unavailable-warning sound cadence and cancellation
+        run: >-
+          python -m pytest --noconftest -o addopts='' -q
+          openpilot/selfdrive/ui/tests/test_soundd.py
+          openpilot/selfdrive/car/tests/test_porter_button_status.py
       - name: Check UI geometry and rendering regressions
         run: >-
           python -m pytest -o addopts='' -q

@@ -2,7 +2,7 @@
 +++ b/KO-포터-무응답-후-감속-1회-재시도-(시험).md
 @@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="63b53c26d1f2027a6cd609ba712f9239ab59e62e4e13b160befde26f48784218" reviewed-at="2026-11-18T23:50:02.257843+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="95827b14e7527b808ee8810c52aaa540fbbfcd3479c1d9eef617b9fa5fc1d529" reviewed-at="2026-11-19T05:55:16.735749+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -19,13 +19,13 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+중단·감속 전용 상태에서는 자동 가감속 불가 및 직접 조작 안내가 표시됩니다. 이 안내는 시험 OFF에서도 작동합니다. 버튼·Panda 한도는 유지되며 차량 수락이나 자동 제동을 보장하지 않습니다.
++중단·감속 전용 상태에서는 자동 가감속 불가 및 직접 조작 안내가 표시됩니다. 이 안내는 시험 OFF에서도 작동합니다. 표시되는 동안 1초마다 뚜뚜 경고음을 반복하고 안내가 사라지면 중단합니다. 더 높은 우선순위의 표시 경고와 기존 음량 설정을 따릅니다. 버튼·Panda 한도는 유지되며 차량 수락이나 자동 제동을 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/EN-Porter-one-deceleration-retry-after-no-response-(trial).md
 +++ b/EN-Porter-one-deceleration-retry-after-no-response-(trial).md
 @@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="63b53c26d1f2027a6cd609ba712f9239ab59e62e4e13b160befde26f48784218" reviewed-at="2026-11-18T23:50:02.261082+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="95827b14e7527b808ee8810c52aaa540fbbfcd3479c1d9eef617b9fa5fc1d529" reviewed-at="2026-11-19T05:55:16.735749+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -42,13 +42,13 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Blocked or deceleration-only states display an automatic-speed-control-unavailable banner requesting direct control, including with the trial OFF. Button/Panda limits remain; ECU acceptance and braking are not guaranteed.
++Blocked or deceleration-only states display an automatic-speed-control-unavailable banner requesting direct control, including with the trial OFF. A double beep repeats once per second while displayed and stops when the banner clears. Higher-priority displayed alerts and normal volume settings apply. Button/Panda limits remain; ECU acceptance and braking are not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/ZH-波特-无响应后单次减速重试(试验).md
 +++ b/ZH-波特-无响应后单次减速重试(试验).md
 @@ -29 +29,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="63b53c26d1f2027a6cd609ba712f9239ab59e62e4e13b160befde26f48784218" reviewed-at="2026-11-18T23:50:02.264498+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="95827b14e7527b808ee8810c52aaa540fbbfcd3479c1d9eef617b9fa5fc1d529" reviewed-at="2026-11-19T05:55:16.735749+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
@@ -65,13 +65,13 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 参考
 +
-+停止或仅减速状态会提示自动速度控制不可用并要求手动接管；试验关闭时同样显示。保留按钮/Panda限制，不保证ECU接受或制动。
++停止或仅减速状态会提示自动速度控制不可用并要求手动接管；试验关闭时同样显示。显示期间每秒重复两声提示音，提示消失时停止。遵循更高优先级的显示警告及现有音量设置。保留按钮/Panda限制，不保证ECU接受或制动。
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/KO-크루즈버튼-무응답-재시도-(포터-최대-2회).md
 +++ b/KO-크루즈버튼-무응답-재시도-(포터-최대-2회).md
 @@ -30 +30,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-18T23:50:02.267740+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-19T05:55:16.735749+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
@@ -88,13 +88,13 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 참고
 +
-+중단·감속 전용 상태에서는 자동 가감속 불가 및 직접 조작 안내가 표시됩니다. 이 안내는 시험 OFF에서도 작동합니다. 버튼·Panda 한도는 유지되며 차량 수락이나 자동 제동을 보장하지 않습니다.
++중단·감속 전용 상태에서는 자동 가감속 불가 및 직접 조작 안내가 표시됩니다. 이 안내는 시험 OFF에서도 작동합니다. 표시되는 동안 1초마다 뚜뚜 경고음을 반복하고 안내가 사라지면 중단합니다. 더 높은 우선순위의 표시 경고와 기존 음량 설정을 따릅니다. 버튼·Panda 한도는 유지되며 차량 수락이나 자동 제동을 보장하지 않습니다.
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/EN-Cruise-button-unanswered-retries-(Porter-max-2).md
 +++ b/EN-Cruise-button-unanswered-retries-(Porter-max-2).md
 @@ -30 +30,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-18T23:50:02.270639+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-19T05:55:16.735749+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
@@ -111,13 +111,13 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Blocked or deceleration-only states display an automatic-speed-control-unavailable banner requesting direct control, including with the trial OFF. Button/Panda limits remain; ECU acceptance and braking are not guaranteed.
++Blocked or deceleration-only states display an automatic-speed-control-unavailable banner requesting direct control, including with the trial OFF. A double beep repeats once per second while displayed and stops when the banner clears. Higher-priority displayed alerts and normal volume settings apply. Button/Panda limits remain; ECU acceptance and braking are not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
 --- a/ZH-巡航按钮连发3(1).md
 +++ b/ZH-巡航按钮连发3(1).md
 @@ -30 +30,19 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-18T23:50:02.273762+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="bdacfa560e4bd26abab7bef6feffa480cc8d4c0a0537f8f20291d74036bb4a5e" reviewed-at="2026-11-19T05:55:16.735749+00:00" -->
 +
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
@@ -134,5 +134,5 @@
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 参考
 +
-+停止或仅减速状态会提示自动速度控制不可用并要求手动接管；试验关闭时同样显示。保留按钮/Panda限制，不保证ECU接受或制动。
++停止或仅减速状态会提示自动速度控制不可用并要求手动接管；试验关闭时同样显示。显示期间每秒重复两声提示音，提示消失时停止。遵循更高优先级的显示警告及现有音量设置。保留按钮/Panda限制，不保证ECU接受或制动。
 +<!-- CARROT:SECTION:END REFERENCE -->

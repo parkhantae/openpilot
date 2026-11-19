@@ -34,6 +34,24 @@ if HARDWARE.get_device_type() == "tizi":
 
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 ButtonType = car.CarState.ButtonEvent.Type
+PORTER_UNAVAILABLE_ALERT_TYPE = 'porterButtonUnavailable/permanent'
+
+
+def is_porter_unavailable_sound(alert, alert_type):
+  return alert == AudibleAlert.promptRepeat and alert_type == PORTER_UNAVAILABLE_ALERT_TYPE
+
+
+def make_porter_unavailable_sound():
+  """One second: two 120 ms beeps, 100 ms apart, then silence."""
+  samples = np.zeros(SAMPLE_RATE, dtype=np.float32)
+  length, fade = int(0.12 * SAMPLE_RATE), int(0.01 * SAMPLE_RATE)
+  envelope = np.ones(length, dtype=np.float32)
+  envelope[:fade] = np.linspace(0., 1., fade)
+  envelope[-fade:] = np.linspace(1., 0., fade)
+  beep = 0.65 * np.sin(2 * np.pi * 1000 * np.arange(length) / SAMPLE_RATE) * envelope
+  for offset in (0, int(0.22 * SAMPLE_RATE)):
+    samples[offset:offset + length] = beep
+  return samples
 
 
 sound_list: dict[int, tuple[str, int | None, float]] = {
@@ -193,6 +211,7 @@ class Soundd:
 
   def load_sounds(self):
     self.loaded_sounds: dict[int, np.ndarray] = {}
+    self.porter_unavailable_sound = make_porter_unavailable_sound()
     sound_dir = os.path.join(BASEDIR, "openpilot", "selfdrive", "assets", sound_asset_dir_for_language(self.lang))
     fallback_dir = os.path.join(BASEDIR, "openpilot", "selfdrive", "assets", "sounds_eng")
 
@@ -243,7 +262,16 @@ class Soundd:
     ret = np.zeros(frames, dtype=np.float32)
     alert, alert_type, volume = self.current_alert, self.current_alert_type, self.current_volume
 
-    if alert != AudibleAlert.none:
+    if is_porter_unavailable_sound(alert, alert_type):
+      # Keep an exact one-second period even when a callback spans the wrap.
+      written_frames = 0
+      while written_frames < frames:
+        offset = self.current_sound_frame % len(self.porter_unavailable_sound)
+        count = min(frames - written_frames, len(self.porter_unavailable_sound) - offset)
+        ret[written_frames:written_frames + count] = self.porter_unavailable_sound[offset:offset + count]
+        written_frames += count
+        self.current_sound_frame += count
+    elif alert != AudibleAlert.none:
       num_loops = sound_list[alert][1]
       sound_data = self.loaded_sounds[alert]
       written_frames = 0
@@ -271,12 +299,14 @@ class Soundd:
       cloudlog.error(f"soundd received unsupported alert {new_alert}")
       new_alert = AudibleAlert.none
 
+    was_porter = is_porter_unavailable_sound(self.current_alert, getattr(self, 'current_alert_type', ''))
+    porter_changed = was_porter != is_porter_unavailable_sound(new_alert, alert_type)
     current_alert_played_once = (
       self.current_alert == AudibleAlert.none or
       self.current_alert not in self.loaded_sounds or
       self.current_sound_frame >= len(self.loaded_sounds[self.current_alert])
     )
-    if self.current_alert != new_alert and (new_alert != AudibleAlert.none or current_alert_played_once):
+    if (self.current_alert != new_alert or porter_changed) and (new_alert != AudibleAlert.none or current_alert_played_once or was_porter):
       self.current_alert = new_alert
       self.current_sound_frame = 0
       self.current_alert_type = alert_type
