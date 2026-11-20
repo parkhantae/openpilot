@@ -215,3 +215,21 @@ fork catalog, apply with `git apply --check --unidiff-zero` and
 `git apply --unidiff-zero`, regenerate with staging as `--wiki-dir` and validate.
 Only Korean, English and Chinese MANUAL regions change. This fork-specific
 patch is staged; no live upstream Wiki publication.
+
+## Porter release-speed priority and GAP response
+
+`porter-speed-response.patch` updates only Korean, English and Chinese MANUAL
+regions for `AutoGasSyncSpeed`, `PorterGapUse`, `PorterLeadReactionTime` and
+`CruiseButtonTest2`. Generate fresh pages from this branch's catalog; apply
+`gas-release-speed.patch`, `porter-dedicated-gap.patch`, `porter-gap-touch.patch`,
+`porter-adaptive-gap.patch`, `porter-gap-restart.patch`, then this patch using
+`git apply --check --unidiff-zero` / `git apply --unidiff-zero`. Regenerate with
+the staged directory as `--wiki-dir` and validate. This final delta replaces
+the earlier absolute 1.8km/h/s recovery description and reviews the current
+catalog hashes; keep it last in that chain.
+
+It covers pedal deceleration without braking, the completed driver-speed
+ceiling, OEM setpoint reduction time and confirmed clear-road target recovery.
+Lead/navigation constraints, actual brake/CANCEL interruptions and existing
+button/Panda limits remain. This fork-specific documentation is staged and
+does not publish to the upstream live Wiki.

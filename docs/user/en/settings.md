@@ -137,6 +137,8 @@ With **Auto update Cruise speed** (`AutoGasSyncSpeed`) ON, an accelerator press 
 
 Existing short gas-tap actions remain. OFF, braking, CANCEL, driver buttons, speed commands, invalid input, leaving drive or losing cruise cancels that pedal's speed capture; recovery requires a new press. Vehicle-owned PCM speed modes and existing automatic speed, model, lead, curve and navigation control remain in effect. Porter uses the existing button controller to request the selected stock setting, so vehicle acceptance and timing are not guaranteed. This is separate from automatic SET while cruise is in standby.
 
+On Porter conventional cruise, deceleration while the accelerator is held does not by itself revoke release-speed capture. Once captured, that selection caps automatic road-speed increases. Explicit speed buttons/commands, a short gas tap, braking, CANCEL, cruise interruption or OFF clear this ceiling; GAP changes preserve it. Lower model, lead, curve and navigation limits still apply.
+
 ### Buttons and presets — 15 settings
 
 Select a section title for the code-based state machine, units, and application conditions.
@@ -549,7 +551,7 @@ Porter GAP1–4 range from 40 to 300 in steps of 5; 50=0.50s. Initial defaults a
 
 **Porter: deceleration lookahead** (`PorterLeadReactionTime`) applies to both button deceleration and lead-based low-target cancellation while dedicated GAP is ON. Range 40–80 in steps of 5; 80=8s, 60=6s; initial default 80. Higher values can request deceleration farther away; lower values can wait until closer. Dedicated GAP OFF retains the existing 8s projection. Adjust the dedicated gap and lookahead separately.
 
-With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. After 0.5s of confirmed gap recovery, raise the button target by at most 1.8km/h per second. Lower urgent targets are not delayed; missing or invalid lead inputs inhibit recovery. Sub-30km/h cancellation and transmission limits remain.
+With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. Approach calculations reserve the request time to lower the stock setting toward lead speed in 1km/h steps; reductions inside the gap remain unchanged. After 0.5s of confirmed gap recovery, normal target rise is at most 1.8km/h per second. With sufficient gap and 1s of confirmed absence or opening faster than 0.2m/s, recovery toward the current comma target is bounded by the request interval and at most 3km/h per second. Lower urgent targets are not delayed; missing or invalid lead inputs inhibit recovery. Sub-30km/h cancellation and transmission limits remain.
 
 On Porter conventional cruise, a valid stock OFF followed by ON clears the preceding session’s GAP deceleration/recovery state and reevaluates current lead, planner and navigation limits. A CAN gap during continuous stock ON or an invalid OFF sample does not clear protection. Saved GAP values and transmission/cancel limits remain.
 

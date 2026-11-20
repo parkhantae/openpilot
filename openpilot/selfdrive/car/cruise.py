@@ -11,7 +11,7 @@ from openpilot.selfdrive.car.toyota_pcm_speed import ToyotaPcmSetSpeedSync
 from openpilot.selfdrive.car.porter_set_speed import PorterSetSpeedSync
 
 from opendbc.car import structs
-from opendbc.car.hyundai.porter import pcm_cruise_min_kph
+from opendbc.car.hyundai.porter import pcm_cruise_min_kph, porter_conventional_cruise
 GearShifter = structs.CarState.GearShifter
 
 
@@ -198,7 +198,9 @@ class VCruiseCarrot:
     self._gas_pressed_count_last = 0
     self._gas_pressed_value = 0
     self._gas_sync_base_kph = None
+    self._gas_sync_selected_kph = None
     self._gas_sync_manual_input = False
+    self._gas_sync_speed_input = False
     self._gas_tok_timer = int(0.4 / 0.01) # 0.4 sec
     self._gas_tok = False
     self.speedcam_gas_tok_consumed = False  # set by card when carstate spent this tap on a camera skip
@@ -760,6 +762,8 @@ class VCruiseCarrot:
 
     self._gas_sync_manual_input = (bool(CS.buttonEvents) or remote is not None or
                                    button_type != ButtonType.unknown or speed_command)
+    speed_buttons = (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.setCruise, ButtonType.resumeCruise)
+    self._gas_sync_speed_input = speed_command or button_type in speed_buttons or any(b.type in speed_buttons for b in CS.buttonEvents)
     updated_speed = self._update_cruise_state(CS, CC, v_cruise_kph)
     # Keep automatic engagement/disengagement checks, but let an explicit SET/RES
     # own the speed selected on this frame (e.g. simultaneous pedal release).
@@ -889,10 +893,15 @@ class VCruiseCarrot:
     """Select release speed once, without retaining the pedal's peak speed."""
     if not getattr(self, "autoGasSyncSpeed", 0):
       self._gas_sync_base_kph = None
+      self._gas_sync_selected_kph = None
       return v_cruise_kph
 
     pcm_speed_owned = self.CP.pcmCruise and (self.speed_from_pcm == 1 or
                       (self.speed_from_pcm == 3 and self.CP.brand == "toyota"))
+    if (not CC.enabled or not CS.cruiseState.enabled or pcm_speed_owned or
+        CS.brakePressed or CS.brakeHoldActive or CS.parkingBrake or CC.cruiseControl.cancel or
+        self._cruise_cancel_state or getattr(self, "_gas_sync_speed_input", False) or self._gas_tok):
+      self._gas_sync_selected_kph = None
     valid = (CC.enabled and CS.cruiseState.available and
              (not self.CP.pcmCruise or CS.cruiseState.enabled) and
              CS.canValid and not CS.canTimeout and not CS.accFaulted and CS.gearShifter == GearShifter.drive and
@@ -914,6 +923,11 @@ class VCruiseCarrot:
           math.isfinite(self.v_ego_kph_set) and minimum <= self.v_ego_kph_set <= self._cruise_speed_max and
           self.v_ego_kph_set > base_kph):
         self._add_log(f"Cruise speed from gas release: {self.v_ego_kph_set}")
+        if porter_conventional_cruise(self.CP):
+          # A qualified driver selection owns the upper set speed until a
+          # new explicit speed input or cruise interruption. Lower limits
+          # still pass through the normal model/navigation/lead paths.
+          self._gas_sync_selected_kph = self.v_ego_kph_set
         return self.v_ego_kph_set
     elif self._gas_pressed_count < 0:
       self._gas_sync_base_kph = None
@@ -1009,7 +1023,12 @@ class VCruiseCarrot:
           
 
     if self._gas_pressed_count > self._gas_tok_timer:
-      if CS.aEgo < -0.5:
+      stock_pedal_sync = (getattr(self, "autoGasSyncSpeed", 0) and porter_conventional_cruise(self.CP) and
+                          CC.enabled and CS.cruiseState.enabled and
+                          not (CS.brakePressed or CS.brakeHoldActive or CS.parkingBrake or CC.cruiseControl.cancel))
+      # Stock Porter cruise remains engaged while the driver eases the pedal.
+      # Deceleration alone is not a brake input or an OEM disengagement.
+      if CS.aEgo < -0.5 and not stock_pedal_sync:
         self._cruise_control(-1, 5.0, "Cruise off (gas pressed while braking)")
 
     if self._gas_pressed_count == 1 or CS.vEgo < 0.1:
@@ -1020,7 +1039,10 @@ class VCruiseCarrot:
       self._pause_auto_speed_up = True
 
     v_cruise_kph = self._sync_gas_release_speed(CS, CC, v_cruise_kph)
-    return self._auto_speed_up(v_cruise_kph)
+    v_cruise_kph = self._auto_speed_up(v_cruise_kph)
+    if self._gas_sync_selected_kph is not None:
+      v_cruise_kph = min(v_cruise_kph, self._gas_sync_selected_kph)
+    return v_cruise_kph
 
   def _prepare_brake_gas(self, CS, CC):
     if CS.gasPressed:

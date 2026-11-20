@@ -13,7 +13,7 @@ def tick(p, t, *, distance=60.0, relative=-2.0, speed=20.0, target=100.0, stock=
 def test_same_approach_slows_progressively_as_distance_shrinks():
   p = PorterLeadTracker()
   values = [tick(p, i * 0.05, distance=d) for i, d in enumerate((60, 45, 35, 25, 15))]
-  assert values == pytest.approx([80.0, 80.0, 73.8, 64.8, 55.8])
+  assert values == pytest.approx([79.1181818182, 72.9818181818, 68.8909090909, 64.8, 55.8])
   assert all(a >= b for a, b in zip(values, values[1:], strict=False))
   # At the desired 25m distance the cap equals the lead's 64.8km/h.
   # Inside it the target falls below the lead speed to reopen the gap.
@@ -36,7 +36,7 @@ def test_higher_ego_speed_increases_distance_at_equal_lead_speed():
 def test_recovery_waits_for_stable_clear_gap_and_ramps_without_vehicle_falling_to_old_stock():
   p = PorterLeadTracker()
   start = tick(p, 0, distance=20, relative=-5, stock=60)
-  vals = [tick(p, n * 0.01, distance=100, relative=2, stock=60) for n in range(1, 102)]
+  vals = [tick(p, n * 0.01, distance=100, relative=2, stock=60) for n in range(1, 101)]
   assert all(v <= start + 1e-9 for v in vals[:50])
   assert 0 < vals[-1] - start <= 1.8 * 0.52 + 1e-9
   assert p.recovery_ready
@@ -88,3 +88,62 @@ def test_clock_gap_cannot_raise_a_previous_low_target_to_stock_speed():
   assert tick(p, 1, distance=100, stock=80) <= low
   assert tick(p, 1.01, distance=100, stock=80) <= low
   assert not p.recovery_ready
+
+
+def test_setting_catchup_time_starts_reduction_before_short_distance():
+  p = PorterLeadTracker()
+  # 90 -> 54 requires 36 accepted one-km/h steps, not an instant ECU target.
+  target = p.update(0, 100, 90, 20, 70, -5, 1, gap_time_s=1., reaction_s=4., adaptive=True)
+  assert target < 72  # begin reducing while the lead is still 70m ahead
+  assert not p.recovery_ready
+
+
+def test_slower_configured_button_spacing_reserves_more_approach_distance():
+  values = []
+  for interval in (.3, .6, 1.):
+    values.append(PorterLeadTracker().update(0, 100, 90, 20, 70, -5, 1,
+                  gap_time_s=1., reaction_s=4., adaptive=True, button_interval_s=interval))
+  assert values[2] < values[1] < values[0] < 72
+
+
+def test_lag_prediction_never_softens_a_cap_inside_the_selected_gap():
+  for interval in (.3, .6, 1.):
+    p = PorterLeadTracker()
+    assert p.update(0, 100, 90, 20, 15, -5, 1, gap_time_s=1., reaction_s=4.,
+                    adaptive=True, button_interval_s=interval) == pytest.approx(45.)
+
+
+def test_opening_lead_recovers_faster_only_after_confirmation():
+  p = PorterLeadTracker()
+  values = [tick(p, n * .01, distance=100, relative=2, stock=60) for n in range(151)]
+  assert max(b-a for a,b in zip(values[60:99],values[61:100],strict=True)) <= .018 + 1e-8
+  assert values[150] - values[149] == pytest.approx(.03)
+  assert p.recovery_ready
+  # A closing lead immediately leaves the fast-recovery state.
+  old = values[-1]
+  new = tick(p, 1.51, distance=100, relative=-.1, stock=60)
+  assert new-old <= .018 + 1e-8
+
+
+def test_no_lead_fast_recovery_still_obeys_lower_navigation_limit():
+  p = PorterLeadTracker()
+  values = [tick(p, n * .01, distance=0, visible=False, stock=60) for n in range(151)]
+  assert values[150] - values[149] == pytest.approx(.03)
+  assert tick(p, 1.51, distance=0, visible=False, target=40, stock=60) == 40
+
+
+def test_invalid_button_spacing_cannot_authorize_recovery():
+  for interval in (0., -.3, float('nan'), float('inf')):
+    p = PorterLeadTracker()
+    results = [p.update(n*.01, 100, 60, 20, 100, 2, 1, adaptive=True, button_interval_s=interval)
+               for n in range(151)]
+    assert max(results) <= 60
+    assert not p.recovery_ready
+
+
+@pytest.mark.parametrize('interval', [.3, .6, 2.])
+def test_confirmed_clear_road_recovery_respects_request_throughput(interval):
+  p = PorterLeadTracker()
+  values = [p.update(n * .01, 100, 60, 20, 0, 0, 1, lead_visible=False,
+                    adaptive=True, button_interval_s=interval) for n in range(151)]
+  assert values[-1] - values[-2] == pytest.approx(min(3., 1. / interval) * .01)

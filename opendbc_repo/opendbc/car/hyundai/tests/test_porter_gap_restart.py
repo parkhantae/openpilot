@@ -84,7 +84,7 @@ def test_repeated_enabled_samples_do_not_restart_recovery_each_frame():
     p.observe_stock_cruise(True, valid=True)
     values.append(update(p, 53.32 + n * 0.01))
   assert 39 < values[-1] < 41
-  assert max(b - a for a, b in zip(values, values[1:], strict=False)) <= 0.018 + 1e-8
+  assert max(b - a for a, b in zip(values, values[1:], strict=False)) <= 0.03 + 1e-8
 
 
 def test_gap_mode_switch_keeps_the_observed_stock_state():

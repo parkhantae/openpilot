@@ -159,14 +159,16 @@ class PorterLeadTracker:
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
-             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False):
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False,
+             button_interval_s=.3):
     if adaptive:
       if self.adaptive_tracker is None:
         self._reset_tracking()
         self.adaptive_tracker = PorterAdaptiveLeadTracker(self.hold_seconds)
       result = self.adaptive_tracker.update(
         now, target_kph, stock_target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level,
-        lead_visible=lead_visible, gap_time_s=gap_time_s, reaction_s=reaction_s, recovery_allowed=recovery_allowed)
+        lead_visible=lead_visible, gap_time_s=gap_time_s, reaction_s=reaction_s, recovery_allowed=recovery_allowed,
+        button_interval_s=button_interval_s)
       self.recovery_ready = self.adaptive_tracker.recovery_ready
       return result
     if self.adaptive_tracker is not None:
@@ -245,6 +247,8 @@ class PorterAdaptiveLeadTracker:
   """Distance-error speed cap with bounded recovery; never commands acceleration."""
   # Target rise limit only, not a calibrated vehicle acceleration guarantee.
   RECOVERY_KPH_PER_S = 1.8
+  CLEAR_ROAD_RECOVERY_KPH_PER_S = 3.0
+  CLEAR_ROAD_CONFIRM_S = 1.0
 
   def __init__(self, hold_seconds=PORTER_LEAD_HOLD_S):
     self.hold_seconds = hold_seconds
@@ -253,11 +257,12 @@ class PorterAdaptiveLeadTracker:
     self.distance = self.relative = 0.
     self.last_target = None
     self.clear_since = None
+    self.open_road_since = None
     self.recovery_ready = False
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
-             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True):
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, button_interval_s=.3):
     self.recovery_ready = False
     valid = all(math.isfinite(v) for v in (now, target_kph, stock_target_kph, ego_speed)) and ego_speed >= 0
     dt = 0. if self.last_time is None else now - self.last_time
@@ -272,6 +277,9 @@ class PorterAdaptiveLeadTracker:
         return self.last_target
       return PORTER_CRUISE_MIN_KPH
     self.last_time = now
+    spacing_valid = math.isfinite(button_interval_s) and button_interval_s >= .3
+    recovery_allowed = recovery_allowed and spacing_valid
+    spacing_s = button_interval_s if spacing_valid else .3
     fresh = (lead_visible and all(math.isfinite(v) for v in (lead_distance, lead_relative_speed)) and
              lead_distance > 0)
     if fresh:
@@ -288,20 +296,35 @@ class PorterAdaptiveLeadTracker:
       # inside that distance the cap is at or below lead speed.
       margin = _porter_projected_gap_margin(ego_speed, self.distance, 0., gap_level, gap_time_s, response_s)
       lead_speed = max(0., ego_speed + self.relative)
-      cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / response_s) * 3.6))
-      clear = fresh and margin + min(0., self.relative) * response_s >= 0
+      # Lowering an OEM setpoint is a sequence of one-km/h requests. Reserve
+      # that configured request time before spending distance on approach.
+      steps = math.ceil(max(0., stock_target_kph - max(PORTER_CRUISE_MIN_KPH, lead_speed * 3.6)) - 1e-9)
+      approach_s = response_s + steps * spacing_s
+      # Inside the requested distance, retain the existing stronger reduction;
+      # a longer response estimate must never relax an already-close lead cap.
+      distance_time_s = approach_s if margin > 0 else response_s
+      cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / distance_time_s) * 3.6))
+      clear = fresh and margin + min(0., self.relative) * approach_s >= 0
     if not recovery_allowed or not clear:
       self.clear_since = None
     elif self.clear_since is None:
       self.clear_since = now
     self.recovery_ready = (self.clear_since is not None and
                            now - self.clear_since >= PORTER_LEAD_OPENING_CONFIRM_S - 1e-9)
+    open_road = recovery_allowed and clear and (not lead_visible or (fresh and self.relative > .2))
+    if not open_road:
+      self.open_road_since = None
+    elif self.open_road_since is None:
+      self.open_road_since = now
+    rise_kph_s = self.RECOVERY_KPH_PER_S
+    if self.open_road_since is not None and now - self.open_road_since >= self.CLEAR_ROAD_CONFIRM_S - 1e-9:
+      rise_kph_s = min(self.CLEAR_ROAD_RECOVERY_KPH_PER_S, 1. / spacing_s)
     if self.last_target is None:
       cap = min(cap, stock_target_kph)
     elif cap > self.last_target:
       # No recovery during dropouts, stale input or a transient gap crossing.
       # Lower planner/navigation targets pass through immediately.
-      cap = min(cap, self.last_target + (self.RECOVERY_KPH_PER_S * dt if self.recovery_ready else 0.))
+      cap = min(cap, self.last_target + (rise_kph_s * dt if self.recovery_ready else 0.))
     if not recovery_allowed or not clear:
       cap = min(cap, stock_target_kph)
     self.last_target = cap

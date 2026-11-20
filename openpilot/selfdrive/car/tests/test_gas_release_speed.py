@@ -172,6 +172,9 @@ def test_model_speed_limit_remains_after_release_capture(setup):
   s.tick(True, 100, 60)
   assert s.tick(False, 85) == pytest.approx(60)
   assert len(s.logs) == 1
+  assert s.tick(False, 85, 20) == pytest.approx(60)
+  if s.helper.CP.pcmCruise:
+    assert s.helper._gas_sync_selected_kph == 85
 
 
 def test_pcm_speed_mode_retains_vehicle_owned_setting(setup):
@@ -259,3 +262,89 @@ def test_production_cruise_update_replaces_35_only_after_porter_stock_response(s
   clock[0] = 0.71
   s.cs.cruiseState.speed = 49 * CV.KPH_TO_MS
   assert s.tick(False, 50) == pytest.approx(expected)
+
+
+def test_pedal_deceleration_only_does_not_revoke_active_porter_release(setup):
+  s = setup
+  s.tick(True, 100, 60)
+  s.cs.aEgo = -.6
+  s.tick(True, 90, 20)
+  s.tick(False, 85)
+  if s.helper.CP.pcmCruise:
+    assert s.helper.v_cruise_kph == 85
+    assert len(s.logs) == 1
+    assert s.helper._cancel_timer == 0
+  else:
+    assert s.helper.v_cruise_kph == 70
+    assert not s.logs
+
+
+def test_recorded_porter_release_is_not_overwritten_by_automatic_road_speed_up(setup):
+  s = setup
+  if not s.helper.CP.pcmCruise:
+    pytest.skip('Porter driver-selection priority only')
+  s.helper.v_cruise_kph = s.helper.v_cruise_cluster_kph = 60
+  s.params.put_int('AutoSpeedUptoRoadSpeedLimit', 100)
+  s.sm['carrotMan'] = SimpleNamespace(nRoadLimitSpeed=75, desiredSpeed=250, carrotCmdIndex=0, carrotCmd='', carrotArg='')
+  s.sm.alive['carrotMan'] = s.sm.seen['carrotMan'] = s.sm.valid['carrotMan'] = True
+  s.sm.recv_time['carrotMan'] = time.monotonic()
+  s.sm['radarState'] = SimpleNamespace(leadOne=SimpleNamespace(status=True, dRel=40., vRel=2., vLeadK=70 / 3.6))
+  s.sm.alive['radarState'] = True
+  assert s.tick(True, 65, 60) == 75
+  s.cs.aEgo = -.6
+  s.tick(True, 64, 20)
+  assert s.tick(False, 63) == 63
+  assert s.tick(False, 62, 100) == 63
+  assert s.helper._gas_sync_selected_kph == 63
+  # An explicit speed-button choice ends the pedal-selected ceiling.
+  s.params.put_int('AutoSpeedUptoRoadSpeedLimit', 0)
+  s.tick(False, 62, 20)  # allow the normal parameter-refresh cadence
+  s.cs.buttonEvents = [car.CarState.ButtonEvent(type='accelCruise', pressed=True),
+                       car.CarState.ButtonEvent(type='accelCruise', pressed=False)]
+  assert s.tick(False, 62) == 64
+  assert s.helper._gas_sync_selected_kph is None
+  s.cs.buttonEvents = []
+  s.params.put_int('AutoSpeedUptoRoadSpeedLimit', 100)
+  assert s.tick(False, 62, 20) > 64
+
+
+def test_short_tap_after_porter_capture_keeps_existing_preset_action(setup):
+  s = setup
+  if not s.helper.CP.pcmCruise:
+    pytest.skip('Porter selection ceiling only')
+  s.tick(True, 100, 60)
+  assert s.tick(False, 85) == 85
+  s.tick(True, 85, 15)
+  assert s.tick(False, 85) == 90
+  assert s.helper._gas_sync_selected_kph is None
+
+
+def test_gap_button_keeps_a_completed_porter_driver_speed_selection(setup):
+  s = setup
+  if not s.helper.CP.pcmCruise:
+    pytest.skip('Porter selection ceiling only')
+  s.tick(True, 100, 60)
+  assert s.tick(False, 85) == 85
+  s.cs.buttonEvents = [car.CarState.ButtonEvent(type='gapAdjustCruise', pressed=True),
+                       car.CarState.ButtonEvent(type='gapAdjustCruise', pressed=False)]
+  s.tick(False, 85)
+  assert s.helper._gas_sync_selected_kph == 85
+
+
+@pytest.mark.parametrize('interruption', ['brake', 'cancel', 'stock_off', 'option_off'])
+def test_completed_porter_speed_ceiling_does_not_survive_cruise_interruption(setup, interruption):
+  s = setup
+  if not s.helper.CP.pcmCruise:
+    pytest.skip('Porter selection ceiling only')
+  s.tick(True, 100, 60)
+  assert s.tick(False, 85) == 85
+  if interruption == 'brake':
+    s.cs.brakePressed = True
+  elif interruption == 'cancel':
+    s.cc.cruiseControl.cancel = True
+  elif interruption == 'stock_off':
+    s.cs.cruiseState.enabled = False
+  else:
+    s.params.put_int('AutoGasSyncSpeed', 0)
+  s.tick(False, 85, 20)
+  assert s.helper._gas_sync_selected_kph is None

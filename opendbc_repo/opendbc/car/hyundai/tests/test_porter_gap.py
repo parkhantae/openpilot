@@ -28,8 +28,8 @@ class TestPorterGap(unittest.TestCase):
                 'self.CP.carFingerprint == \'HYUNDAI_PORTER_II_EV\'' in ast.unparse(n.test) and
                 'lead_target_kph =' in ast.unparse(n))
     code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_lead_gap', 'exec')
-    for applied, fresh, reaction, expected in ((1., True, 8, 40.05), (2., True, 8, 35.55),
-                                              (2., False, 8, 40.05), (2., True, 6, 39.0)):
+    for applied, fresh, reaction, expected in ((1., True, 8, 32.1882352941), (2., True, 8, 30.0705882353),
+                                              (2., False, 8, 32.1882352941), (2., True, 6, 30.72)):
       class SM(dict):
         frame = 0
 
@@ -38,7 +38,8 @@ class TestPorterGap(unittest.TestCase):
       sm = SM(radarState=NS(leadOne=NS(status=True, dRel=48, vRel=-3)),
               selfdriveState=NS(personality=NS(raw=0)))
       obj = NS(CP=NS(carFingerprint='HYUNDAI_PORTER_II_EV'), sm=sm,
-               params=NS(get_bool=lambda _:True,get_int=lambda key,r=reaction: int(r*10) if key=='PorterLeadReactionTime' else 100),
+               params=NS(get_bool=lambda _:True,
+                   get_int=lambda key,r=reaction: int(r*10) if key=='PorterLeadReactionTime' else (30 if key=='CruiseButtonTest2' else 100)),
                porter_lead_tracker=PorterLeadTracker())
       hud = NS(setSpeed=60/3.6)
       env = dict(self=obj, CC=NS(enabled=True), CS=NS(cruiseState=NS(enabled=True, speed=60/3.6), vEgo=10),

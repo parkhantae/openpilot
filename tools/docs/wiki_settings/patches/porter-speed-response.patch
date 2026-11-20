@@ -1,0 +1,123 @@
+--- a/KO-자동크루즈속도-업데이트.md
++++ b/KO-자동크루즈속도-업데이트.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="3ff190d45ce2cdd52d10cdeb116a2a78a92fc936eb8ea9cf31d468d12deeee60" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -33,0 +34,3 @@
++포터 일반 크루즈는 실제 브레이크 없이 엑셀을 밟은 채 감속한다는 이유만으로 저장을 취소하지 않습니다. 저장 완료된 해제 속도는 자동 도로속도 상향의 상한이 됩니다.
++
++명시적 속도 버튼·명령, 짧은 엑셀 톡, 브레이크·CANCEL·크루즈 중단이나 설정 OFF는 저장된 상한을 해제합니다. GAP 버튼은 이 상한을 유지하며 더 낮은 모델·앞차·커브·내비 제한도 계속 적용합니다.
+--- a/EN-Auto-update-Cruise-speed.md
++++ b/EN-Auto-update-Cruise-speed.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="3ff190d45ce2cdd52d10cdeb116a2a78a92fc936eb8ea9cf31d468d12deeee60" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -33,0 +34,3 @@
++On Porter conventional cruise, deceleration while holding the accelerator without a brake input does not revoke capture. The completed release-speed selection caps automatic road-speed increases.
++
++Explicit speed buttons/commands, a short gas tap, braking, CANCEL, cruise interruption or OFF clear this saved ceiling. GAP changes preserve it, and lower model, lead, curve and navigation limits remain active.
+--- a/ZH-自动更新巡航速度.md
++++ b/ZH-自动更新巡航速度.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="3ff190d45ce2cdd52d10cdeb116a2a78a92fc936eb8ea9cf31d468d12deeee60" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -33,0 +34,3 @@
++波特普通巡航踩油门时仅减速而没有制动输入，不撤销速度保存。保存完成的松开速度限制自动道路速度上调。
++
++明确速度按钮或指令、短踩油门、制动、CANCEL、巡航中断或关闭设置会清除此上限。GAP按钮保留上限，更低的模型、前车、弯道及导航限速继续有效。
+--- a/KO-포터-전용-GAP-사용.md
++++ b/KO-포터-전용-GAP-사용.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.031706+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="146c617420c8de51035ff8ce6b5e75a14ce428a89e911d60673da948d22a8f7c" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -34 +34 @@
+-OFF는 공통 TF와 기존 버튼 추종 방식을 유지합니다. ON은 포터 GAP1~4를 플래너와 버튼 판단에 사용합니다. 전용 GAP ON은 내 차 속도에 비례한 기본거리와 앞차 속도·거리 오차로 버튼 목표를 연속 계산합니다. 간격 밖에서는 접근 속도를 줄이고 간격 안에서는 앞차 속도 이하로 제한합니다. 간격 회복을 0.5초 확인한 뒤 버튼 목표를 초당 최대 1.8km/h씩 올립니다. 급한 하향 목표는 지연하지 않고, 앞차의 짧은 검출 공백·무효 신호 중에는 재가속하지 않습니다. 명시적인 앞차 없음이 이어지면 0.6초 유지 후 회복 확인과 목표 상승 제한을 적용합니다. 30km/h 미만 취소 판단과 송신 한도는 유지합니다.
++OFF는 공통 TF와 기존 버튼 추종 방식을 유지합니다. ON은 포터 GAP1~4를 플래너와 버튼 판단에 사용합니다. 전용 GAP ON은 내 차 속도에 비례한 기본거리와 앞차 속도·거리 오차로 버튼 목표를 연속 계산합니다. 간격 밖에서는 접근 속도를 줄이고 간격 안에서는 앞차 속도 이하로 제한합니다. 간격 회복을 확인한 뒤 버튼 목표를 제한하며 복구합니다. 급한 하향 목표는 지연하지 않고, 앞차의 짧은 검출 공백·무효 신호 중에는 재가속하지 않습니다. 명시적인 앞차 없음이 이어지면 0.6초 유지 후 회복 확인과 목표 상승 제한을 적용합니다. 30km/h 미만 취소 판단과 송신 한도는 유지합니다.
+@@ -35,0 +36,3 @@
++순정 설정속도를 앞차 속도까지 1km/h씩 낮추는 데 필요한 요청 시간을 간격 밖 접근 계산에 추가합니다. 간격 안의 기존 감속 강도는 유지합니다.
++
++간격 회복 0.5초 뒤 일반 목표 회복은 초당 최대 1.8km/h입니다. 충분한 간격에서 앞차 없음 또는 초당 0.2m 초과 멀어짐이 1초 확인되면 요청 간격에 따라 초당 최대 3km/h로 현재 콤마 목표까지 복구합니다. 더 낮은 앞차·계획·내비 제한과 송신 한도를 유지하며 직접 제동은 추가하지 않습니다.
+--- a/EN-Porter-dedicated-GAP.md
++++ b/EN-Porter-dedicated-GAP.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.036473+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="146c617420c8de51035ff8ce6b5e75a14ce428a89e911d60673da948d22a8f7c" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -34 +34 @@
+-OFF retains common TF and legacy button following. ON shares Porter GAP1–4 with the planner and button decisions. With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. After 0.5s of confirmed gap recovery, raise the button target by at most 1.8km/h per second. Lower urgent targets are not delayed; brief lead dropouts or invalid inputs inhibit recovery. Confirmed absence of a lead permits bounded recovery after the 0.6s hold. Sub-30km/h cancellation and transmission limits remain.
++OFF retains common TF and legacy button following. ON shares Porter GAP1–4 with the planner and button decisions. With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. Confirmed gap recovery permits bounded target restoration. Lower urgent targets are not delayed; brief lead dropouts or invalid inputs inhibit recovery. Confirmed absence of a lead permits bounded recovery after the 0.6s hold. Sub-30km/h cancellation and transmission limits remain.
+@@ -35,0 +36,3 @@
++Outside-gap approach prediction reserves the request time to lower the stock setting toward lead speed in 1km/h steps. Existing reductions inside the gap remain unchanged.
++
++After 0.5s gap confirmation, normal recovery is at most 1.8km/h per second. With sufficient gap and 1s of confirmed absence or opening faster than 0.2m/s, recovery toward the current comma target is bounded by request spacing and at most 3km/h per second. Lower lead, planner and navigation limits and transmission bounds remain; no direct braking is added.
+--- a/ZH-波特-专用车距.md
++++ b/ZH-波特-专用车距.md
+@@ -29 +29 @@
+-<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.040320+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="146c617420c8de51035ff8ce6b5e75a14ce428a89e911d60673da948d22a8f7c" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -34 +34 @@
+-关闭保留通用TF及原按钮跟车方式；开启后规划器和按钮判断共用波特GAP1–4。专用GAP开启时，按本车速度计算基础距离，并结合前车速度与距离误差连续限制按钮目标。间隔外逐渐减小接近速度，间隔内限制为前车速度或更低。确认间隔恢复0.5秒后，按钮目标每秒最多提高1.8km/h。紧急下调不延迟，前车短暂丢失或输入无效时禁止恢复加速。持续明确无前车时，保持0.6秒后确认恢复并限制目标上升。保留低于30km/h取消判断和发送限制。
++关闭保留通用TF及原按钮跟车方式；开启后规划器和按钮判断共用波特GAP1–4。专用GAP开启时，按本车速度计算基础距离，并结合前车速度与距离误差连续限制按钮目标。间隔外逐渐减小接近速度，间隔内限制为前车速度或更低。确认间隔恢复后限制目标上升。紧急下调不延迟，前车短暂丢失或输入无效时禁止恢复加速。持续明确无前车时，保持0.6秒后确认恢复并限制目标上升。保留低于30km/h取消判断和发送限制。
+@@ -35,0 +36,3 @@
++间隔外的接近预测另计原厂设定速度按1km/h请求降至前车速度所需时间。间隔内的原有减速强度不减弱。
++
++确认间隔恢复0.5秒后通常每秒最多恢复1.8km/h。间隔充足且连续1秒确认无前车或前车以超过0.2m/s远离时，根据请求间隔最多每秒恢复3km/h至当前comma目标。保留更低的前车、规划、导航限制及发送上限，不增加直接制动功能。
+--- a/KO-포터-감속-예측-시간-×0.1초.md
++++ b/KO-포터-감속-예측-시간-×0.1초.md
+@@ -30 +30 @@
+-<!-- CARROT:REVIEW reviewed-for="e84fc66cbfb0725f8ac5d99472438c44e55e5f97a3e430d47173f7ae5f4656b3" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="f9c00ef7eb27fa0eca0798658775856b1037cb694cbe09b8bf3848d3c1977b04" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -35,0 +36 @@
++버튼 감속의 간격 밖 접근 계산은 이 시간에 순정 설정속도를 앞차 속도까지 1km/h씩 낮추는 요청 시간도 더합니다. 요청 간격은 `CruiseButtonTest2`를 따르며 저속 취소 판단의 시간 기준은 유지합니다.
+--- a/EN-Porter-deceleration-lookahead-×0.1s.md
++++ b/EN-Porter-deceleration-lookahead-×0.1s.md
+@@ -30 +30 @@
+-<!-- CARROT:REVIEW reviewed-for="e84fc66cbfb0725f8ac5d99472438c44e55e5f97a3e430d47173f7ae5f4656b3" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="f9c00ef7eb27fa0eca0798658775856b1037cb694cbe09b8bf3848d3c1977b04" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -35,0 +36 @@
++Outside-gap button approach calculations add the request time to lower the stock setting toward lead speed in 1km/h steps to this interval. Request spacing follows `CruiseButtonTest2`; the low-target cancellation time basis remains unchanged.
+--- a/ZH-波特-减速预测时间×0.1秒.md
++++ b/ZH-波特-减速预测时间×0.1秒.md
+@@ -30 +30 @@
+-<!-- CARROT:REVIEW reviewed-for="e84fc66cbfb0725f8ac5d99472438c44e55e5f97a3e430d47173f7ae5f4656b3" reviewed-at="2026-11-13T06:54:19.567141+00:00" -->
++<!-- CARROT:REVIEW reviewed-for="f9c00ef7eb27fa0eca0798658775856b1037cb694cbe09b8bf3848d3c1977b04" reviewed-at="2026-11-20T00:00:00+09:00" -->
+@@ -35,0 +36 @@
++间隔外的按钮接近计算在此时间上另加原厂设定速度按1km/h请求降至前车速度所需时间。请求间隔由`CruiseButtonTest2`决定，低目标取消判断时间基准不变。
+--- a/KO-크루즈버튼스팸쉬기(30).md
++++ b/KO-크루즈버튼스팸쉬기(30).md
+@@ -30 +30,9 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="d3fa0a1f2e7ce39ec3e629e71881a853fe0428bad076a6a3af276af2aeae1593" reviewed-at="2026-11-20T00:00:00+09:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++포터2 EV는 값을 높이면 요청 사이 간격이 길어지고 낮추면 짧아지지만 최소 0.3초를 유지합니다. 무응답 재시도 대기는 기존 최소 0.5초입니다.
++
++전용 GAP ON에서는 순정 설정속도 하향 소요 시간과 목표 회복 상한 계산에도 사용합니다. 누름·해제·재시도·Panda 제한과 다른 차량의 기존 의미는 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
+--- a/EN-Cruise-Button-spam2(30).md
++++ b/EN-Cruise-Button-spam2(30).md
+@@ -30 +30,9 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="d3fa0a1f2e7ce39ec3e629e71881a853fe0428bad076a6a3af276af2aeae1593" reviewed-at="2026-11-20T00:00:00+09:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++On Porter II EV, higher values lengthen request spacing and lower values shorten it, with a 0.3s minimum. The existing no-response retry wait is at least 0.5s.
++
++With dedicated GAP ON, this interval also informs stock-setpoint reduction time and the target recovery bound. Press/release, retry and Panda limits and other vehicles’ existing semantics remain unchanged.
++<!-- CARROT:SECTION:END BEHAVIOR -->
+--- a/ZH-巡航按钮连发2(30).md
++++ b/ZH-巡航按钮连发2(30).md
+@@ -30 +30,9 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="d3fa0a1f2e7ce39ec3e629e71881a853fe0428bad076a6a3af276af2aeae1593" reviewed-at="2026-11-20T00:00:00+09:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++波特II EV中增大值延长请求间隔，减小值缩短，但至少为0.3秒。无响应重试仍至少等待0.5秒。
++
++专用GAP开启时还用于估算原厂设定速度下降时间及目标恢复上限。保留按下、释放、重试、Panda限制及其他车辆原有含义。
++<!-- CARROT:SECTION:END BEHAVIOR -->
