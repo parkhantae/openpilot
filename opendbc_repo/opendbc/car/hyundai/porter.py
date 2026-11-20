@@ -304,7 +304,9 @@ class PorterAdaptiveLeadTracker:
       # a longer response estimate must never relax an already-close lead cap.
       distance_time_s = approach_s if margin > 0 else response_s
       cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / distance_time_s) * 3.6))
-      clear = fresh and margin + min(0., self.relative) * approach_s >= 0
+      # Range reserve alone must not authorize RES+ while the lead is still
+      # closing. A transient speed estimate can otherwise undo deceleration.
+      clear = fresh and self.relative >= -.2 and margin + min(0., self.relative) * approach_s >= 0
     if not recovery_allowed or not clear:
       self.clear_since = None
     elif self.clear_since is None:

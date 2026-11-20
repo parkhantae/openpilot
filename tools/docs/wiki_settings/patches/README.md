@@ -230,6 +230,8 @@ catalog hashes; keep it last in that chain.
 
 It covers pedal deceleration without braking, the completed driver-speed
 ceiling, OEM setpoint reduction time and confirmed clear-road target recovery.
+Closing on a lead faster than 0.2m/s blocks recovery/RES+ despite range reserve;
+recovery requires fresh confirmation once closing stops and the gap is clear.
 Lead/navigation constraints, actual brake/CANCEL interruptions and existing
 button/Panda limits remain. This fork-specific documentation is staged and
 does not publish to the upstream live Wiki.

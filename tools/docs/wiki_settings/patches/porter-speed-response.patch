@@ -29,38 +29,44 @@
 +++ b/KO-포터-전용-GAP-사용.md
 @@ -29 +29 @@
 -<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.031706+00:00" -->
-+<!-- CARROT:REVIEW reviewed-for="146c617420c8de51035ff8ce6b5e75a14ce428a89e911d60673da948d22a8f7c" reviewed-at="2026-11-20T00:00:00+09:00" -->
++<!-- CARROT:REVIEW reviewed-for="6886a2411949bba6b83c5571924b173458074dabb35b12955acd221032ff4081" reviewed-at="2026-11-20T00:00:00+09:00" -->
 @@ -34 +34 @@
 -OFF는 공통 TF와 기존 버튼 추종 방식을 유지합니다. ON은 포터 GAP1~4를 플래너와 버튼 판단에 사용합니다. 전용 GAP ON은 내 차 속도에 비례한 기본거리와 앞차 속도·거리 오차로 버튼 목표를 연속 계산합니다. 간격 밖에서는 접근 속도를 줄이고 간격 안에서는 앞차 속도 이하로 제한합니다. 간격 회복을 0.5초 확인한 뒤 버튼 목표를 초당 최대 1.8km/h씩 올립니다. 급한 하향 목표는 지연하지 않고, 앞차의 짧은 검출 공백·무효 신호 중에는 재가속하지 않습니다. 명시적인 앞차 없음이 이어지면 0.6초 유지 후 회복 확인과 목표 상승 제한을 적용합니다. 30km/h 미만 취소 판단과 송신 한도는 유지합니다.
 +OFF는 공통 TF와 기존 버튼 추종 방식을 유지합니다. ON은 포터 GAP1~4를 플래너와 버튼 판단에 사용합니다. 전용 GAP ON은 내 차 속도에 비례한 기본거리와 앞차 속도·거리 오차로 버튼 목표를 연속 계산합니다. 간격 밖에서는 접근 속도를 줄이고 간격 안에서는 앞차 속도 이하로 제한합니다. 간격 회복을 확인한 뒤 버튼 목표를 제한하며 복구합니다. 급한 하향 목표는 지연하지 않고, 앞차의 짧은 검출 공백·무효 신호 중에는 재가속하지 않습니다. 명시적인 앞차 없음이 이어지면 0.6초 유지 후 회복 확인과 목표 상승 제한을 적용합니다. 30km/h 미만 취소 판단과 송신 한도는 유지합니다.
-@@ -35,0 +36,3 @@
+@@ -35,0 +36,5 @@
 +순정 설정속도를 앞차 속도까지 1km/h씩 낮추는 데 필요한 요청 시간을 간격 밖 접근 계산에 추가합니다. 간격 안의 기존 감속 강도는 유지합니다.
 +
 +간격 회복 0.5초 뒤 일반 목표 회복은 초당 최대 1.8km/h입니다. 충분한 간격에서 앞차 없음 또는 초당 0.2m 초과 멀어짐이 1초 확인되면 요청 간격에 따라 초당 최대 3km/h로 현재 콤마 목표까지 복구합니다. 더 낮은 앞차·계획·내비 제한과 송신 한도를 유지하며 직접 제동은 추가하지 않습니다.
++
++앞차에 초당 0.2m보다 빠르게 접근 중이면 거리 여유만으로 목표 회복·RES+를 허용하지 않습니다. 접근이 멎거나 앞차가 멀어지고 간격 조건이 충족된 상태를 다시 0.5초 확인한 뒤 복구하며, 낮은 감속·내비 목표는 즉시 적용합니다.
 --- a/EN-Porter-dedicated-GAP.md
 +++ b/EN-Porter-dedicated-GAP.md
 @@ -29 +29 @@
 -<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.036473+00:00" -->
-+<!-- CARROT:REVIEW reviewed-for="146c617420c8de51035ff8ce6b5e75a14ce428a89e911d60673da948d22a8f7c" reviewed-at="2026-11-20T00:00:00+09:00" -->
++<!-- CARROT:REVIEW reviewed-for="6886a2411949bba6b83c5571924b173458074dabb35b12955acd221032ff4081" reviewed-at="2026-11-20T00:00:00+09:00" -->
 @@ -34 +34 @@
 -OFF retains common TF and legacy button following. ON shares Porter GAP1–4 with the planner and button decisions. With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. After 0.5s of confirmed gap recovery, raise the button target by at most 1.8km/h per second. Lower urgent targets are not delayed; brief lead dropouts or invalid inputs inhibit recovery. Confirmed absence of a lead permits bounded recovery after the 0.6s hold. Sub-30km/h cancellation and transmission limits remain.
 +OFF retains common TF and legacy button following. ON shares Porter GAP1–4 with the planner and button decisions. With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. Confirmed gap recovery permits bounded target restoration. Lower urgent targets are not delayed; brief lead dropouts or invalid inputs inhibit recovery. Confirmed absence of a lead permits bounded recovery after the 0.6s hold. Sub-30km/h cancellation and transmission limits remain.
-@@ -35,0 +36,3 @@
+@@ -35,0 +36,5 @@
 +Outside-gap approach prediction reserves the request time to lower the stock setting toward lead speed in 1km/h steps. Existing reductions inside the gap remain unchanged.
 +
 +After 0.5s gap confirmation, normal recovery is at most 1.8km/h per second. With sufficient gap and 1s of confirmed absence or opening faster than 0.2m/s, recovery toward the current comma target is bounded by request spacing and at most 3km/h per second. Lower lead, planner and navigation limits and transmission bounds remain; no direct braking is added.
++
++Closing on a lead faster than 0.2m/s blocks target recovery and RES+ even with range reserve. Recovery requires a new 0.5s confirmation after closing stops or the lead opens and gap conditions are satisfied; lower deceleration/navigation targets still pass immediately.
 --- a/ZH-波特-专用车距.md
 +++ b/ZH-波特-专用车距.md
 @@ -29 +29 @@
 -<!-- CARROT:REVIEW reviewed-for="6474ee76fab5fb5eb449d2ff0aeb8f751460ff25e276d7f46db7901e380e51e8" reviewed-at="2026-11-17T05:49:25.040320+00:00" -->
-+<!-- CARROT:REVIEW reviewed-for="146c617420c8de51035ff8ce6b5e75a14ce428a89e911d60673da948d22a8f7c" reviewed-at="2026-11-20T00:00:00+09:00" -->
++<!-- CARROT:REVIEW reviewed-for="6886a2411949bba6b83c5571924b173458074dabb35b12955acd221032ff4081" reviewed-at="2026-11-20T00:00:00+09:00" -->
 @@ -34 +34 @@
 -关闭保留通用TF及原按钮跟车方式；开启后规划器和按钮判断共用波特GAP1–4。专用GAP开启时，按本车速度计算基础距离，并结合前车速度与距离误差连续限制按钮目标。间隔外逐渐减小接近速度，间隔内限制为前车速度或更低。确认间隔恢复0.5秒后，按钮目标每秒最多提高1.8km/h。紧急下调不延迟，前车短暂丢失或输入无效时禁止恢复加速。持续明确无前车时，保持0.6秒后确认恢复并限制目标上升。保留低于30km/h取消判断和发送限制。
 +关闭保留通用TF及原按钮跟车方式；开启后规划器和按钮判断共用波特GAP1–4。专用GAP开启时，按本车速度计算基础距离，并结合前车速度与距离误差连续限制按钮目标。间隔外逐渐减小接近速度，间隔内限制为前车速度或更低。确认间隔恢复后限制目标上升。紧急下调不延迟，前车短暂丢失或输入无效时禁止恢复加速。持续明确无前车时，保持0.6秒后确认恢复并限制目标上升。保留低于30km/h取消判断和发送限制。
-@@ -35,0 +36,3 @@
+@@ -35,0 +36,5 @@
 +间隔外的接近预测另计原厂设定速度按1km/h请求降至前车速度所需时间。间隔内的原有减速强度不减弱。
 +
 +确认间隔恢复0.5秒后通常每秒最多恢复1.8km/h。间隔充足且连续1秒确认无前车或前车以超过0.2m/s远离时，根据请求间隔最多每秒恢复3km/h至当前comma目标。保留更低的前车、规划、导航限制及发送上限，不增加直接制动功能。
++
++向前车接近速度超过0.2m/s时，即使距离有余量也禁止目标恢复及RES+。停止接近或前车远离且满足间隔条件后，重新确认0.5秒才恢复；更低的减速及导航目标仍立即生效。
 --- a/KO-포터-감속-예측-시간-×0.1초.md
 +++ b/KO-포터-감속-예측-시간-×0.1초.md
 @@ -30 +30 @@

@@ -147,3 +147,33 @@ def test_confirmed_clear_road_recovery_respects_request_throughput(interval):
   values = [p.update(n * .01, 100, 60, 20, 0, 0, 1, lead_visible=False,
                     adaptive=True, button_interval_s=interval) for n in range(151)]
   assert values[-1] - values[-2] == pytest.approx(min(3., 1. / interval) * .01)
+
+
+def test_recorded_closing_lead_cannot_reverse_deceleration_into_res():
+  p = PorterLeadTracker()
+  # Segment 634/65: ample range but the lead remains slower. Stock was 48
+  # when a recovering 49km/h target incorrectly permitted RES+ at 30.43s.
+  start = p.update(0., 47.94, 48., 46.6 / 3.6, 42.1, -2.43, 1,
+                   gap_time_s=.52, reaction_s=7., adaptive=True)
+  for n in range(1, 151):
+    target = p.update(n * .01, 50., 48., 46.2 / 3.6, 39.9, -1.72, 1,
+                      gap_time_s=.52, reaction_s=7., adaptive=True)
+    assert target <= start
+    assert not p.recovery_ready
+  # A new urgent lower target is still immediate during the recovery block.
+  assert p.update(1.51, 30., 48., 46.2 / 3.6, 39.9, -1.72, 1,
+                  gap_time_s=.52, reaction_s=7., adaptive=True) == 30.
+
+
+def test_closing_after_open_road_confirmation_revokes_res_permission_immediately():
+  p = PorterLeadTracker()
+  for n in range(151):
+    tick(p, n * .01, distance=100., relative=2., stock=60.)
+  assert p.recovery_ready
+  assert tick(p, 1.51, distance=100., relative=-.3, stock=60.) <= 60.
+  assert not p.recovery_ready
+  for n in range(1, 50):
+    tick(p, 1.51 + n * .01, distance=100., relative=2., stock=60.)
+    assert not p.recovery_ready
+  tick(p, 2.02, distance=100., relative=2., stock=60.)
+  assert p.recovery_ready
