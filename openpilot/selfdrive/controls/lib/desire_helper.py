@@ -63,6 +63,8 @@ class DesireHelper:
     self.turn_completion_guard = turn_completion_guard
     self.navigation_turn = NavigationTurnCompletion()
     self.navigation_turn_inputs_valid = True
+    self.aborted_navigation_turns = set()
+    self.navigation_turn_rearm_prepared = set()
 
     # per-side states
     self.left = SideState("left")
@@ -173,7 +175,12 @@ class DesireHelper:
     navigation_turn = self.turn_completion_guard and self.atc_type in ("turn left", "turn right") and maneuver_type == "turn"
     if navigation_turn:
       direction = BLINKER_LEFT if self.atc_type == "turn left" else BLINKER_RIGHT
-      self.navigation_turn.update(direction, carstate.steeringAngleDeg, carstate.vEgo > 0.3)
+      self.navigation_turn.update(direction, carstate.steeringAngleDeg, carstate.vEgo > 0.3,
+                                  driver_pressed=carstate.steeringPressed and self.navigation_turn_inputs_valid,
+                                  driver_torque=carstate.steeringTorque)
+      if self.navigation_turn.aborted:
+        self.aborted_navigation_turns.add(direction)
+        self.navigation_turn_rearm_prepared.discard(direction)
       if not self.navigation_turn_inputs_valid:
         self.navigation_turn.finished = True
     else:
@@ -254,6 +261,23 @@ class DesireHelper:
   def _update_atc_blinker(self, carrotMan, driver_blinker_state, remote=None):
     atc_type = carrotMan.atcType
     atc_blinker_state = BLINKER_NONE
+    navigation_rearm_blocked = False
+    if self.turn_completion_guard and self.aborted_navigation_turns:
+      distance = getattr(carrotMan, "xDistToTurn", None)
+      ahead = (type(distance) in (int, float) and math.isfinite(distance) and distance > 0 and
+               self.navigation_turn_inputs_valid)
+      for direction, side in ((BLINKER_LEFT, "left"), (BLINKER_RIGHT, "right")):
+        if direction not in self.aborted_navigation_turns:
+          continue
+        if atc_type in (f"turn {side} prepare", f"atc {side}") and ahead:
+          self.navigation_turn_rearm_prepared.add(direction)
+        if atc_type == f"turn {side}":
+          if direction in self.navigation_turn_rearm_prepared and ahead:
+            self.aborted_navigation_turns.discard(direction)
+            self.navigation_turn_rearm_prepared.discard(direction)
+            self.navigation_turn.reset()
+          else:
+            navigation_rearm_blocked = True
 
     # 유지 카운트는 DesireHelper에서 관리
     if self.tesla_auto_signals and self._auto_app_direction:
@@ -270,7 +294,7 @@ class DesireHelper:
       self.carrot_blinker_state = BLINKER_LEFT if carrotMan.carrotArg == "LEFT" else BLINKER_RIGHT
       atc_blinker_state = self.carrot_blinker_state
     elif atc_type in ("turn left", "turn right"):
-      if self.atc_active != 2:
+      if self.atc_active != 2 and not navigation_rearm_blocked:
         atc_blinker_state = BLINKER_LEFT if atc_type == "turn left" else BLINKER_RIGHT
         self.atc_active = 1
         self.blinker_ignore = False
@@ -443,6 +467,8 @@ class DesireHelper:
     self.navigation_turn_inputs_valid = turn_input_valid and carstate.canValid
     if not lateral_active:
       self.navigation_turn.reset()
+      self.aborted_navigation_turns.clear()
+      self.navigation_turn_rearm_prepared.clear()
     self._check_desire_state(modeldata, carstate, self.maneuver_type)
 
     # blinkers

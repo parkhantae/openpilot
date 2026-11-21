@@ -179,6 +179,13 @@ measured wheel-return completion and the bounded ten-second navigation request.
 Torque, rate and driver-override limits remain. This branch-specific patch does
 not publish to the live upstream Wiki.
 
+The ATC manual regions also describe a measured manual-countersteer abort
+after the wheel has exceeded 80 degrees in the executing turn direction.
+Passed-cue rearm is blocked until fresh same-direction preparation and a
+positive-distance current turn; opposite turns and explicit driver signals
+remain available. This ends an abandoned request without raising steering
+authority or proving that a sharp turn is physically trackable.
+
 ## Porter adaptive following and confirmed SET speed
 
 `porter-main-set.patch` includes one-shot comma-speed initialization from the

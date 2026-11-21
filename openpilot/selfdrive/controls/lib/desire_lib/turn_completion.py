@@ -16,8 +16,9 @@ class NavigationTurnCompletion:
     self.elapsed = 0.0
     self.returned = 0.0
     self.finished = False
+    self.aborted = False
 
-  def update(self, direction: int, angle: float, moving: bool) -> bool:
+  def update(self, direction: int, angle: float, moving: bool, *, driver_pressed=False, driver_torque=0.0) -> bool:
     if direction not in (BLINKER_LEFT, BLINKER_RIGHT) or not math.isfinite(angle):
       self.reset()
       self.finished = True
@@ -31,7 +32,14 @@ class NavigationTurnCompletion:
       return False
     self.elapsed += DT_MDL
     signed_angle = angle if direction == BLINKER_LEFT else -angle
+    signed_torque = driver_torque if direction == BLINKER_LEFT else -driver_torque
     self.peak = max(self.peak, signed_angle)
+    # Crossing through straight into an opposing manual steer after a real
+    # turn is an abort, even when the wheel passes the return band too quickly
+    # to satisfy the ordinary 0.2s completion dwell.
+    if self.peak > 80.0 and signed_angle < -15.0 and driver_pressed and math.isfinite(signed_torque) and signed_torque < 0:
+      self.aborted = self.finished = True
+      return True
     # A peak in predicted yaw occurs in the middle of a turn. Require measured
     # wheel return after real steering, not simply decreasing predicted yaw.
     if self.peak > 80.0 and abs(angle) <= 15.0:

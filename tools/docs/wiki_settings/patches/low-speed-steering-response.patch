@@ -1,12 +1,14 @@
 --- a/KO-ATC-AutoTurnControl(0).md
 +++ b/KO-ATC-AutoTurnControl(0).md
-@@ -30 +30,19 @@
+@@ -30 +30,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="95f875649b5996bbd6d9c4beed3d700ca194799fc6dd5d79dcc111391559d318" reviewed-at="2026-11-10T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="66c4a4570b6736035e3d10a3803001b21cbbec13a8a863fff9fc2aae4b3b4487" reviewed-at="2026-11-21T00:00:00+09:00" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 동작
 +
 +포터2 EV와 아이오닉5 HDA2·CAMERA SCC 토크 조향은 예상 회전율 감소만으로 내비 턴을 끝내지 않습니다. 해당 방향 핸들이 80도를 넘은 뒤 이동 중 ±15도 안으로 0.2초 복귀하면 종료하며, 같은 턴 안내는 최대 10초 실행합니다.
++
++해당 방향 핸들이 80도를 넘은 뒤 이동 중 반대 토크의 운전자 조작이 감지되고 핸들이 반대 방향 15도를 넘으면 자동 내비 턴을 중단합니다. 중단한 방향의 지난 안내로 다시 시작하지 않으며, 같은 방향의 새 준비 안내와 양수 남은 거리의 현재 턴이 순서대로 확인되어야 자동 재시작합니다. 다음 반대 방향 턴, 운전자 방향지시등 요청과 조향을 다시 켠 새 세션은 유지합니다. 토크·증가율·운전자 양보·Panda 한도는 바꾸지 않습니다.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -23,13 +25,15 @@
 +
 --- a/EN-ATC-AutoTurnControl.md
 +++ b/EN-ATC-AutoTurnControl.md
-@@ -30 +30,19 @@
+@@ -30 +30,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="95f875649b5996bbd6d9c4beed3d700ca194799fc6dd5d79dcc111391559d318" reviewed-at="2026-11-10T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="66c4a4570b6736035e3d10a3803001b21cbbec13a8a863fff9fc2aae4b3b4487" reviewed-at="2026-11-21T00:00:00+09:00" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
 +Porter II EV and Ioniq 5 HDA2 CAMERA SCC torque steering do not finish a navigation turn solely on falling predicted yaw. After steering exceeds 80 degrees in the turn direction, return within ±15 degrees for 0.2s while moving finishes it; an unchanged turn cue executes for at most 10s.
++
++After the wheel exceeds 80 degrees in the turn direction, detected opposing driver input and a moving wheel past 15 degrees into the opposite direction abort the automatic navigation turn. A returning old cue cannot restart that direction; automatic rearm requires a fresh same-direction preparation followed by a current turn with positive remaining distance. The next opposite turn, driver turn-signal requests and a new lateral session remain available. Torque, rate, driver-yield and Panda limits are unchanged.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
@@ -46,13 +50,15 @@
 +
 --- a/ZH-ATC-自动转向控制.md
 +++ b/ZH-ATC-自动转向控制.md
-@@ -30 +30,19 @@
+@@ -30 +30,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="95f875649b5996bbd6d9c4beed3d700ca194799fc6dd5d79dcc111391559d318" reviewed-at="2026-11-10T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="66c4a4570b6736035e3d10a3803001b21cbbec13a8a863fff9fc2aae4b3b4487" reviewed-at="2026-11-21T00:00:00+09:00" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
 +
 +波特II EV及IONIQ 5 HDA2 CAMERA SCC力矩转向不再仅因预测转动速度下降结束导航转弯。同方向转向角超过80度后，行驶中回到±15度内持续0.2秒结束；同一转弯提示最多执行10秒。
++
++方向盘在转弯方向超过80度后，行驶中检测到驾驶员反向输入且方向盘转入反方向超过15度时，中止自动导航转弯。旧提示再次出现不能重启同方向转弯；自动重启需先收到有效的同方向准备提示，再收到剩余距离为正的当前转弯。下一次反向转弯、驾驶员转向灯请求及新横向控制会话仍可用。扭矩、变化率、驾驶员让行及Panda限制不变。
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
