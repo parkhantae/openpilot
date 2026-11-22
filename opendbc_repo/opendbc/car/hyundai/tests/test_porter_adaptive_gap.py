@@ -1,8 +1,9 @@
 import math
+from types import SimpleNamespace
 
 import pytest
 
-from opendbc.car.hyundai.porter import PorterLeadTracker, porter_lead_target_kph
+from opendbc.car.hyundai.porter import PorterCruiseButtons, PorterLeadTracker, porter_lead_target_kph, porter_plan_allows_recovery
 from opendbc.car.hyundai.porter_cancel import porter_cancel_target
 
 
@@ -177,3 +178,54 @@ def test_closing_after_open_road_confirmation_revokes_res_permission_immediately
     assert not p.recovery_ready
   tick(p, 2.02, distance=100., relative=2., stock=60.)
   assert p.recovery_ready
+
+
+def rising_plan(**changes):
+  # 63c/369: the planner asks to accelerate while OEM stock remains at74.
+  values = dict(aTarget=.5, vTargetNow=73.13 / 3.6, speeds=[73.13 / 3.6, 75. / 3.6, 77.18 / 3.6],
+                shouldStop=False, xState=0, trafficState=2)
+  values.update(changes)
+  return SimpleNamespace(**values)
+
+
+@pytest.mark.parametrize('valid,changes', [
+  (False, {}), (True, {'aTarget': -.068}), (True, {'aTarget': 0.}),
+  (True, {'speeds': [72. / 3.6]}), (True, {'speeds': [73.13 / 3.6, 76. / 3.6, 75. / 3.6, 80. / 3.6]}),
+  (True, {'speeds': []}), (True, {'speeds': [float('nan')]}),
+  (True, {'aTarget': float('inf')}), (True, {'vTargetNow': None}),
+  (True, {'shouldStop': True}), (True, {'xState': 3}), (True, {'xState': 4}),
+  (True, {'xState': 5}), (True, {'xState': 6}), (True, {'trafficState': 1}),
+])
+def test_stale_stopping_or_any_falling_forecast_cannot_allow_closing_lead_recovery(valid, changes):
+  assert not porter_plan_allows_recovery(rising_plan(**changes), valid=valid)
+
+
+def test_rising_plan_releases_recorded_stock_ceiling_despite_relative_speed_noise():
+  assert porter_plan_allows_recovery(rising_plan(), valid=True)
+  trackers = [PorterLeadTracker(), PorterLeadTracker()]
+  buttons = [PorterCruiseButtons(), PorterCruiseButtons()]
+  emitted = [[], []]
+  results = [[], []]
+  for n in range(301):
+    # These short relative-speed sign changes used to repeatedly reset the
+    # 0.5s timer and clamp a rising target back to OEM stock74.
+    relative = (-1.2, .4, -.8, .7)[(n // 10) % 4]
+    for i, tracker in enumerate(trackers):
+      results[i].append(tracker.update(n * .01, 84., 74., 69.65 / 3.6, 74.86, relative, 2,
+                                      gap_time_s=1.15, reaction_s=6., adaptive=True,
+                                      planner_accel_ready=bool(i)))
+      emitted[i].append(buttons[i].update(n * .01, results[i][-1], 74., n // 2, enabled=True,
+                                          acceleration_ready=tracker.recovery_ready, press_seconds=.07,
+                                          gap_seconds=.25, retry_limit=2, stock_enabled=True))
+  assert max(results[0]) <= 74.
+  assert max(results[1][:50]) <= 74.
+  assert results[1][-1] > 78.
+  assert 1 not in emitted[0]  # Old target never reaches a full RES+ step.
+  assert 1 in emitted[1]     # Actual bounded button state machine can now request RES+.
+  assert max(b - a for a, b in zip(results[1], results[1][1:], strict=False)) <= .018 + 1e-8
+  # The same plan cannot permit recovery inside the projected closing gap.
+  assert trackers[1].update(3.01, 84., 74., 69.65 / 3.6, 20., -4., 2,
+                             gap_time_s=1.15, reaction_s=6., adaptive=True, planner_accel_ready=True) <= 74.
+  assert not trackers[1].recovery_ready
+  assert trackers[1].update(3.02, 30., 74., 69.65 / 3.6, 100., 1., 2,
+                             gap_time_s=1.15, reaction_s=6., adaptive=True, planner_accel_ready=True) == 30.

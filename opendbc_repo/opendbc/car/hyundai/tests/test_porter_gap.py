@@ -3,12 +3,54 @@ from types import SimpleNamespace
 
 from opendbc.car.hyundai.porter import (
   PORTER_GAP_TIME_S, PORTER_PLANNER_GAP_TIME_S, PorterLeadTracker, porter_base_gap_time_s, porter_conventional_cruise,
-  porter_gap_time_s, porter_lead_reaction_s, porter_lead_target_kph,
+  porter_gap_time_s, porter_lead_reaction_s, porter_lead_target_kph, porter_plan_allows_recovery,
 )
 from opendbc.car.hyundai.porter_cancel import porter_cancel_target
 
 
 class TestPorterGap(unittest.TestCase):
+  def test_actual_speed_path_releases_old_stock_cap_only_with_safe_rising_plan(self):
+    import ast
+    from pathlib import Path
+    from opendbc.car.hyundai.porter import porter_navi_target_kph
+    NS = SimpleNamespace
+    tree = ast.parse((Path(__file__).resolve().parents[5] / 'openpilot/selfdrive/controls/controlsd.py').read_text())
+    node = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and
+                'self.CP.carFingerprint == \'HYUNDAI_PORTER_II_EV\'' in ast.unparse(n.test) and
+                'lead_target_kph =' in ast.unparse(n))
+    code = compile(ast.Module(body=[node], type_ignores=[]), 'actual_porter_plan_recovery', 'exec')
+    for invalid in (None, 'stale_plan', 'stale_radar', 'stop', 'falling', 'forecast_dip', 'close', 'navigation'):
+      with self.subTest(invalid=invalid):
+        class SM(dict):
+          frame = 0
+
+          def all_checks(self, services, bad=invalid):
+            return not (bad == 'stale_plan' and 'longitudinalPlan' in services or
+                        bad == 'stale_radar' and 'radarState' in services)
+        sm = SM(radarState=NS(leadOne=NS(status=True, dRel=20. if invalid == 'close' else 74.86, vRel=-1.2)),
+                selfdriveState=NS(personality=NS(raw=1)))
+        obj = NS(CP=NS(carFingerprint='HYUNDAI_PORTER_II_EV'), sm=sm, porter_lead_tracker=PorterLeadTracker(),
+                 params=NS(get_bool=lambda _: True, get_int=lambda key: 25 if key == 'CruiseButtonTest2' else 60))
+        lp = NS(aTarget=.5, vTargetNow=73.13 / 3.6, speeds=[73.13 / 3.6, 75. / 3.6, 77.18 / 3.6],
+                shouldStop=invalid == 'stop', xState=3 if invalid == 'stop' else 0, trafficState=2, tFollow=1.15)
+        if invalid == 'falling':
+          lp.speeds = [72. / 3.6]
+        if invalid == 'forecast_dip':
+          lp.speeds = [73.13 / 3.6, 76. / 3.6, 75. / 3.6, 80. / 3.6]
+        hud = NS(setSpeed=84. / 3.6)
+        env = dict(self=obj, CC=NS(enabled=True), CS=NS(cruiseState=NS(enabled=True, speed=74. / 3.6), vEgo=69.65 / 3.6),
+                   speed_from_pcm=0, lp=lp, hudControl=hud, desired_kph=30. if invalid == 'navigation' else 84., DT_CTRL=.01,
+                   CV=NS(MS_TO_KPH=3.6, KPH_TO_MS=1 / 3.6), porter_navi_target_kph=porter_navi_target_kph,
+                   porter_gap_time_s=porter_gap_time_s, porter_lead_reaction_s=porter_lead_reaction_s,
+                   porter_plan_allows_recovery=porter_plan_allows_recovery)
+        for tick in range(151):
+          sm.frame = tick
+          hud.setSpeed = 84. / 3.6
+          exec(code, env)
+        self.assertEqual(hud.setSpeed * 3.6 > 74. + 1e-6, invalid is None)
+        if invalid == 'navigation':
+          self.assertAlmostEqual(hud.setSpeed * 3.6, 30.)
+
   def test_applied_planner_time_overrides_legacy_and_base_settings(self):
     params = SimpleNamespace(get_int=lambda key: {'TFollowGap1': 45, 'PorterGap1': 200}[key])
     self.assertEqual(porter_gap_time_s(params, 1), .45)
@@ -47,6 +89,7 @@ class TestPorterGap(unittest.TestCase):
                  CV=NS(MS_TO_KPH=3.6, KPH_TO_MS=1/3.6), porter_navi_target_kph=porter_navi_target_kph,
                  porter_gap_time_s=porter_gap_time_s)
       env['porter_lead_reaction_s'] = porter_lead_reaction_s
+      env['porter_plan_allows_recovery'] = porter_plan_allows_recovery
       exec(code, env)
       self.assertAlmostEqual(hud.setSpeed*3.6, expected)
 
@@ -81,7 +124,8 @@ class TestPorterGap(unittest.TestCase):
       exec(code,dict(self=obj,CC=NS(enabled=True),CS=NS(cruiseState=NS(enabled=True,speed=63/3.6),vEgo=63.6/3.6),
                      speed_from_pcm=0,lp=NS(tFollow=2.),hudControl=hud,desired_kph=85,DT_CTRL=.01,
                      CV=NS(MS_TO_KPH=3.6,KPH_TO_MS=1/3.6),porter_navi_target_kph=porter_navi_target_kph,
-                     porter_gap_time_s=porter_gap_time_s,porter_lead_reaction_s=porter_lead_reaction_s))
+                     porter_gap_time_s=porter_gap_time_s,porter_lead_reaction_s=porter_lead_reaction_s,
+                     porter_plan_allows_recovery=porter_plan_allows_recovery))
       self.assertAlmostEqual(hud.setSpeed*3.6,expected)
 
   def test_live_selected_gap(self):

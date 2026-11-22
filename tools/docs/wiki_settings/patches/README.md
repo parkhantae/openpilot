@@ -237,8 +237,11 @@ catalog hashes; keep it last in that chain.
 
 It covers pedal deceleration without braking, the completed driver-speed
 ceiling, OEM setpoint reduction time and confirmed clear-road target recovery.
-Closing on a lead faster than 0.2m/s blocks recovery/RES+ despite range reserve;
-recovery requires fresh confirmation once closing stops and the gap is clear.
+Range reserve alone cannot permit closing-lead recovery/RES+. A fresh positive
+acceleration plan without any forecast speed reduction or stop state can now
+release an old cap after projected-gap confirmation, within existing rise
+bounds. Dropouts, invalid input, close leads and lower navigation targets
+retain their existing protection.
 Lead/navigation constraints, actual brake/CANCEL interruptions and existing
 button/Panda limits remain. This fork-specific documentation is staged and
 does not publish to the upstream live Wiki.

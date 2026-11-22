@@ -14,7 +14,10 @@ import numpy as np
 from collections import deque
 
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.hyundai.porter import PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph, porter_auto_set_speed_valid, porter_lead_reaction_s
+from opendbc.car.hyundai.porter import (
+  PorterLeadTracker, porter_gap_time_s, pcm_cruise_min_kph, porter_navi_target_kph, porter_auto_set_speed_valid,
+  porter_lead_reaction_s, porter_plan_allows_recovery,
+)
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target, porter_cancel_speed_kph
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
@@ -446,6 +449,7 @@ class Controls:
           recovery_allowed=self.sm.all_checks(['longitudinalPlan', 'radarState']),
           adaptive=self.params.get_bool("PorterGapUse"),
           button_interval_s=max(.3, self.params.get_int("CruiseButtonTest2") * .01),
+          planner_accel_ready=porter_plan_allows_recovery(lp, valid=self.sm.all_checks(['longitudinalPlan'])),
           reaction_s=porter_lead_reaction_s(self.params),
           gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                       getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None))

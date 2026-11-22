@@ -100,6 +100,28 @@ def porter_navi_target_kph(planner_target_kph, navi_target_kph):
   return max(PORTER_CRUISE_MIN_KPH, planner_target_kph)
 
 
+def porter_plan_allows_recovery(plan, *, valid):
+  """A fresh rising plan may release an old cap outside the projected gap."""
+  if not valid or plan is None:
+    return False
+  speeds = getattr(plan, "speeds", ())
+  if not len(speeds):
+    return False
+  acceleration, current = getattr(plan, "aTarget", None), getattr(plan, "vTargetNow", None)
+  try:
+    if not all(math.isfinite(v) for v in (acceleration, current)) or acceleration <= 0 or current < 0:
+      return False
+    previous = current
+    for speed in speeds:
+      if not math.isfinite(speed) or speed < previous - 1e-5:
+        return False
+      previous = speed
+  except TypeError:
+    return False
+  return (getattr(plan, "shouldStop", True) is False and
+          getattr(plan, "xState", None) in (0, 1, 2) and getattr(plan, "trafficState", None) in (0, 2))
+
+
 def _porter_projected_gap_margin(ego_speed, lead_distance, lead_relative_speed, gap_level, gap_time_s, reaction_s):
   gap_index = min(len(PORTER_GAP_TIME_S), max(1, int(gap_level or 2))) - 1
   time_s = PORTER_GAP_TIME_S[gap_index]
@@ -160,7 +182,7 @@ class PorterLeadTracker:
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
              reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False,
-             button_interval_s=.3):
+             button_interval_s=.3, planner_accel_ready=False):
     if adaptive:
       if self.adaptive_tracker is None:
         self._reset_tracking()
@@ -168,7 +190,7 @@ class PorterLeadTracker:
       result = self.adaptive_tracker.update(
         now, target_kph, stock_target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level,
         lead_visible=lead_visible, gap_time_s=gap_time_s, reaction_s=reaction_s, recovery_allowed=recovery_allowed,
-        button_interval_s=button_interval_s)
+        button_interval_s=button_interval_s, planner_accel_ready=planner_accel_ready)
       self.recovery_ready = self.adaptive_tracker.recovery_ready
       return result
     if self.adaptive_tracker is not None:
@@ -262,7 +284,7 @@ class PorterAdaptiveLeadTracker:
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
-             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, button_interval_s=.3):
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, button_interval_s=.3, planner_accel_ready=False):
     self.recovery_ready = False
     valid = all(math.isfinite(v) for v in (now, target_kph, stock_target_kph, ego_speed)) and ego_speed >= 0
     dt = 0. if self.last_time is None else now - self.last_time
@@ -304,9 +326,10 @@ class PorterAdaptiveLeadTracker:
       # a longer response estimate must never relax an already-close lead cap.
       distance_time_s = approach_s if margin > 0 else response_s
       cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / distance_time_s) * 3.6))
-      # Range reserve alone must not authorize RES+ while the lead is still
-      # closing. A transient speed estimate can otherwise undo deceleration.
-      clear = fresh and self.relative >= -.2 and margin + min(0., self.relative) * approach_s >= 0
+      # Range reserve alone cannot undo deceleration. A fresh, fully rising
+      # plan may release an old stock-speed ceiling outside the projected gap,
+      # instead of repeatedly resetting recovery on vision relative-speed noise.
+      clear = fresh and (self.relative >= -.2 or planner_accel_ready) and margin + min(0., self.relative) * approach_s >= 0
     if not recovery_allowed or not clear:
       self.clear_since = None
     elif self.clear_since is None:
