@@ -43,7 +43,7 @@ _next = 0.
 _state = None
 
 
-def draw(rect):
+def draw(rect, *, footer_right=None):
   global _next, _state
   now = time.monotonic()
   if now >= _next:
@@ -52,11 +52,19 @@ def draw(rect):
   if _state is None:
     return
   import pyray as rl
+  from openpilot.selfdrive.ui import UI_BORDER_SIZE
   from openpilot.system.ui.lib.application import FontWeight, gui_app
+  from openpilot.system.ui.lib.text_measure import measure_text_cached
   label, rgb = LABELS[_state]
-  size = 24 if rect.width >= 1200 else 16
+  font = gui_app.font(FontWeight.DISPLAY)
+  size = 18 if footer_right is not None else (24 if rect.width >= 1200 else 16)
   width = size*8
-  x, y = rect.x + rect.width*.72 - width/2, rect.y + size*.55
+  if footer_right is None:
+    x, y = rect.x + rect.width*.72 - width/2, rect.y + size*.55
+  else:
+    width = max(width, measure_text_cached(font, label, size).x + size*1.6)
+    x, y = footer_right - width, rect.y + rect.height - UI_BORDER_SIZE
   rl.draw_rectangle_rounded(rl.Rectangle(x, y, width, size*1.55), .7, 8, rl.Color(10, 18, 25, 220))
   rl.draw_circle(int(x+size*.62), int(y+size*.77), size*.19, rl.Color(*rgb, 255))
-  rl.draw_text_ex(gui_app.font(FontWeight.DISPLAY), label, rl.Vector2(x+size*1.05, y+size*.24), size, 0, rl.WHITE)
+  rl.draw_text_ex(font, label, rl.Vector2(x+size*1.05, y+size*.24), size, 0, rl.WHITE)
+  return x
