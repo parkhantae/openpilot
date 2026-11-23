@@ -536,7 +536,7 @@ class AugmentedRoadView(CameraView):
 
     font = gui_app.font(FontWeight.DISPLAY)
     ip_width = measure_text_cached(font, bottom_right, font_size).x
-    badge_left = draw_b1_badge(rect, footer_right=x + w - text_margin - ip_width - 12)
+    badge_left = draw_b1_badge(rect, footer_right=x + w - text_margin - ip_width - 60)
     bottom_text_x = x + w / 2.0
     bottom_font_size = font_size
     if badge_left is not None and bottom:
