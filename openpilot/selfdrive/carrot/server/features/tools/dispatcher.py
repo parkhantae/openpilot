@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from aiohttp import web
 
-from openpilot.common.async_process import prepare_repo, run_locked_thread
+from openpilot.common.async_process import prepare_repo, run_locked_thread, run_process
 from openpilot.common.reboot import spawn_reboot
 from openpilot.common.rebuild_request import request_full_rebuild
 from openpilot.common.repo_update import RepoBusyError, child_lock_kwargs, repo_lock
@@ -42,6 +42,33 @@ from .actions import normalize_action, validate_action, validate_shell_argv
 TMUX_LOG_PATH = "/data/media/tmux.log"
 GIT_UPDATE_COMMIT_LIMIT = 20
 GIT_UPDATE_DISPLAY_LIMIT = 3
+BRANCH_LIST_FETCH_TIMEOUT = 8
+
+
+def _checkout_local_name(branch: str, kind: str, item_name: str, remotes: list[str]) -> str:
+  if kind in ("local", "remote"):
+    return item_name or branch
+  for remote in remotes:
+    if branch.startswith(f"{remote}/"):
+      return branch[len(remote) + 1:]
+  return branch
+
+
+async def _refresh_branch_refs(repo_dir: str, job=None) -> tuple[int, str]:
+  # Listing must remain available when DNS or any configured remote is down.
+  # Both APIs use process-group cleanup, so a timed-out fetch cannot outlive
+  # the repository lock or continue modifying refs behind a subsequent switch.
+  try:
+    if job is not None:
+      rc = await jobs.stream_exec(job, ["git", "fetch", "--all", "--prune"], cwd=repo_dir,
+                                  timeout=BRANCH_LIST_FETCH_TIMEOUT)
+      return rc, (job.get("log") or "").strip()
+    return await run_process(["git", "fetch", "--all", "--prune"], cwd=repo_dir, timeout=BRANCH_LIST_FETCH_TIMEOUT)
+  except TimeoutError:
+    message = f"Remote refresh timed out after {BRANCH_LIST_FETCH_TIMEOUT}s; showing saved branch refs."
+    if job is not None:
+      jobs.append(job, message + "\n")
+    return 124, message
 
 
 def capture_tmux_log_sync() -> Tuple[int, str]:
@@ -378,16 +405,21 @@ async def _run_tool_job(job: Dict[str, Any]) -> None:
         )
         return
 
-      jobs.progress(job, message="fetch --all --prune", current=1, total=2)
-      rc_fetch = await jobs.stream_exec(job, ["git", "fetch", "--all", "--prune"], cwd=repo_dir, timeout=180)
-      if rc_fetch != 0:
-        jobs.finish(job, ok=False, result=jobs.result_from_log(job, rc_fetch))
-        return
-
-      jobs.progress(job, message=f"switch {branch}", current=2, total=2)
-
       rc_remotes, remotes_out = await jobs.capture_exec(["git", "remote"], cwd=repo_dir, timeout=30)
       known_remotes = remotes_out.split() if rc_remotes == 0 else ["origin"]
+      local_name = _checkout_local_name(branch, kind, item_name, known_remotes)
+      rc_local, _ = await jobs.capture_exec(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{local_name}"],
+                                           cwd=repo_dir, timeout=15)
+      if rc_local == 0:
+        jobs.append(job, f"Using existing local branch {local_name}; remote fetch skipped.\n")
+      else:
+        jobs.progress(job, message="fetch --all --prune", current=1, total=2)
+        rc_fetch = await jobs.stream_exec(job, ["git", "fetch", "--all", "--prune"], cwd=repo_dir, timeout=180)
+        if rc_fetch != 0:
+          jobs.finish(job, ok=False, result=jobs.result_from_log(job, rc_fetch))
+          return
+
+      jobs.progress(job, message=f"switch {branch}", current=2, total=2)
 
       summary_branch = branch
       if kind == "local":
@@ -454,10 +486,7 @@ async def _run_tool_job(job: Dict[str, Any]) -> None:
 
     if action == "git_branch_list":
       jobs.progress(job, message="fetch --all --prune", current=1, total=2)
-      rc_fetch = await jobs.stream_exec(job, ["git", "fetch", "--all", "--prune"], cwd=repo_dir, timeout=180)
-      if rc_fetch != 0:
-        jobs.finish(job, ok=False, result=jobs.result_from_log(job, rc_fetch))
-        return
+      rc_fetch, _ = await _refresh_branch_refs(repo_dir, job)
 
       jobs.progress(job, message="git refs", current=2, total=2)
       rc_local, local_refs_out = await jobs.capture_exec(
@@ -504,6 +533,8 @@ async def _run_tool_job(job: Dict[str, Any]) -> None:
         "branch_items": branch_items,
         "current_branch": current_branch,
         "fetch": (job.get("log") or "").strip(),
+        "fetch_ok": rc_fetch == 0,
+        "cached": rc_fetch != 0,
         "device_type": HARDWARE.get_device_type(),
         "branch_prefix": jobs.get_branch_prefix(),
         "remotes": remotes,
@@ -955,12 +986,14 @@ async def _dispatch_sync(request: web.Request, body: Dict[str, Any]) -> web.Resp
       if not branch and not item_name:
         return web.json_response({"ok": False, "error": "missing branch"}, status=400)
 
-      rc_fetch, out_fetch = run(["git", "fetch", "--all", "--prune"], cwd=REPO_DIR)
-      if rc_fetch != 0:
-        return web.json_response({"ok": False, "rc": rc_fetch, "out": out_fetch})
-
       rc_remotes, out_remotes = run(["git", "remote"], cwd=REPO_DIR)
       known_remotes = out_remotes.split() if rc_remotes == 0 else ["origin"]
+      local_name = _checkout_local_name(branch, kind, item_name, known_remotes)
+      rc_local, _ = run(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{local_name}"], cwd=REPO_DIR)
+      if rc_local != 0:
+        rc_fetch, out_fetch = run(["git", "fetch", "--all", "--prune"], cwd=REPO_DIR)
+        if rc_fetch != 0:
+          return web.json_response({"ok": False, "rc": rc_fetch, "out": out_fetch})
       remote_prefix = None
       for remote in known_remotes:
         if branch.startswith(f"{remote}/"):
@@ -1013,9 +1046,7 @@ async def _dispatch_sync(request: web.Request, body: Dict[str, Any]) -> web.Resp
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     if action == "git_branch_list":
-      rc0, out0 = run(["git", "fetch", "--all", "--prune"], cwd=REPO_DIR)
-      if rc0 != 0:
-        return web.json_response({"ok": False, "rc": rc0, "out": out0})
+      rc0, out0 = await _refresh_branch_refs(REPO_DIR)
 
       rc_local, out_local = run(
         ["git", "for-each-ref", "--format=%(refname:short)", "refs/heads"],
@@ -1047,6 +1078,8 @@ async def _dispatch_sync(request: web.Request, body: Dict[str, Any]) -> web.Resp
         "branch_items": branch_items,
         "current_branch": current_branch,
         "fetch": out0.strip(),
+        "fetch_ok": rc0 == 0,
+        "cached": rc0 != 0,
         "device_type": HARDWARE.get_device_type(),
         "branch_prefix": jobs.get_branch_prefix(),
         "remotes": remotes,

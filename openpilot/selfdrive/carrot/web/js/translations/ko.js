@@ -624,6 +624,7 @@ window.CarrotTranslations.register("ko", {
     restore_done_reboot: "복원이 완료되었습니다.\n지금 재부팅할까요?",
     checkout_confirm: "브랜치를 변경하시겠습니까?",
     branch_changed: "브랜치가 변경되었습니다.",
+    branch_cached_notice: "원격 갱신 실패 · 저장된 브랜치 {count}개",
     quick_link_hint: "길게 눌러 링크 저장",
     failed_set_car: "차량 선택 저장 실패: ",
     open_car_select: "차량 선택 열기",

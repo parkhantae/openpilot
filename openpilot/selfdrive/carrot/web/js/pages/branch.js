@@ -248,7 +248,9 @@ async function loadBranchesAndShow() {
     syncBranchRemoteContext(j);
     BRANCHES = normalizeBranchItems(j);
     CURRENT_BRANCH_NAME = (j.current_branch || "").trim();
-    appBranchPickerMeta.textContent = `${BRANCHES.length} branches`;
+    appBranchPickerMeta.textContent = j.fetch_ok === false
+      ? getUIText("branch_cached_notice", "Remote refresh failed · {count} saved branches", { count: BRANCHES.length })
+      : `${BRANCHES.length} branches`;
 
     renderBranchList();
   } catch (e) {

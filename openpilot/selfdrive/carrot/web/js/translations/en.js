@@ -608,6 +608,7 @@ window.CarrotTranslations.register("en", {
     restore_done_reboot: "Restore done.\nReboot now?",
     checkout_confirm: "Switch to this branch?",
     branch_changed: "Branch changed.",
+    branch_cached_notice: "Remote refresh failed · {count} saved branches",
     quick_link_hint: "Long press to save link",
     failed_set_car: "Failed to set car: ",
     open_car_select: "Open car select",
