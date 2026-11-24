@@ -12,7 +12,11 @@ from types import SimpleNamespace as NS
 import pytest
 from aiohttp import web
 
-from openpilot.selfdrive.carrot.server.features.tools import jobs as branch_jobs
+from openpilot.selfdrive.carrot.server.tests.branch_test_support import load_branch_tools
+
+_tools = load_branch_tools()
+branch_jobs = _tools.jobs
+checkout_branch, list_branches = _tools.branches.checkout_branch, _tools.branches.list_branches
 
 
 def git(repo, *args):
@@ -37,6 +41,7 @@ def device(tmp_path, monkeypatch):
   head = git(repo, 'rev-parse', 'HEAD')
   git(repo, 'update-ref', 'refs/remotes/origin/c3-pht', head)
   git(repo, 'remote', 'add', 'origin', 'https://offline.invalid/openpilot.git')
+  git(repo, 'branch', '--set-upstream-to=origin/c3-pht', 'c3-pht')
   git(repo, 'switch', 'c3-pht-porter')
   return repo
 
@@ -46,19 +51,24 @@ def dispatcher(repo, *, timeout=False, refs_error=False):
   # boot dependencies. Only the /data path and external fetch are substituted.
   source = Path(__file__).resolve().parents[1] / 'features/tools/dispatcher.py'
   tree = ast.parse(source.read_text())
-  names = {'_checkout_local_name', '_refresh_branch_refs', '_run_tool_job', '_dispatch_sync'}
+  names = {'_branch_command', '_run_tool_job', '_dispatch_sync'}
   nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name in names]
   calls = []
 
   def run(args, *, cwd=None, **kwargs):
     calls.append(args)
-    if args[:2] == ['git', 'fetch']:
+    if args[:2] in (['git', 'fetch'], ['git', 'ls-remote']):
       return subprocess.CompletedProcess(args, 128, '', 'Could not resolve host: offline.invalid')
     if refs_error and args[:2] == ['git', 'for-each-ref']:
       return subprocess.CompletedProcess(args, 128, '', 'fatal: invalid ref database')
     return subprocess.run(args, cwd=repo if cwd == '/data/openpilot' else cwd, **kwargs)
 
   async def capture(args, *, cwd, timeout):  # noqa: ASYNC109 - production exec adapter
+    if args[:2] == ['git', 'ls-remote']:
+      assert timeout == 8
+      if globals_timeout:
+        calls.append(args)
+        raise TimeoutError()
     p = run(args, cwd=cwd, text=True, capture_output=True)
     return p.returncode, (p.stdout + p.stderr).strip()
 
@@ -76,10 +86,6 @@ def dispatcher(repo, *, timeout=False, refs_error=False):
   globals_timeout = timeout
 
   async def process(args, *, cwd, timeout):  # noqa: ASYNC109 - production exec adapter
-    assert timeout == 8
-    if globals_timeout:
-      calls.append(args)
-      raise TimeoutError()
     return await capture(args, cwd=cwd, timeout=timeout)
 
   def finish(job, *, ok, result, **kw):
@@ -91,7 +97,8 @@ def dispatcher(repo, *, timeout=False, refs_error=False):
                get_branch_prefix=lambda: 'c3')
   env = {'asyncio': asyncio, 'web': web, 'jobs': helpers, 'run_process': process, 'BRANCH_LIST_FETCH_TIMEOUT': 8,
          'subprocess': NS(run=run), 'child_lock_kwargs': dict, 'shlex': shlex, 'traceback': traceback,
-         'normalize_action': lambda a: a, 'validate_action': lambda a: None, 'HARDWARE': NS(get_device_type=lambda: 'tici')}
+         'normalize_action': lambda a: a, 'validate_action': lambda a: None, 'HARDWARE': NS(get_device_type=lambda: 'tici'),
+         'checkout_branch': checkout_branch, 'list_branches': list_branches, 'clear_git_status_cache': lambda: None}
   future = ast.ImportFrom(module='__future__', names=[ast.alias(name='annotations')], level=0)
   exec(compile(ast.fix_missing_locations(ast.Module(body=[future, *nodes], type_ignores=[])), str(source), 'exec'), env)
 
