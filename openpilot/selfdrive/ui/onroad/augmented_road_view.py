@@ -5,6 +5,7 @@ from openpilot.cereal import log, messaging
 from msgq.visionipc import VisionStreamType
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
 from openpilot.selfdrive.ui.b1_badge import FOOTER_FONT_SIZE, draw as draw_b1_badge, draw_footer as draw_b1_footer, presentation as b1_presentation
+from openpilot.selfdrive.ui.s2_status import connected as s2_connected
 from openpilot.selfdrive.ui.carrot_param_cache import BorderParamSnapshot, TimedSnapshotCache, read_border_params
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer
@@ -517,18 +518,31 @@ class AugmentedRoadView(CameraView):
     font = gui_app.font(FontWeight.DISPLAY)
     ip_width = measure_text_cached(font, bottom_right, font_size).x
     badge = b1_presentation()
+    badge_width = measure_text_cached(font, badge[0], FOOTER_FONT_SIZE).x if badge is not None else 0.
+    remote_connected = s2_connected()
+    remote_label = "S2 연결됨"
+    remote_width = measure_text_cached(font, remote_label, FOOTER_FONT_SIZE).x if remote_connected else 0.
     bottom_text_x = x + w / 2.0
     bottom_font_size = font_size
     text_width = measure_text_cached(font, bottom, font_size).x
-    if badge is not None:
-      badge_width = measure_text_cached(font, badge[0], FOOTER_FONT_SIZE).x
+    if badge is not None or remote_connected:
+      # Keep the lane diagnostics centred in the road view. Reserve equal
+      # 60px text gaps for S2 on the left and S3 on the right.
       left = x + text_margin + measure_text_cached(font, bottom_left, font_size).x + 12
-      right = x + w - text_margin - ip_width - 60 - badge_width - 60
+      if remote_connected:
+        left += remote_width + 60
+      right = x + w - text_margin - ip_width - 60
+      if badge is not None:
+        right -= badge_width + 60
       available = max(0., 2 * min(bottom_text_x - left, right - bottom_text_x))
       if text_width > available:
         bottom_font_size *= available / max(1., text_width)
       text_width = measure_text_cached(font, bottom, bottom_font_size).x
+    if badge is not None:
       draw_b1_footer(rect, badge[0], left=bottom_text_x + text_width / 2. + 60)
+    if remote_connected:
+      draw_text_ui_style(remote_label, bottom_text_x - text_width / 2. - 60, bottom_text_y, FOOTER_FONT_SIZE,
+                         rl.WHITE, align="right_top", y_offset=0.0)
     draw_text_ui_style(bottom, bottom_text_x, bottom_text_y, bottom_font_size, rl.WHITE,
                        align="center_top", y_offset=0.0)
     draw_text_ui_style(bottom_left, x + text_margin, bottom_text_y, font_size, rl.WHITE,
