@@ -6,6 +6,7 @@
 let ORIGIN_USERNAME = "origin";
 let BRANCH_REMOTE_NAMES = ["origin"];
 let BRANCH_REMOTE_OWNERS = Object.create(null);
+let BRANCH_REMOTE_REPOSITORIES = Object.create(null);
 let BRANCH_GROUP_OPEN = Object.create(null);
 let branchPickerCloseTimer = null;
 
@@ -53,29 +54,45 @@ if (appBranchPickerBackdrop) appBranchPickerBackdrop.onclick = () => closeBranch
 if (appBranchPickerClose) appBranchPickerClose.onclick = () => closeBranchPicker();
 
 function parseGitHubOwner(url) {
+  return parseGitHubRepository(url).split("/")[0];
+}
+
+function parseGitHubRepository(url) {
   const text = String(url || "").trim();
   if (!text) return "";
-  const httpsMatch = text.match(/github\.com\/([^\/:\s]+)\//);
-  if (httpsMatch) return httpsMatch[1];
-  const sshMatch = text.match(/github\.com[:\/]([^\/:\s]+)\//);
-  return sshMatch ? sshMatch[1] : "";
+  let path;
+  if (text.startsWith("git@github.com:")) {
+    path = text.slice("git@github.com:".length);
+  } else {
+    try {
+      const parsed = new URL(text);
+      if (parsed.hostname !== "github.com") return "";
+      path = parsed.pathname;
+    } catch (_) { return ""; }
+  }
+  const parts = path.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "").split("/");
+  return parts.length === 2 && parts.every(Boolean) ? parts.join("/") : "";
 }
 
 function resetBranchRemoteContext() {
   ORIGIN_USERNAME = "origin";
   BRANCH_REMOTE_NAMES = ["origin"];
   BRANCH_REMOTE_OWNERS = Object.create(null);
+  BRANCH_REMOTE_REPOSITORIES = Object.create(null);
 }
 
 function syncBranchRemoteContext(result = {}) {
   const remotes = Array.isArray(result.remotes) ? result.remotes.map((r) => String(r || "").trim()).filter(Boolean) : [];
   BRANCH_REMOTE_NAMES = remotes.length ? remotes : ["origin"];
   BRANCH_REMOTE_OWNERS = Object.create(null);
+  BRANCH_REMOTE_REPOSITORIES = Object.create(null);
 
   const remoteUrls = result.remote_urls && typeof result.remote_urls === "object" ? result.remote_urls : {};
   for (const [name, url] of Object.entries(remoteUrls)) {
     const owner = parseGitHubOwner(url);
     if (owner) BRANCH_REMOTE_OWNERS[name] = owner;
+    const repository = parseGitHubRepository(url);
+    if (repository) BRANCH_REMOTE_REPOSITORIES[name] = repository;
   }
 
   if (BRANCH_REMOTE_OWNERS.origin) {
@@ -136,7 +153,7 @@ function getBranchDisplayInfo(entry) {
       ref,
       label: String(entry.label || name).trim() || name,
       groupKey: `remote:${remoteName}:${owner}`,
-      groupTitle: remoteName === "origin" ? `${remoteName} / ${owner}` : `remote / ${owner}`,
+      groupTitle: BRANCH_REMOTE_REPOSITORIES[remoteName] || `remote / ${remoteName}`,
       groupRank: remoteName === "origin" ? 1 : 2,
       kind: "remote",
       remote: remoteName,
@@ -171,7 +188,7 @@ function getBranchDisplayInfo(entry) {
     ref: raw,
     label: rest.join("/") || raw,
     groupKey: `remote:${remoteName}:${owner}`,
-    groupTitle: remoteName === "origin" ? `${remoteName} / ${owner}` : `remote / ${owner}`,
+    groupTitle: BRANCH_REMOTE_REPOSITORIES[remoteName] || `remote / ${remoteName}`,
     groupRank: remoteName === "origin" ? 1 : 2,
     kind: "remote",
     remote: remoteName,
@@ -248,7 +265,9 @@ async function loadBranchesAndShow() {
     syncBranchRemoteContext(j);
     BRANCHES = normalizeBranchItems(j);
     CURRENT_BRANCH_NAME = (j.current_branch || "").trim();
-    appBranchPickerMeta.textContent = `${BRANCHES.length} branches`;
+    appBranchPickerMeta.textContent = j.fetch_ok === false
+      ? getUIText("branch_cached_notice", "Remote refresh failed · {count} saved branches", { count: BRANCHES.length })
+      : branchCountLabel(BRANCHES.length);
 
     renderBranchList();
   } catch (e) {
