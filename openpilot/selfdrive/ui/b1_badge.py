@@ -6,6 +6,8 @@ import time
 ENROLLED = Path('/data/carrot/b1-monitor.json')
 STATUS = Path('/dev/shm/carrot-b1-link.json')
 FOOTER_FONT_SIZE = 28
+CONNECTED_STATES = frozenset(('ready', 'waiting', 'sending', 'driver_override', 'error',
+                              'relay_ready', 'relay_waiting', 'relay_on', 'relay_error'))
 LABELS = {
   'updating': ('S3 · 업데이트', (96, 218, 243)),
   'offline': ('S3 · 연결 대기', (170, 178, 188)),
@@ -24,7 +26,7 @@ def status(now, enrolled=ENROLLED, path=STATUS):
     return None
   try:
     with path.open('rb') as stream:
-      record = json.loads(stream.read(256))
+      record = json.loads(stream.read(4096))
     if 0 <= now-record['time'] < 2 and record['state'] in LABELS:
       return record['state']
   except (OSError, KeyError, ValueError, TypeError):
@@ -39,10 +41,12 @@ _state = None
 def presentation():
   global _next, _state
   now = time.monotonic()
-  if now >= _next:
+  if now >= _next or now < _next - .35:
     _state = status(now)
     _next = now + .35
-  return LABELS.get(_state)
+  if _state in CONNECTED_STATES:
+    return 'S3 연결됨', (255, 255, 255)
+  return None
 
 
 def draw_footer(rect, label, *, left=None, right=None):
