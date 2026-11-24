@@ -83,11 +83,21 @@ def test_release_below_original_setting_does_not_reduce_or_capture_peak(setup):
   assert not s.logs
 
 
-def test_short_gas_tap_keeps_existing_preset_behavior(setup):
+def test_qualified_porter_release_takes_priority_over_short_tap_preset(setup):
   s = setup
   s.tick(True, 75, 15)
-  assert s.tick(False, 75) == 80
-  assert not s.logs
+  assert s.tick(False, 75) == (75 if s.helper.CP.pcmCruise else 80)
+  assert bool(s.logs) == s.helper.CP.pcmCruise
+
+
+@pytest.mark.parametrize('selected,stock,release', [(60, 47, 58.125), (55, 30, 47.125)])
+def test_release_below_comma_selection_but_above_oem_uses_current_speed(setup, selected, stock, release):
+  s = setup
+  s.helper.v_cruise_kph = s.helper.v_cruise_cluster_kph = selected
+  s.cs.cruiseState.speed = stock / 3.6
+  s.tick(True, release, 60)
+  assert s.tick(False, release) == (round(release) if s.helper.CP.pcmCruise else selected)
+  assert bool(s.logs) == s.helper.CP.pcmCruise
 
 
 def test_option_off_does_not_sync_on_hold_or_release(setup):
@@ -284,6 +294,7 @@ def test_recorded_porter_release_is_not_overwritten_by_automatic_road_speed_up(s
   if not s.helper.CP.pcmCruise:
     pytest.skip('Porter driver-selection priority only')
   s.helper.v_cruise_kph = s.helper.v_cruise_cluster_kph = 60
+  s.cs.cruiseState.speed = 60 / 3.6
   s.params.put_int('AutoSpeedUptoRoadSpeedLimit', 100)
   s.sm['carrotMan'] = SimpleNamespace(nRoadLimitSpeed=75, desiredSpeed=250, carrotCmdIndex=0, carrotCmd='', carrotArg='')
   s.sm.alive['carrotMan'] = s.sm.seen['carrotMan'] = s.sm.valid['carrotMan'] = True
@@ -314,6 +325,7 @@ def test_short_tap_after_porter_capture_keeps_existing_preset_action(setup):
     pytest.skip('Porter selection ceiling only')
   s.tick(True, 100, 60)
   assert s.tick(False, 85) == 85
+  s.cs.cruiseState.speed = 85 / 3.6  # Vehicle has accepted the preceding capture.
   s.tick(True, 85, 15)
   assert s.tick(False, 85) == 90
   assert s.helper._gas_sync_selected_kph is None

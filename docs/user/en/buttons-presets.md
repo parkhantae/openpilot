@@ -256,6 +256,12 @@ Remember that SET/- in custom mode 3 does not walk backward through the preset t
 [Back to Understanding Settings](settings.md)
 
 
+### Porter accelerator-release SET during active cruise
+
+Porter conventional cruise compares against the **OEM setting**. A fresh press of at least 0.1s released at least 1km/h above the OEM setting selects release speed and takes priority over the short-tap preset in this case. For example, with comma at 60 and OEM at 47, release at 58 selects 58 on comma too. On current profiles 1025/15489 with `SpeedFromPCM=0`, when the planner, lead and navigation allow that speed, the next fresh CAN opportunity requests **one SET− press → release** (at most 3 frames/60ms). Only stale GAP recovery memory is rebased; current lead and deceleration limits remain.
+
+Initial dispatch must start within 0.1s of release, with up to 0.5s for confirmation. That cue is not retried; another attempt requires 3s after the last transmission and a new pedal press. Brake, CANCEL, driver input, selection changes or loss of eligibility discard the remaining input. This is independent of the standby auto-SET toggle; actual speed holding and ECU acceptance still need confirmation.
+
 ### Porter automatic SET from MAIN standby
 
 This comparison trial restores only the `4757bccb` 120ms/six-frame single press. Update both host and Panda and restart for the new transmission profile. MAIN initialization, speed, driver priority and retry conditions remain; actual vehicle acceptance still needs verification.

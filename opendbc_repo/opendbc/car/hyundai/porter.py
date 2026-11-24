@@ -170,6 +170,16 @@ class PorterLeadTracker:
     self.__init__(self.hold_seconds)
     self.stock_enabled = stock_enabled
 
+  def sync_driver_speed(self, speed_kph):
+    """Rebase stale recovery memory only after a separately checked driver cue."""
+    self.decel_cap = self.decel_cap_time = None
+    if self.adaptive_tracker is not None:
+      self.adaptive_tracker.last_target = speed_kph
+
+  def holding_lead(self, now):
+    tracker = self.adaptive_tracker if self.adaptive_tracker is not None else self
+    return tracker.last_seen is not None and now - tracker.last_seen <= self.hold_seconds
+
   def observe_stock_cruise(self, enabled, *, valid):
     """Clear the preceding session only after valid stock OFF then ON."""
     if not valid:

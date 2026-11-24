@@ -23,8 +23,11 @@ not published to the upstream live Wiki.
 for `AutoGasSyncSpeed` on `c3-pht-porter`. Generate fresh pages from this branch's
 catalog, apply with `git apply --unidiff-zero`, regenerate with that staging
 directory as `--wiki-dir`, and validate. It describes release-speed selection
-instead of pedal-peak capture, interruption priority and the unchanged stock
-button/PCM limitations. This patch does not publish to the upstream Wiki.
+instead of pedal-peak capture, interruption priority and stock/PCM limitations.
+For active Porter cruise it also describes a fresh >=0.1s release above the OEM
+setting, one bounded SET press, planner/lead/navigation vetoes and stale GAP
+memory rebasing. Standby auto SET remains separate. This patch does not publish
+to the upstream Wiki.
 
 ## Bosch passive reception
 

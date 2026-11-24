@@ -538,6 +538,8 @@ struct CarControl {
     physicalBlinkerHold @23: UInt8;  # 0=legacy, 1=release, 2=left hold, 3=right hold; fresh USB-CAN lease
     porterAccelReady @24: Bool;  # fresh Porter gap clearance; permits bypass of the extra RES reversal dwell
     porterRecoveryAllowed @25: Bool;  # fresh car/planner/radar inputs; only constrains the opt-in deceleration retry
+    porterPedalSetSpeed @26: Float32;  # km/h; bounded active-cruise SET capture, not a standby engagement
+    porterPedalSetTime @27: UInt64;  # original driver release carState BOOTTIME timestamp; never renewed
 
     # not used with the dash, TODO: separate structs for dash UI and device UI
     audibleAlert @5: AudibleAlert;

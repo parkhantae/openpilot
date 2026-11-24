@@ -910,18 +910,24 @@ class VCruiseCarrot:
              self._activate_cruise >= 0 and self._cancel_timer == 0 and not pcm_speed_owned and
              not getattr(self, "_gas_sync_manual_input", False))
     if self._gas_pressed_count == 1:
-      self._gas_sync_base_kph = v_cruise_kph if valid and math.isfinite(v_cruise_kph) else None
+      base = CS.cruiseState.speed * CV.MS_TO_KPH if porter_conventional_cruise(self.CP) else v_cruise_kph
+      self._gas_sync_base_kph = base if valid and math.isfinite(base) else None
     elif not valid:
       self._gas_sync_base_kph = None
     elif self._gas_pressed_count == -1:
       base_kph = self._gas_sync_base_kph
       self._gas_sync_base_kph = None
-      # Preserve the existing short gas-tap behavior. The option changes an
-      # already-active cruise, never grants an automatic engagement request.
+      # Porter active SET uses a fresh >=0.1s driver press. Other cars keep
+      # their existing short-tap behavior; this never grants engagement.
       minimum = pcm_cruise_min_kph(self.CP) if self.CP.pcmCruise else self._cruise_speed_min
-      if (base_kph is not None and self._gas_pressed_count_last > self._gas_tok_timer and
+      duration_ok = (self._gas_pressed_count_last >= 10 if porter_conventional_cruise(self.CP) else
+                     self._gas_pressed_count_last > self._gas_tok_timer)
+      faster = (base_kph is not None and
+                (self.v_ego_kph_set >= base_kph + 1 - 1e-5 if porter_conventional_cruise(self.CP) else
+                 self.v_ego_kph_set > base_kph))
+      if (base_kph is not None and duration_ok and
           math.isfinite(self.v_ego_kph_set) and minimum <= self.v_ego_kph_set <= self._cruise_speed_max and
-          self.v_ego_kph_set > base_kph):
+          faster):
         self._add_log(f"Cruise speed from gas release: {self.v_ego_kph_set}")
         if porter_conventional_cruise(self.CP):
           # A qualified driver selection owns the upper set speed until a
@@ -1064,6 +1070,10 @@ class VCruiseCarrot:
         self._cruise_control(-1, 0, "Cruise off (gas pressed)")
     else:
       self._gas_tok = True if 0 < self._gas_pressed_count < self._gas_tok_timer and not self.speedcam_gas_tok_consumed else False
+      if (self._gas_tok and getattr(self, 'autoGasSyncSpeed', 0) and porter_conventional_cruise(self.CP) and
+          CC.enabled and CS.cruiseState.enabled and self._gas_pressed_count >= 10 and
+          math.isfinite(CS.cruiseState.speed) and self.v_ego_kph_set >= CS.cruiseState.speed * CV.MS_TO_KPH + 1 - 1e-5):
+        self._gas_tok = False  # A qualified active-Porter release owns this speed selection.
       self._gas_pressed_count = min(-1, self._gas_pressed_count - 1)
       if self._gas_pressed_count < -1:
         self._gas_pressed_count_last = 0

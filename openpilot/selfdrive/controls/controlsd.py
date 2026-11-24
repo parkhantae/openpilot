@@ -19,6 +19,7 @@ from opendbc.car.hyundai.porter import (
   porter_lead_reaction_s, porter_plan_allows_recovery,
 )
 from opendbc.car.hyundai.porter_cancel import PorterLowSpeedCancel, porter_cancel_target, porter_cancel_speed_kph
+from opendbc.car.hyundai.porter_pedal_set import PorterPedalCapture, pedal_capture_safe, pedal_set_profile_ready
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.volkswagen.values import MEB_CURVATURE_PID_KP, MEB_CURVATURE_PID_KI, MEB_CURVATURE_PID_KF, MEB_CURVATURE_MAX
 
@@ -111,6 +112,64 @@ class Controls:
     self.carrot_controls = CarrotControls(self.CP)
     self.porter_lead_tracker = PorterLeadTracker()
     self.porter_low_speed_cancel = PorterLowSpeedCancel()
+    self.porter_pedal_capture = PorterPedalCapture()
+
+  def update_porter_pedal_set(self, CS, CC, lp, desired_kph):
+    hud = CC.hudControl
+    hud.porterPedalSetSpeed, hud.porterPedalSetTime = 0., 0
+    state = self.porter_pedal_capture
+    if not (self.CP.carFingerprint == 'HYUNDAI_PORTER_II_EV' and self.CP.pcmCruise and
+            not self.CP.openpilotLongitudinalControl):
+      state.clear()
+      state.gas_since = state.previous_gas = None
+      return
+    stamp = self.sm.logMonoTime['carState']
+    now = stamp * 1e-9
+    stock = CS.cruiseState.speed * CV.MS_TO_KPH
+    eligible = (pedal_set_profile_ready(self.CP) and
+                self.params.get_int('AutoGasSyncSpeed') > 0 and self.params.get_int('SpeedFromPCM') == 0 and
+                not self.params.get_bool('DisengageOnAccelerator') and
+                CC.enabled and CS.cruiseState.available and CS.cruiseState.enabled and
+                self.sm.all_checks(['carState', 'longitudinalPlan', 'radarState']) and CS.canValid and
+                not CS.canTimeout and not CS.accFaulted and CS.gearShifter == 'drive' and
+                not (CS.brakePressed or CS.brakeHoldActive or CS.parkingBrake or CC.cruiseControl.cancel or
+                     CC.cruiseControl.resume or CS.buttonEvents) and
+                math.isfinite(CS.vEgoCluster) and math.isfinite(stock) and 30 - 1e-5 <= stock <= 160 + 1e-5 and
+                porter_auto_set_speed_valid(self.CP, CS))
+    cue = state.observe(now, CS.gasPressed, eligible)
+    if cue:
+      speed = int(CS.vEgoCluster * CV.MS_TO_KPH + .5)
+      if 30 <= speed <= 160 and speed >= stock + 1 - 1e-5:
+        state.speed, state.stamp, state.until = speed, stamp, now + .5
+    if not state.stamp:
+      return
+    speeds = lp.speeds
+    target = (speeds[-1] / CS.vCluRatio * CV.MS_TO_KPH
+              if len(speeds) and math.isfinite(CS.vCluRatio) and CS.vCluRatio > .5 else 0.)
+    limits = (target, CS.vCruiseCluster, desired_kph)
+    target = min(limits) if all(math.isfinite(v) for v in limits) else 0.
+    lead = self.sm['radarState'].leadOne
+    gap = porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1, lp.tFollow)
+    safe = (porter_plan_allows_recovery(lp, valid=True) and
+            pedal_capture_safe(state.speed, target, CS.vEgo, lead.dRel, lead.vRel, visible=lead.status,
+                               held=self.porter_lead_tracker.holding_lead(self.sm.frame * DT_CTRL),
+                               gap_time=gap, reaction=porter_lead_reaction_s(self.params),
+                               spacing=max(.3, self.params.get_int('CruiseButtonTest2') * .01)))
+    # card's cruise helper also checks remote buttons/explicit speed commands.
+    # Require its release selection to agree, and withdraw on any later change.
+    selected = math.isfinite(CS.vCruiseCluster) and abs(CS.vCruiseCluster - state.speed) <= .5
+    if not eligible or now > state.until or not safe or not selected:
+      state.clear()
+      return
+    # The driver is already at this speed; discard only the preceding low
+    # recovery memory. Current lead, navigation and planner limits were checked.
+    self.porter_lead_tracker.sync_driver_speed(state.speed)
+    hud.setSpeed = state.speed * CV.KPH_TO_MS
+    hud.porterAccelReady = True
+    if stock >= state.speed - .5:
+      state.clear()
+    else:
+      hud.porterPedalSetSpeed, hud.porterPedalSetTime = state.speed, state.stamp
 
   def update_porter_cancel(self, CS, CC, planner_kph, carrot_man):
     cancel_enabled = self.params.get_bool("PorterAutoCancelBelow30")
@@ -458,6 +517,7 @@ class Controls:
     else:
       hudControl.setSpeed = setSpeed if lp.xState == 3 else float(desired_kph * CV.KPH_TO_MS)
     self.update_porter_cancel(CS, CC, setSpeed * CV.MS_TO_KPH if len(speeds) else None, carrot_man)
+    self.update_porter_pedal_set(CS, CC, lp, desired_kph)
     hudControl.porterRecoveryAllowed = (
       self.CP.carFingerprint == "HYUNDAI_PORTER_II_EV" and self.CP.pcmCruise and
       not self.CP.openpilotLongitudinalControl and

@@ -90,6 +90,7 @@ class TestPorterMessagePath(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     directory = Path(__file__).resolve().parents[1]
+    from opendbc.car.hyundai.porter_pedal_set import pedal_set_profile_ready
     import importlib.util
     spec = importlib.util.spec_from_file_location("porter_message", directory / "porter.py")
     module = importlib.util.module_from_spec(spec)
@@ -101,7 +102,7 @@ class TestPorterMessagePath(unittest.TestCase):
     for arg in function.args.args:
       arg.annotation = None
     function.returns = None
-    env = {"porter_auto_set_speed_valid": module.porter_auto_set_speed_valid,
+    env = {"porter_auto_set_speed_valid": module.porter_auto_set_speed_valid, "pedal_set_profile_ready": pedal_set_profile_ready,
            "CAR": NS(HYUNDAI_PORTER_II_EV="porter"), "Buttons": NS(NONE=0), "DT_CTRL": .01,
            "CV": NS(MS_TO_KPH=3.6), "structs": NS(CarState=NS(GearShifter=NS(drive="drive"))),
            "hyundaican": NS(create_clu11_button=lambda packer, frame, clu, button, cp: button),
@@ -112,7 +113,8 @@ class TestPorterMessagePath(unittest.TestCase):
   def setUp(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet
     from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
-    self.controller = NS(porter_cancel_buttons=PorterCancelButtons(), porter_main_set=PorterMainSet(),
+    from opendbc.car.hyundai.porter_pedal_set import PorterPedalSet
+    self.controller = NS(porter_cancel_buttons=PorterCancelButtons(), porter_main_set=PorterMainSet(), porter_pedal_set=PorterPedalSet(),
                          porter_main_params=NS(get_bool=lambda key: False), CP=NS(carFingerprint="porter", safetyConfigs=[]), frame=0, packer=None,
                          porter_buttons=self.buttons_class(), speed_from_pcm=0,
                          button_spam1=8, button_spam2=30, button_spam3=2)
@@ -130,6 +132,38 @@ class TestPorterMessagePath(unittest.TestCase):
     self.cs.cp._last_update_nanos = 1_000_000_000 + frame * 10_000_000
     self.cs.cp.ts_nanos["CLU11"]["counter"] = self.cs.cp._last_update_nanos
     return self.function(self.controller, self.cc, self.cs, True)
+
+  def test_active_pedal_capture_replaces_res_steps_then_confirmed_stock_ends_press(self):
+    for profile in (1025, 15489):
+      self.setUp()
+      self.controller.CP.safetyConfigs = [NS(safetyParam=profile)]
+      self.controller.porter_buttons.recovery_used = True
+      self.cs.out.gasPressed = True
+      self.assertEqual(self.tick(0), [])
+      self.cs.out.gasPressed = False
+      self.cc.hudControl.porterPedalSetSpeed = 58
+      self.cc.hudControl.porterPedalSetTime = 1_100_000_000
+      self.cc.hudControl.setSpeed = 58 / 3.6
+      self.cc.hudControl.porterAccelReady = True
+      self.assertEqual(self.tick(10), [2])
+      self.assertEqual(self.tick(12), [2])
+      self.cs.out.cruiseState.speed = 58 / 3.6
+      self.cc.hudControl.porterPedalSetSpeed = self.cc.hudControl.porterPedalSetTime = 0
+      self.assertEqual(self.tick(14), [0])
+      self.assertEqual(self.tick(16), [])
+      self.assertEqual(self.controller.porter_pedal_set.acks, 1)
+      self.assertTrue(self.controller.porter_buttons.recovery_used)
+
+  def test_cancel_takes_priority_over_new_active_capture_and_cue_does_not_replay(self):
+    self.controller.CP.safetyConfigs = [NS(safetyParam=15489)]
+    self.cc.hudControl.porterPedalSetSpeed = 58
+    self.cc.hudControl.porterPedalSetTime = 1_000_000_000
+    self.cc.cruiseControl.cancel = True
+    outputs = self.tick(0)
+    self.assertNotIn(2, outputs)
+    self.cc.cruiseControl.cancel = False
+    self.tick(2)
+    self.assertEqual(self.controller.porter_pedal_set.requests, 0)
 
   def test_rapid_pair_continues_after_stock_on_without_normal_button_overlap(self):
     from opendbc.car.hyundai.porter_main_set import PorterMainSet

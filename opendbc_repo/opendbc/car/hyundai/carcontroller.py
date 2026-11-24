@@ -9,6 +9,7 @@ from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.porter_cancel import PorterCancelButtons
 from opendbc.car.hyundai.porter_main_set import PorterMainSet, porter_can_clock_nanos
+from opendbc.car.hyundai.porter_pedal_set import PorterPedalSet, pedal_set_profile_ready
 from opendbc.car.hyundai.porter import PorterCruiseButtons, porter_steer_request_frames, porter_auto_set_speed_valid
 from opendbc.car.hyundai.porter_steering import apply_porter_steer_torque_limits
 from opendbc.car.hyundai.stopping import CanfdStopping
@@ -203,6 +204,7 @@ class CarController(CarControllerBase):
                               if pedal_interceptor_params is not None else None)
     self.last_button_frame = 0
     self.porter_buttons = PorterCruiseButtons()
+    self.porter_pedal_set = PorterPedalSet()
     # Schedule one press with the bound selected by the versioned safety profile.
     self.porter_main_set = PorterMainSet(initial_main=any(c.safetyParam in (25601, 58369, 60417) for c in CP.safetyConfigs),
                                          allow_startup_gas=any(c.safetyParam in (58369, 60417) for c in CP.safetyConfigs),
@@ -739,11 +741,22 @@ class CarController(CarControllerBase):
       # Real dispatch time, not frame * DT_CTRL: a delayed controller update
       # can dispatch 20 ms later while advancing only one control frame.
       button_clock = porter_can_clock_nanos(apply_now_nanos) if apply_now_nanos is not None else None
+      capture_clock = button_clock if button_clock is not None else parser._last_update_nanos if parser is not None else 0
+      pedal_set = self.porter_pedal_set.update(
+        capture_clock, getattr(CC.hudControl, 'porterPedalSetTime', 0),
+        getattr(CC.hudControl, 'porterPedalSetSpeed', 0.), CS.out.cruiseState.speed * CV.MS_TO_KPH,
+        (timestamp, CS.clu11['CF_Clu_AliveCnt1']) if fresh else None,
+        enabled=(CC.enabled and CS.out.cruiseState.enabled and self.speed_from_pcm == 0 and
+                 pedal_set_profile_ready(self.CP)),
+        blocked=(blocked or cancel_busy or pair_busy or CC.cruiseControl.cancel or
+                 self.porter_buttons.pending_release or self.porter_buttons.phase == 'press'),
+        manual=manual, gas=CS.out.gasPressed, sample_age_s=(capture_clock - timestamp) * 1e-9 if fresh else float('inf'))
+      capture_busy = self.porter_pedal_set.busy or pedal_set is not None
       button = self.porter_buttons.update(
         self.frame * DT_CTRL, CC.hudControl.setSpeed * CV.MS_TO_KPH, CS.out.cruiseState.speed * CV.MS_TO_KPH,
         (timestamp, CS.clu11["CF_Clu_AliveCnt1"]) if fresh else None,
         enabled=CC.enabled and CS.out.cruiseState.enabled and not cancel_busy and not pair_busy,
-        blocked=blocked or cancel_busy or pair_busy, manual=manual, cancel=False,
+        blocked=blocked or cancel_busy or pair_busy or capture_busy, manual=manual, cancel=False,
         acceleration_ready=getattr(CC.hudControl, "porterAccelReady", False),
         press_seconds=self.button_spam1 * DT_CTRL, gap_seconds=self.button_spam2 * DT_CTRL,
         tx_now_s=button_clock * 1e-9 if button_clock is not None else None,
@@ -817,8 +830,16 @@ class CarController(CarControllerBase):
                       self.porter_main_set.response_reason)
       if cancel_busy:
         button = cancel_button
+      elif capture_busy:
+        button = pedal_set
       elif button is None:
         button = main_set
+      capture_status = (self.porter_pedal_set.status, self.porter_pedal_set.requests,
+                        self.porter_pedal_set.acks, self.porter_pedal_set.timeouts)
+      if capture_status != getattr(self, 'porter_pedal_status', None):
+        self.porter_pedal_status = capture_status
+        cloudlog.info('PorterPedalSet: status=%s req=%d ack=%d noack=%d stock=%.2f capture=%.2f',
+                      *capture_status, CS.out.cruiseState.speed * CV.MS_TO_KPH, self.porter_pedal_set.speed)
       if button is not None:
         can_sends.append(hyundaican.create_clu11_button(self.packer, self.frame, CS.clu11, button, self.CP))
       return can_sends

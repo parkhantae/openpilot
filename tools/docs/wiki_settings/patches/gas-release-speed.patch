@@ -1,69 +1,81 @@
---- a/KO-자동크루즈속도-업데이트.md
-+++ b/KO-자동크루즈속도-업데이트.md
-@@ -29 +29,19 @@
--<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
-+<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
-+### 동작
-+
-+크루즈와 시스템이 활성인 동안 약 0.4초 이상 엑셀을 밟았다 놓으면, 해제 시 계기판 속도가 밟기 전 설정보다 빠를 때 그 속도를 새 설정으로 선택합니다. 70에서 100까지 가속했다가 85에서 놓으면 85를 선택하며 밟는 동안의 최고속도는 저장하지 않습니다.
-+<!-- CARROT:SECTION:END BEHAVIOR -->
-+
-+<!-- CARROT:SECTION:BEGIN USAGE -->
-+### 사용
-+
-+이 설정을 켜고 기존 크루즈 주행 중 사용합니다. 짧은 엑셀 톡 동작은 유지합니다. 브레이크·CANCEL·버튼·속도 명령·무효 입력·크루즈 해제 등이 끼면 해당 입력은 취소되고 새로 밟아야 합니다.
-+<!-- CARROT:SECTION:END USAGE -->
-+
-+<!-- CARROT:SECTION:BEGIN REFERENCE -->
-+### 참고
-+
-+기존 설정 범위, 순정 속도 우선 PCM 모드와 자동 속도·앞차·커브·내비 제어는 유지합니다. 포터의 실제 설정속도 반영은 기존 버튼 송신과 차량 수락에 따라 지연될 수 있으며, 대기 중 자동 SET을 켜는 기능과는 별개입니다.
-+<!-- CARROT:SECTION:END REFERENCE -->
-+
+diff --git a/EN-Auto-update-Cruise-speed.md b/EN-Auto-update-Cruise-speed.md
+index 23ff2ca..6e6cb0e 100644
 --- a/EN-Auto-update-Cruise-speed.md
 +++ b/EN-Auto-update-Cruise-speed.md
-@@ -29 +29,19 @@
+@@ -29 +29,21 @@ Default OFF. Selects dashboard speed at accelerator release, not pedal peak. Oth
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="fa558979a1f2c399d14e04e7aafbde78af66ff3305981b17fb59322f65eb3935" reviewed-at="2026-11-24T12:00:00Z" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### Behavior
 +
-+While system and cruise are active, release after about 0.4s or longer on the accelerator selects the dashboard speed if it exceeds the pre-press setting. Accelerating from a 70 setting to 100 and releasing at 85 selects 85, without saving the pedal peak.
++During active system/cruise operation, selects dashboard speed at release rather than pedal peak. Other vehicles require about 0.4s on the pedal and a release speed above the previous comma setting.
++
++Porter conventional cruise uses a fresh press of at least 0.1s and release at least 1km/h above the OEM setting, taking priority over the short-tap preset. For example, comma 60/OEM 47 and release at 58 selects 58. Profiles 1025/15489 with SpeedFromPCM=0 request one SET− press (at most 3 frames/60ms) and release at the next fresh CAN opportunity only when planner, lead and navigation allow it; only stale GAP recovery memory is rebased.
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### Usage
 +
-+Enable this setting and use it during existing cruise operation. Short gas-tap actions remain. Brake, CANCEL, buttons, speed commands, invalid input or loss of cruise revoke that cycle; press again after recovery.
++Use during existing cruise operation. Initial dispatch must start within 0.1s of release, with up to 0.5s for confirmation. The cue is not retried; another attempt requires 3s after the last transmission and a new pedal press. Brake, CANCEL, buttons, speed commands or loss of eligibility discard remaining input.
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### Reference
 +
-+Existing setting bounds, vehicle-owned PCM speed modes and automatic speed, lead, curve and navigation control remain in effect. Porter uses existing button requests, so actual stock-setting changes depend on vehicle acceptance and may be delayed. Separate from automatic SET in standby.
++Current lead, model, curve and navigation limits and vehicle-owned PCM modes remain. The captured ceiling limits automatic road-speed increases and survives GAP changes; explicit speed input, cruise interruption or OFF clears it. Independent of the standby auto-SET toggle; actual ECU acceptance and speed-holding timing are not guaranteed.
 +<!-- CARROT:SECTION:END REFERENCE -->
 +
+diff --git a/KO-자동크루즈속도-업데이트.md b/KO-자동크루즈속도-업데이트.md
+index 12c32e4..44a77de 100644
+--- a/KO-자동크루즈속도-업데이트.md
++++ b/KO-자동크루즈속도-업데이트.md
+@@ -29 +29,21 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="fa558979a1f2c399d14e04e7aafbde78af66ff3305981b17fb59322f65eb3935" reviewed-at="2026-11-24T12:00:00Z" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++시스템과 크루즈가 켜진 상태에서 해제 순간의 계기판 속도를 선택하며 밟는 동안의 최고속도는 저장하지 않습니다. 포터 이외 차량은 약 0.4초 이상 밟고 이전 콤마 설정보다 빠를 때 적용합니다.
++
++포터 일반 크루즈는 새로 0.1초 이상 밟고 순정 설정보다 1km/h 이상 빠르게 놓으면 그 속도를 선택하고 이 경우 짧은 톡 프리셋보다 우선합니다. 예: 콤마 60·순정 47에서 58로 놓으면 58을 선택합니다. 프로필 1025/15489와 SpeedFromPCM=0에서 앞차·내비·플래너가 허용하면 다음 새 CAN 기회에 SET− 한 번(최대 3프레임/60ms)과 해제를 요청하고 오래된 GAP 복구 상한만 맞춥니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++크루즈 주행 중 사용합니다. 최초 송신은 해제 후 0.1초 안에 시작해야 하며 확인은 0.5초까지입니다. 같은 입력을 재시도하지 않고 다음 시도는 마지막 송신 후 3초와 새 페달 입력이 필요합니다. 브레이크·CANCEL·버튼·속도 명령·조건 이탈은 남은 입력을 폐기합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++현재 앞차·모델·커브·내비 감속과 순정 속도 우선 PCM 모드는 유지합니다. 저장 속도는 자동 도로속도 상향을 제한하고 GAP 변경에도 유지되며 명시적 속도 입력·크루즈 중단·설정 OFF로 해제됩니다. 대기 중 자동 SET 토글과 별개이며 실제 차량 수락과 속도 유지 시점은 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+diff --git a/ZH-自动更新巡航速度.md b/ZH-自动更新巡航速度.md
+index d753518..95ee9d6 100644
 --- a/ZH-自动更新巡航速度.md
 +++ b/ZH-自动更新巡航速度.md
-@@ -29 +29,19 @@
+@@ -29 +29,21 @@
 -<!-- CARROT:REVIEW reviewed-for="" -->
-+<!-- CARROT:REVIEW reviewed-for="74dbede26c8f0569fdeeb29fbdbe60c8d3a37a2c44e46a2fa00077556b2fda75" reviewed-at="2026-11-07T00:00:00Z" -->
++<!-- CARROT:REVIEW reviewed-for="fa558979a1f2c399d14e04e7aafbde78af66ff3305981b17fb59322f65eb3935" reviewed-at="2026-11-24T12:00:00Z" -->
 +<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
 +### 行为
 +
-+系统与巡航已启用时，踩油门约0.4秒以上再松开，若松开时仪表速度高于踩下前设定值，则选择该速度。从设定70加速至100后在85松开，将选择85而不保存踩油门期间的峰值。
++系统与巡航启用时选择松开油门的仪表速度，不保存踩油门期间峰值。其他车辆需踩约0.4秒以上且高于原comma设定。
++
++波特普通巡航需重新踩下至少0.1秒且松开时高于原厂设定至少1km/h，此时优先于短踩预设。例如comma设定60、原厂47，在58松开则选择58。1025/15489安全配置及SpeedFromPCM=0下，规划、前车和导航允许时，在下一个新CAN接收机会请求一次SET−（最多3帧/60ms）并释放，仅重设旧GAP恢复记忆。
 +<!-- CARROT:SECTION:END BEHAVIOR -->
 +
 +<!-- CARROT:SECTION:BEGIN USAGE -->
 +### 使用
 +
-+开启后在现有巡航行驶中使用，短踩油门动作保持不变。制动、CANCEL、按钮、速度指令、无效输入或巡航解除会撤销本次输入，恢复后需重新踩下。
++在现有巡航中使用。必须在松开后0.1秒内开始发送，最多等待0.5秒确认，不重试同一输入。下一次需距最后发送3秒且重新踩下。制动、CANCEL、按钮、速度指令或条件不符会撤销剩余输入。
 +<!-- CARROT:SECTION:END USAGE -->
 +
 +<!-- CARROT:SECTION:BEGIN REFERENCE -->
 +### 参考
 +
-+原有设定范围、原厂PCM速度优先模式及自动速度、前车、弯道和导航控制保持有效。波特仍使用原有按钮请求，实际生效取决于车辆接受且可能延迟。与待机时自动SET功能独立。
++保留当前前车、模型、弯道、导航限制及原厂PCM优先模式。保存的上限限制自动道路提速并在GAP变更后保留；明确速度输入、巡航中断或关闭本设置会清除。独立于待机自动SET开关，不保证实际车辆接受或速度维持时点。
 +<!-- CARROT:SECTION:END REFERENCE -->
 +
