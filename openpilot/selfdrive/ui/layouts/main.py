@@ -106,7 +106,7 @@ class MainLayout(Widget):
         ui_state.show_camera_with_cluster,
       )
     self._render_main_content()
-    if self._current_mode in (MainState.HOME, MainState.ONROAD):
+    if self._current_mode == MainState.HOME:
       draw_b1_badge(self._content_rect if self._sidebar.is_visible else self._rect)
     self._handle_carrot_record_cmd(ui_state.sm)
 

@@ -5,6 +5,7 @@ import time
 
 ENROLLED = Path('/data/carrot/b1-monitor.json')
 STATUS = Path('/dev/shm/carrot-b1-link.json')
+FOOTER_FONT_SIZE = 28
 LABELS = {
   'updating': ('S3 · 업데이트', (96, 218, 243)),
   'offline': ('S3 · 연결 대기', (170, 178, 188)),
@@ -35,17 +36,36 @@ _next = 0.
 _state = None
 
 
-def draw(rect, *, top=None, right_margin=None):
+def presentation():
   global _next, _state
   now = time.monotonic()
   if now >= _next:
     _state = status(now)
     _next = now + .35
-  if _state is None:
+  return LABELS.get(_state)
+
+
+def draw_footer(rect, label, *, left=None, right=None):
+  """Use the same plain white text and baseline as the footer IP address."""
+  import pyray as rl
+  from openpilot.selfdrive.ui import UI_BORDER_SIZE
+  from openpilot.system.ui.lib.application import FontWeight, gui_app
+  from openpilot.system.ui.lib.text_draw import draw_text_ui_style
+  font = gui_app.font(FontWeight.DISPLAY)
+  x = left if left is not None else right
+  draw_text_ui_style(label, x, rect.y + rect.height - UI_BORDER_SIZE - 2, FOOTER_FONT_SIZE, rl.WHITE,
+                     font=font, align="left_top" if left is not None else "right_top", y_offset=0.0)
+
+
+def draw(rect, *, top=None, right_margin=None, footer_right=None):
+  current = presentation()
+  if current is None:
     return
+  label, rgb = current
+  if footer_right is not None:
+    return draw_footer(rect, label, right=footer_right)
   import pyray as rl
   from openpilot.system.ui.lib.application import FontWeight, gui_app
-  label, rgb = LABELS[_state]
   size = 24 if rect.width >= 1200 else 16
   width = size*8
   x, y = rect.x + rect.width*.72 - width/2, rect.y + size*.55

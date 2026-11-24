@@ -4,6 +4,7 @@ import pyray as rl
 from openpilot.cereal import log, messaging
 from msgq.visionipc import VisionStreamType
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
+from openpilot.selfdrive.ui.b1_badge import FOOTER_FONT_SIZE, draw as draw_b1_badge, draw_footer as draw_b1_footer, presentation as b1_presentation
 from openpilot.selfdrive.ui.carrot_param_cache import BorderParamSnapshot, TimedSnapshotCache, read_border_params
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer
@@ -14,8 +15,9 @@ from openpilot.selfdrive.ui.render_diagnostics import RenderDiagnostics
 from openpilot.selfdrive.ui.overlay_state import OverlayState
 from openpilot.selfdrive.ui.onroad.cameraview import CameraView
 from openpilot.selfdrive.ui.onroad.carrot_navi_map import CarrotNaviMapView
-from openpilot.system.ui.lib.application import gui_app
+from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.lib.text_draw import draw_text_ui_style
+from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.common.transformations.camera import DEVICE_CAMERAS, DeviceCameraConfig, view_frame_from_device_frame
 from openpilot.common.transformations.orientation import rot_from_euler
 
@@ -311,6 +313,7 @@ class AugmentedRoadView(CameraView):
     sm = ui_state.sm
     if not sm.alive["carState"]:
       self._draw_border(rect)
+      draw_b1_badge(rect, footer_right=rect.x + rect.width - UI_BORDER_SIZE)
       return
 
     border_params = self._border_params.refresh(time.monotonic())
@@ -511,7 +514,22 @@ class AugmentedRoadView(CameraView):
     draw_text_ui_style(top_right, x + w - text_margin, top_text_y, font_size, rl.WHITE,
                        align="right_top", y_offset=0.0)
 
-    draw_text_ui_style(bottom, x + w / 2.0, bottom_text_y, font_size, rl.WHITE,
+    font = gui_app.font(FontWeight.DISPLAY)
+    ip_width = measure_text_cached(font, bottom_right, font_size).x
+    badge = b1_presentation()
+    bottom_text_x = x + w / 2.0
+    bottom_font_size = font_size
+    text_width = measure_text_cached(font, bottom, font_size).x
+    if badge is not None:
+      badge_width = measure_text_cached(font, badge[0], FOOTER_FONT_SIZE).x
+      left = x + text_margin + measure_text_cached(font, bottom_left, font_size).x + 12
+      right = x + w - text_margin - ip_width - 60 - badge_width - 60
+      available = max(0., 2 * min(bottom_text_x - left, right - bottom_text_x))
+      if text_width > available:
+        bottom_font_size *= available / max(1., text_width)
+      text_width = measure_text_cached(font, bottom, bottom_font_size).x
+      draw_b1_footer(rect, badge[0], left=bottom_text_x + text_width / 2. + 60)
+    draw_text_ui_style(bottom, bottom_text_x, bottom_text_y, bottom_font_size, rl.WHITE,
                        align="center_top", y_offset=0.0)
     draw_text_ui_style(bottom_left, x + text_margin, bottom_text_y, font_size, rl.WHITE,
                        align="left_top", y_offset=0.0)
