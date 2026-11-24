@@ -28,6 +28,7 @@ def border():
   namespace = {'rl': rl, 'UI_BORDER_SIZE': 30, 'UIStatus': NS(OVERRIDE=0, ENGAGED=1, DISENGAGED=2),
                'time': NS(monotonic=lambda: clock.now), 'draw_text_ui_style': lambda *args, **kwargs: None,
                'draw_b1_badge': lambda *args, **kwargs: None, 'FontWeight': NS(DISPLAY=0),
+               's2_connected': lambda: False,
                'gui_app': NS(font=lambda weight: None),
                'measure_text_cached': lambda font, text, size: NS(x=len(text) * size),
                'ui_state': NS(sm=sm, lat_active=False, status=2)}

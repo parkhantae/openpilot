@@ -5,6 +5,7 @@ from openpilot.cereal import log, messaging
 from msgq.visionipc import VisionStreamType
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
 from openpilot.selfdrive.ui.b1_badge import draw as draw_b1_badge
+from openpilot.selfdrive.ui.s2_status import connected as s2_connected
 from openpilot.selfdrive.ui.carrot_param_cache import BorderParamSnapshot, TimedSnapshotCache, read_border_params
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer
@@ -537,19 +538,27 @@ class AugmentedRoadView(CameraView):
     font = gui_app.font(FontWeight.DISPLAY)
     ip_width = measure_text_cached(font, bottom_right, font_size).x
     badge_left = draw_b1_badge(rect, footer_right=x + w - text_margin - ip_width - 60)
+    remote_connected = s2_connected()
+    remote_label = "S2 연결됨"
+    remote_width = measure_text_cached(font, remote_label, font_size).x if remote_connected else 0.
     bottom_text_x = x + w / 2.0
     bottom_font_size = font_size
-    if badge_left is not None and bottom:
-      # Keep the lane-mode text between the branch and S3, including when
-      # opening the sidebar narrows the road view. IP remains right-aligned.
+    text_width = measure_text_cached(font, bottom, font_size).x
+    if badge_left is not None or remote_connected:
+      # Reserve S2 before the lane-mode text and S3 before IP, including when
+      # opening the sidebar narrows the road view.
       left = x + text_margin + measure_text_cached(font, bottom_left, font_size).x + 12
-      right = badge_left - 12
-      text_width = measure_text_cached(font, bottom, font_size).x
+      if remote_connected:
+        left += remote_width + 60
+      right = badge_left - 12 if badge_left is not None else x + w - text_margin - ip_width - 60
       available = max(0., right - left)
       if text_width > available:
         bottom_font_size *= available / max(1., text_width)
       text_width = measure_text_cached(font, bottom, bottom_font_size).x
       bottom_text_x = max(left + text_width / 2., min(bottom_text_x, right - text_width / 2.))
+    if remote_connected:
+      draw_text_ui_style(remote_label, bottom_text_x - text_width / 2. - 60, bottom_text_y, font_size,
+                         rl.Color(96, 232, 162, 255), align="right_top", y_offset=0.0)
     draw_text_ui_style(bottom, bottom_text_x, bottom_text_y, bottom_font_size, rl.WHITE,
                        align="center_top", y_offset=0.0)
     draw_text_ui_style(bottom_left, x + text_margin, bottom_text_y, font_size, rl.WHITE,
