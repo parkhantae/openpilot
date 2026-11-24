@@ -5,6 +5,7 @@ import time
 
 ENROLLED = Path('/data/carrot/b1-monitor.json')
 STATUS = Path('/dev/shm/carrot-b1-link.json')
+FOOTER_FONT_SIZE = 28
 LABELS = {
   'relay_ready': ('S3 · 접점 준비', (96, 232, 162)),
   'relay_waiting': ('S3 · 접점 대기', (96, 218, 243)),
@@ -43,32 +44,41 @@ _next = 0.
 _state = None
 
 
-def draw(rect, *, footer_right=None):
+def presentation():
   global _next, _state
   now = time.monotonic()
   if now >= _next:
     _state = status(now)
     _next = now + .35
-  if _state is None:
-    return
+  return LABELS.get(_state)
+
+
+def draw_footer(rect, label, *, left=None, right=None):
+  """Use the same plain white text and baseline as the footer IP address."""
   import pyray as rl
   from openpilot.selfdrive.ui import UI_BORDER_SIZE
   from openpilot.system.ui.lib.application import FontWeight, gui_app
-  from openpilot.system.ui.lib.text_measure import measure_text_cached
-  label, rgb = LABELS[_state]
+  from openpilot.system.ui.lib.text_draw import draw_text_ui_style
   font = gui_app.font(FontWeight.DISPLAY)
-  size = 30 if footer_right is not None else (24 if rect.width >= 1200 else 16)
+  x = left if left is not None else right
+  draw_text_ui_style(label, x, rect.y + rect.height - UI_BORDER_SIZE - 2, FOOTER_FONT_SIZE, rl.WHITE,
+                     font=font, align="left_top" if left is not None else "right_top", y_offset=0.0)
+
+
+def draw(rect, *, footer_right=None):
+  current = presentation()
+  if current is None:
+    return
+  label, rgb = current
+  if footer_right is not None:
+    return draw_footer(rect, label, right=footer_right)
+  import pyray as rl
+  from openpilot.system.ui.lib.application import FontWeight, gui_app
+  font = gui_app.font(FontWeight.DISPLAY)
+  size = 24 if rect.width >= 1200 else 16
   width = size*8
   height = size*1.55
-  if footer_right is None:
-    x, y = rect.x + rect.width*.72 - width/2, rect.y + size*.55
-  else:
-    width = max(width, measure_text_cached(font, label, size).x + size*1.6)
-    # Match the footer's 30px IP text size and top edge; keep the background
-    # inside the screen even though the larger label rises above the border.
-    x = footer_right - width
-    y = rect.y + rect.height - UI_BORDER_SIZE - 2 - size*.24
-    height = min(height, rect.y + rect.height - y)
+  x, y = rect.x + rect.width*.72 - width/2, rect.y + size*.55
   rl.draw_rectangle_rounded(rl.Rectangle(x, y, width, height), .7, 8, rl.Color(10, 18, 25, 220))
   rl.draw_circle(int(x+size*.62), int(y+size*.77), size*.19, rl.Color(*rgb, 255))
   rl.draw_text_ex(font, label, rl.Vector2(x+size*1.05, y+size*.24), size, 0, rl.WHITE)
