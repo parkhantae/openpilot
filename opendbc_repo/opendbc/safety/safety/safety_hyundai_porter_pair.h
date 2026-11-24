@@ -13,6 +13,7 @@ typedef struct {
   bool released;
   uint32_t pedal_ts;
   uint32_t grant_ts;
+  uint32_t grant_window;
   uint32_t start_ts;
   uint32_t press_ts;
   uint32_t release_ts;
@@ -29,8 +30,8 @@ static void hyundai_porter_pair_cancel(void) {
   hyundai_porter_pair.active = false;
 }
 
-static void hyundai_porter_pair_pedal(uint32_t now, bool gas, bool eligible, bool speed_ok) {
-  if (!eligible) {
+static void hyundai_porter_pair_pedal(uint32_t now, bool gas, bool eligible, bool speed_ok, bool single_long, uint32_t main_age) {
+  if (!eligible || (single_long && !gas && !speed_ok)) {
     hyundai_porter_pair_cancel();
   } else if (gas) {
     hyundai_porter_pair.active = false;
@@ -43,9 +44,16 @@ static void hyundai_porter_pair_pedal(uint32_t now, bool gas, bool eligible, boo
     if (hyundai_porter_pair.pedal && speed_ok && get_ts_elapsed(now, hyundai_porter_pair.pedal_ts) >= 100000U) {
       hyundai_porter_pair.grant = true;
       hyundai_porter_pair.grant_ts = now;
+      hyundai_porter_pair.grant_window = 100000U;
+      bool quiet = !hyundai_porter_pair.seen || get_ts_elapsed(now, hyundai_porter_pair.last_tx_ts) >= 3000000U;
+      if (single_long && main_age < 500000U && quiet) {
+        // A release during MAIN settling may wait for its existing 500ms
+        // guard plus one RX window, at most 500ms from the original release.
+        hyundai_porter_pair.grant_window = MIN(500000U, 600000U - main_age);
+      }
     }
     hyundai_porter_pair.pedal = false;
-    if (hyundai_porter_pair.grant && get_ts_elapsed(now, hyundai_porter_pair.grant_ts) > 100000U) {
+    if (hyundai_porter_pair.grant && get_ts_elapsed(now, hyundai_porter_pair.grant_ts) > hyundai_porter_pair.grant_window) {
       hyundai_porter_pair.grant = false;
     }
   }
@@ -75,7 +83,7 @@ static bool hyundai_porter_pair_tx(uint32_t now, int button, bool fresh, bool al
   }
   if (!fresh || !settled) return false;
   if (!hyundai_porter_pair.active) {
-    bool cue = hyundai_porter_pair.grant && get_ts_elapsed(now, hyundai_porter_pair.grant_ts) <= 100000U;
+    bool cue = hyundai_porter_pair.grant && get_ts_elapsed(now, hyundai_porter_pair.grant_ts) <= hyundai_porter_pair.grant_window;
     bool quiet = !hyundai_porter_pair.seen || get_ts_elapsed(now, hyundai_porter_pair.last_tx_ts) >= 3000000U;
     if (!standby || !cue || !quiet) return false;
     hyundai_porter_pair.grant = false;

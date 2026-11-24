@@ -47,6 +47,7 @@ class PorterMainSet:
     self.pending_release = False
     self.previous_gas = False
     self.gas_release_since = None
+    self.settling_release_deadline = None
     self.main_since = None
     self.raw_previous_gas = False
     self.rearm_gas_since = None
@@ -256,6 +257,13 @@ class PorterMainSet:
       self.pair_deadline = None
     if eligible and not stock_enabled and self.previous_gas and not gas_pressed:
       self.gas_release_since = now if not self.two_press or qualified_pair_release else None
+      self.settling_release_deadline = None
+      if (self.long_press and self.main_known and self.gas_release_since is not None and request and
+          self.main_since is not None and now < self.main_since + .5 and now >= self.next_request - 1e-9):
+        # MAIN can be enabled while the driver is already on the pedal. Keep
+        # that qualifying release only through MAIN settling and one fresh-RX
+        # window, never through a request/override loss or a retry quiet period.
+        self.settling_release_deadline = min(now + .5, self.main_since + .6)
     self.previous_gas = gas_pressed if eligible and not stock_enabled else False
     if not eligible or stock_enabled or gas_pressed or (self.two_press and not release_eligible):
       # A below-floor/invalid release cannot become an engagement cue merely
@@ -266,9 +274,14 @@ class PorterMainSet:
       # 100ms observation window; never turn it into a delayed engagement queue.
       self.gas_release_since = None
     if (pedal_only and self.gas_release_since is not None and
-        now - self.gas_release_since > .1 + 1e-9):
+        now > (self.settling_release_deadline if self.settling_release_deadline is not None else
+               self.gas_release_since + .1) + 1e-9):
       # Inactive controls must not queue a later engagement behind retry limits.
       self.gas_release_since = None
+    if self.settling_release_deadline is not None and not request:
+      self.gas_release_since = None
+    if self.gas_release_since is None:
+      self.settling_release_deadline = None
     if (not eligible or (stock_enabled and not pair_continuing) or not request or gas_pressed or
         (self.two_press and not release_eligible) or
         (pedal_only and self.pressing and not self.pedal_started)):
@@ -340,6 +353,7 @@ class PorterMainSet:
       self.response = "engaged" if stock_enabled else "pending"
       self.response_reason = "stock_on" if stock_enabled else "awaiting_stock"
       self.gas_release_since = None
+      self.settling_release_deadline = None
       self.pressing = True
       self.started = now
       self.frames = 1

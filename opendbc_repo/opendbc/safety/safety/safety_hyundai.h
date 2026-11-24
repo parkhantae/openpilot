@@ -258,7 +258,8 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
                            !hyundai_porter_park && !hyundai_porter_fault && !brake_pressed && !hyundai_porter_limiter;
         if (hyundai_porter_set_pair) {
           if (!cruise_engaged_prev) {
-            hyundai_porter_pair_pedal(now, raw_gas, rearm_ready && hyundai_porter_main_known, hyundai_porter_speed_ok);
+            hyundai_porter_pair_pedal(now, raw_gas, rearm_ready && hyundai_porter_main_known, hyundai_porter_speed_ok,
+                                      hyundai_porter_single_long, get_ts_elapsed(now, hyundai_porter_main_ts));
           } else if (raw_gas) {
             hyundai_porter_pair_cancel();
           }

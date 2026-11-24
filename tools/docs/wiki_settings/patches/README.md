@@ -132,6 +132,10 @@ This patch is not published to the upstream live Wiki.
 `porter-main-set.patch` supplies reviewed Korean/English/Chinese manual regions for
 `PorterAutoSetMain` on c3-pht-porter, including the automatic-SET sample deadline
 and the 15 ms minimum between positive requests at the actual host dispatch clock.
+The current single-press version preserves a qualified release during MAIN settling
+only through MAIN ON + 0.6s, capped at release + 0.5s, with immediate cancellation
+on request/override loss and no waiting behind a retry quiet period. Host and Panda
+must both be updated; normal releases retain their 0.1s request window.
 Apply to staged pages generated from this branch with `git apply --check --unidiff-zero` and `git apply --unidiff-zero`, then
 regenerate and validate.
 The zero-context patch requires that flag. No live upstream Wiki publication.
