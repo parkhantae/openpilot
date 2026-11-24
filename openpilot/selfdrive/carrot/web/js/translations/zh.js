@@ -597,6 +597,7 @@ window.CarrotTranslations.register("zh", {
     restore_done_reboot: "恢复完成。\n现在重启？",
     checkout_confirm: "切换到此分支吗？",
     branch_changed: "分支已切换。",
+    branch_cached_notice: "远程刷新失败 · 已保存 {count} 个分支",
     quick_link_hint: "长按保存链接",
     failed_set_car: "保存车辆选择失败: ",
     open_car_select: "打开车辆选择",
