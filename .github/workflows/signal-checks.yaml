@@ -48,6 +48,9 @@ jobs:
             opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_authorization.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_ioniq_safety_profile.py \
             openpilot/selfdrive/car/tests/test_alternative_experience.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_fwd_timer.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_cluster.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_bfwd_trim.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_spas.py \
             opendbc_repo/opendbc/safety/tests/test_hyundai_spas.py \
             openpilot/selfdrive/car/tests/test_hyundai_spas.py \
