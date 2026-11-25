@@ -135,8 +135,10 @@ def _porter_projected_gap_margin(ego_speed, lead_distance, lead_relative_speed, 
 
 
 def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level, *,
-                           lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S):
+                           lead_visible=True, gap_time_s=None, reaction_s=PORTER_LEAD_REACTION_S, cluster_ratio=1.):
   """Lower the conventional-cruise button target before a closing lead reaches the selected gap."""
+  if not math.isfinite(cluster_ratio) or not .5 <= cluster_ratio <= 1.5:
+    return min(target_kph, PORTER_CRUISE_MIN_KPH)
   values = (target_kph, ego_speed, lead_distance, lead_relative_speed)
   if not lead_visible or not all(math.isfinite(v) for v in values) or ego_speed < 0 or lead_distance <= 0:
     return target_kph
@@ -145,7 +147,7 @@ def porter_lead_target_kph(target_kph, ego_speed, lead_distance, lead_relative_s
   if _porter_projected_gap_margin(ego_speed, lead_distance, lead_relative_speed, gap_level, gap_time_s, reaction_s) >= 0:
     return target_kph
 
-  lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6
+  lead_speed_kph = max(0.0, ego_speed + lead_relative_speed) * 3.6 / cluster_ratio
   return max(PORTER_CRUISE_MIN_KPH, min(target_kph, lead_speed_kph))
 
 
@@ -192,7 +194,19 @@ class PorterLeadTracker:
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
              reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False,
-             button_interval_s=.3, planner_accel_ready=False):
+             button_interval_s=.3, planner_accel_ready=False, cluster_ratio=1.):
+    if not math.isfinite(cluster_ratio) or not .5 <= cluster_ratio <= 1.5:
+      self.recovery_ready = False
+      previous = self.decel_cap
+      if self.adaptive_tracker is not None:
+        self.adaptive_tracker.recovery_ready = False
+        self.adaptive_tracker.clear_since = self.adaptive_tracker.open_road_since = None
+        previous = self.adaptive_tracker.last_target
+      limits = [v for v in (target_kph, stock_target_kph, previous) if v is not None and math.isfinite(v)]
+      held = min(limits) if limits else PORTER_CRUISE_MIN_KPH
+      if self.adaptive_tracker is not None:
+        self.adaptive_tracker.last_target = held
+      return held
     if adaptive:
       if self.adaptive_tracker is None:
         self._reset_tracking()
@@ -200,7 +214,7 @@ class PorterLeadTracker:
       result = self.adaptive_tracker.update(
         now, target_kph, stock_target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level,
         lead_visible=lead_visible, gap_time_s=gap_time_s, reaction_s=reaction_s, recovery_allowed=recovery_allowed,
-        button_interval_s=button_interval_s, planner_accel_ready=planner_accel_ready)
+        button_interval_s=button_interval_s, planner_accel_ready=planner_accel_ready, cluster_ratio=cluster_ratio)
       self.recovery_ready = self.adaptive_tracker.recovery_ready
       return result
     if self.adaptive_tracker is not None:
@@ -247,7 +261,7 @@ class PorterLeadTracker:
     effective_relative_speed = self.relative_speed if opening_confirmed else min(self.relative_speed, 0.2)
     lead_target_kph = porter_lead_target_kph(
       target_kph, ego_speed, self.distance, effective_relative_speed, gap_level, lead_visible=True,
-      gap_time_s=gap_time_s, reaction_s=reaction_s)
+      gap_time_s=gap_time_s, reaction_s=reaction_s, cluster_ratio=cluster_ratio)
     if opening_confirmed:
       self.decel_cap = self.decel_cap_time = None
     elif lead_target_kph < min(target_kph, stock_target_kph):
@@ -294,9 +308,11 @@ class PorterAdaptiveLeadTracker:
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
-             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, button_interval_s=.3, planner_accel_ready=False):
+             reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, button_interval_s=.3, planner_accel_ready=False,
+             cluster_ratio=1.):
     self.recovery_ready = False
-    valid = all(math.isfinite(v) for v in (now, target_kph, stock_target_kph, ego_speed)) and ego_speed >= 0
+    valid = (all(math.isfinite(v) for v in (now, target_kph, stock_target_kph, ego_speed, cluster_ratio)) and
+             ego_speed >= 0 and .5 <= cluster_ratio <= 1.5)
     dt = 0. if self.last_time is None else now - self.last_time
     clock_ok = valid and 0 <= dt <= .1 + 1e-9
     if not clock_ok:
@@ -330,12 +346,15 @@ class PorterAdaptiveLeadTracker:
       lead_speed = max(0., ego_speed + self.relative)
       # Lowering an OEM setpoint is a sequence of one-km/h requests. Reserve
       # that configured request time before spending distance on approach.
-      steps = math.ceil(max(0., stock_target_kph - max(PORTER_CRUISE_MIN_KPH, lead_speed * 3.6)) - 1e-9)
+      # OEM settings use dashboard km/h; distance, vEgo and vRel use physical
+      # units. Convert the lead speed before counting one-km/h button steps.
+      lead_cluster_kph = lead_speed * 3.6 / cluster_ratio
+      steps = math.ceil(max(0., stock_target_kph - max(PORTER_CRUISE_MIN_KPH, lead_cluster_kph)) - 1e-9)
       approach_s = response_s + steps * spacing_s
       # Inside the requested distance, retain the existing stronger reduction;
       # a longer response estimate must never relax an already-close lead cap.
       distance_time_s = approach_s if margin > 0 else response_s
-      cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / distance_time_s) * 3.6))
+      cap = min(cap, max(PORTER_CRUISE_MIN_KPH, (lead_speed + margin / distance_time_s) * 3.6 / cluster_ratio))
       # Range reserve alone cannot undo deceleration. A fresh, fully rising
       # plan may release an old stock-speed ceiling outside the projected gap,
       # instead of repeatedly resetting recovery on vision relative-speed noise.

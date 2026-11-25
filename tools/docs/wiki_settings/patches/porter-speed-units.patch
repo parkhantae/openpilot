@@ -1,0 +1,158 @@
+--- a/EN-Porter-dedicated-GAP.md
++++ b/EN-Porter-dedicated-GAP.md
+@@ -29 +29,27 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="1892a4bcc59fe8ac4e205baac78c8c33bfa046d01d8a4cbdb141a15118942cea" reviewed-at="2026-11-25T12:06:48+09:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++OFF retains common TF and legacy button following. ON shares Porter GAP1–4 with the planner and button decisions. With dedicated GAP ON, own speed sets the base distance and lead speed plus distance error continuously cap the button target. Reduce approach speed outside the gap; cap at or below lead speed inside it. Confirmed gap recovery permits bounded target restoration. Lower urgent targets are not delayed; brief lead dropouts or invalid inputs inhibit recovery. Confirmed absence of a lead permits bounded recovery after the 0.6s hold. Sub-30km/h cancellation and transmission limits remain.
++On Porter conventional cruise, a valid stock OFF followed by ON clears the preceding session’s GAP deceleration/recovery state and reevaluates current lead, planner and navigation limits. A CAN gap during continuous stock ON or an invalid OFF sample does not clear protection. Saved GAP values and transmission/cancel limits remain.
++Outside-gap approach prediction reserves the request time to lower the stock setting toward lead speed in 1km/h steps. Existing reductions inside the gap remain unchanged.
++
++After 0.5s gap confirmation, normal recovery is at most 1.8km/h per second. With sufficient gap and 1s of confirmed absence or opening faster than 0.2m/s, recovery toward the current comma target is bounded by request spacing and at most 3km/h per second. Lower lead, planner and navigation limits and transmission bounds remain; no direct braking is added.
++
++Range reserve alone cannot allow target recovery or RES+ while closing. A fresh plan requesting positive acceleration with no falling segment in its speed forecast and no stop, red-light or stop-preparation state may recover after 0.5s of confirmed projected gap, within existing rise limits. Brief relative-speed sign changes alone then cannot retain an old low target indefinitely. Lead dropouts, invalid inputs and insufficient gap still inhibit recovery; lower lead, planner and navigation targets pass immediately.
++Button targets, OEM settings and the lead allowance for pedal-release SET use dashboard km/h. Distance and relative motion use physical units before conversion by the speedometer ratio. An invalid ratio blocks target recovery and that SET; existing lead, navigation, cancellation and transmission limits remain.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Enable in Porter Only, then adjust the dedicated gaps and lookahead. Allow about five seconds for planner refresh; neither set of saved values is copied or reset.
++Short-tap the GAP number or green bars on the comma 3 driving screen to select 4→3→2→1→4. Holds and drags are ignored; edit time values in Web.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++GAP selection buttons and model-stop/navigation targets remain. Settings do not guarantee physical spacing, braking or stopping.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/KO-포터-전용-GAP-사용.md
++++ b/KO-포터-전용-GAP-사용.md
+@@ -29 +29,27 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="1892a4bcc59fe8ac4e205baac78c8c33bfa046d01d8a4cbdb141a15118942cea" reviewed-at="2026-11-25T12:06:48+09:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++OFF는 공통 TF와 기존 버튼 추종 방식을 유지합니다. ON은 포터 GAP1~4를 플래너와 버튼 판단에 사용합니다. 전용 GAP ON은 내 차 속도에 비례한 기본거리와 앞차 속도·거리 오차로 버튼 목표를 연속 계산합니다. 간격 밖에서는 접근 속도를 줄이고 간격 안에서는 앞차 속도 이하로 제한합니다. 간격 회복을 확인한 뒤 버튼 목표를 제한하며 복구합니다. 급한 하향 목표는 지연하지 않고, 앞차의 짧은 검출 공백·무효 신호 중에는 재가속하지 않습니다. 명시적인 앞차 없음이 이어지면 0.6초 유지 후 회복 확인과 목표 상승 제한을 적용합니다. 30km/h 미만 취소 판단과 송신 한도는 유지합니다.
++포터 일반 크루즈에서 유효한 순정 OFF 뒤 ON이 확인되면 이전 주행의 GAP 감속·회복 상태를 초기화하고 현재 앞차·계획·내비 조건으로 다시 판단합니다. 순정 ON이 계속된 상태의 CAN 공백이나 무효 OFF 신호는 초기화 근거로 쓰지 않습니다. GAP 저장값과 송신·취소 한도는 유지합니다.
++순정 설정속도를 앞차 속도까지 1km/h씩 낮추는 데 필요한 요청 시간을 간격 밖 접근 계산에 추가합니다. 간격 안의 기존 감속 강도는 유지합니다.
++
++간격 회복 0.5초 뒤 일반 목표 회복은 초당 최대 1.8km/h입니다. 충분한 간격에서 앞차 없음 또는 초당 0.2m 초과 멀어짐이 1초 확인되면 요청 간격에 따라 초당 최대 3km/h로 현재 콤마 목표까지 복구합니다. 더 낮은 앞차·계획·내비 제한과 송신 한도를 유지하며 직접 제동은 추가하지 않습니다.
++
++거리 여유만으로는 접근 중 목표 회복·RES+를 허용하지 않습니다. 다만 최신 플래너가 양의 가속을 요구하고 전체 속도 예측에 하향 구간이 없으며 정지·빨간불·정지 준비 상태가 아니면, 충분한 예측 간격이 0.5초 확인된 뒤 기존 상승 한도로 복구할 수 있습니다. 이때 상대속도의 짧은 부호 변화만으로 과거의 낮은 목표에 계속 묶이지 않습니다. 앞차 검출 공백·무효 입력·간격 부족은 계속 복구를 막고, 더 낮은 앞차·계획·내비 목표는 즉시 적용합니다.
++버튼 목표·순정 설정·엑셀 해제 SET의 앞차 허용 속도는 계기판 km/h 기준으로 비교합니다. 거리·상대속도는 실제 단위로 계산한 뒤 속도계 비율을 적용합니다. 비율이 무효이면 목표 복구와 해당 SET을 막고 기존 앞차·내비·취소·송신 한도는 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++포터 전용 메뉴에서 켠 뒤 전용 간격과 감속 예측을 조절합니다. 플래너 갱신에 최대 약 5초를 허용하며 기존 저장값은 복사하거나 초기화하지 않습니다.
++콤마3 주행 화면의 GAP 숫자·녹색 막대를 짧게 누르면 4→3→2→1→4로 선택합니다. 길게 누르기·드래그는 제외하며 간격 수치는 Web에서 조절합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++단계 선택 버튼과 모델 정지·내비 목표는 유지됩니다. 간격 설정은 실제 차간거리·제동·정차를 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
+--- a/ZH-波特-专用车距.md
++++ b/ZH-波特-专用车距.md
+@@ -29 +29,14 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="1892a4bcc59fe8ac4e205baac78c8c33bfa046d01d8a4cbdb141a15118942cea" reviewed-at="2026-11-25T12:06:48+09:00" -->
++
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++关闭保留通用TF及原按钮跟车方式；开启后规划器和按钮判断共用波特GAP1–4。专用GAP开启时，按本车速度计算基础距离，并结合前车速度与距离误差连续限制按钮目标。间隔外逐渐减小接近速度，间隔内限制为前车速度或更低。确认间隔恢复后限制目标上升。紧急下调不延迟，前车短暂丢失或输入无效时禁止恢复加速。持续明确无前车时，保持0.6秒后确认恢复并限制目标上升。保留低于30km/h取消判断和发送限制。
++波特普通巡航在有效原厂关闭后确认重新开启时，清除上一行程的GAP减速与恢复状态，并按当前前车、规划与导航限制重新判断。原厂巡航持续开启期间的CAN间断或无效关闭样本不清除保护。保留GAP保存值及发送、取消限制。
++间隔外的接近预测另计原厂设定速度按1km/h请求降至前车速度所需时间。间隔内的原有减速强度不减弱。
++
++确认间隔恢复0.5秒后通常每秒最多恢复1.8km/h。间隔充足且连续1秒确认无前车或前车以超过0.2m/s远离时，根据请求间隔最多每秒恢复3km/h至当前comma目标。保留更低的前车、规划、导航限制及发送上限，不增加直接制动功能。
++
++接近时仅有距离余量不能允许目标恢复或RES+。若最新规划要求正加速度，整个速度预测无下降区段，且无停车、红灯或停车准备状态，则确认预测间隔充足0.5秒后可按原上升限制恢复。此时相对速度短暂变号不再让旧低目标长期保持。前车丢失、无效输入或间隔不足仍禁止恢复；更低的前车、规划及导航目标立即生效。
++按钮目标、原厂设定及松油门SET的前车允许速度统一使用仪表km/h。距离与相对运动按实际单位计算后通过速度表比率换算。比率无效时禁止目标恢复及该SET，保留前车、导航、取消及发送限制。
++<!-- CARROT:SECTION:END BEHAVIOR -->
+--- a/EN-Auto-update-Cruise-speed.md
++++ b/EN-Auto-update-Cruise-speed.md
+@@ -29 +29,22 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="34c4cf730d527e61c2f80958302dbc7cf536f198dc358e24a1c011b8c0dddae7" reviewed-at="2026-11-25T12:06:48+09:00" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++During active system/cruise operation, selects dashboard speed at release rather than pedal peak. Other vehicles require about 0.4s on the pedal and a release speed above the previous comma setting.
++
++Porter conventional cruise uses a fresh press of at least 0.1s and release at least 1km/h above the OEM setting, taking priority over the short-tap preset. For example, comma 60/OEM 47 and release at 58 selects 58. Profiles 1025/15489 with SpeedFromPCM=0 request one SET− press (at most 3 frames/60ms) and release at the next fresh CAN opportunity only when planner, lead and navigation allow it; only stale GAP recovery memory is rebased.
++Button targets, OEM settings and the lead allowance for pedal-release SET use dashboard km/h. Distance and relative motion use physical units before conversion by the speedometer ratio. An invalid ratio blocks target recovery and that SET; existing lead, navigation, cancellation and transmission limits remain.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++Use during existing cruise operation. Initial dispatch must start within 0.1s of release, with up to 0.5s for confirmation. The cue is not retried; another attempt requires 3s after the last transmission and a new pedal press. Brake, CANCEL, buttons, speed commands or loss of eligibility discard remaining input.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Current lead, model, curve and navigation limits and vehicle-owned PCM modes remain. The captured ceiling limits automatic road-speed increases and survives GAP changes; explicit speed input, cruise interruption or OFF clears it. Independent of the standby auto-SET toggle; actual ECU acceptance and speed-holding timing are not guaranteed.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/KO-자동크루즈속도-업데이트.md
++++ b/KO-자동크루즈속도-업데이트.md
+@@ -29 +29,22 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="34c4cf730d527e61c2f80958302dbc7cf536f198dc358e24a1c011b8c0dddae7" reviewed-at="2026-11-25T12:06:48+09:00" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++시스템과 크루즈가 켜진 상태에서 해제 순간의 계기판 속도를 선택하며 밟는 동안의 최고속도는 저장하지 않습니다. 포터 이외 차량은 약 0.4초 이상 밟고 이전 콤마 설정보다 빠를 때 적용합니다.
++
++포터 일반 크루즈는 새로 0.1초 이상 밟고 순정 설정보다 1km/h 이상 빠르게 놓으면 그 속도를 선택하고 이 경우 짧은 톡 프리셋보다 우선합니다. 예: 콤마 60·순정 47에서 58로 놓으면 58을 선택합니다. 프로필 1025/15489와 SpeedFromPCM=0에서 앞차·내비·플래너가 허용하면 다음 새 CAN 기회에 SET− 한 번(최대 3프레임/60ms)과 해제를 요청하고 오래된 GAP 복구 상한만 맞춥니다.
++버튼 목표·순정 설정·엑셀 해제 SET의 앞차 허용 속도는 계기판 km/h 기준으로 비교합니다. 거리·상대속도는 실제 단위로 계산한 뒤 속도계 비율을 적용합니다. 비율이 무효이면 목표 복구와 해당 SET을 막고 기존 앞차·내비·취소·송신 한도는 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++크루즈 주행 중 사용합니다. 최초 송신은 해제 후 0.1초 안에 시작해야 하며 확인은 0.5초까지입니다. 같은 입력을 재시도하지 않고 다음 시도는 마지막 송신 후 3초와 새 페달 입력이 필요합니다. 브레이크·CANCEL·버튼·속도 명령·조건 이탈은 남은 입력을 폐기합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++현재 앞차·모델·커브·내비 감속과 순정 속도 우선 PCM 모드는 유지합니다. 저장 속도는 자동 도로속도 상향을 제한하고 GAP 변경에도 유지되며 명시적 속도 입력·크루즈 중단·설정 OFF로 해제됩니다. 대기 중 자동 SET 토글과 별개이며 실제 차량 수락과 속도 유지 시점은 보장하지 않습니다.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/ZH-自动更新巡航速度.md
++++ b/ZH-自动更新巡航速度.md
+@@ -29 +29,22 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="34c4cf730d527e61c2f80958302dbc7cf536f198dc358e24a1c011b8c0dddae7" reviewed-at="2026-11-25T12:06:48+09:00" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 行为
++
++系统与巡航启用时选择松开油门的仪表速度，不保存踩油门期间峰值。其他车辆需踩约0.4秒以上且高于原comma设定。
++
++波特普通巡航需重新踩下至少0.1秒且松开时高于原厂设定至少1km/h，此时优先于短踩预设。例如comma设定60、原厂47，在58松开则选择58。1025/15489安全配置及SpeedFromPCM=0下，规划、前车和导航允许时，在下一个新CAN接收机会请求一次SET−（最多3帧/60ms）并释放，仅重设旧GAP恢复记忆。
++按钮目标、原厂设定及松油门SET的前车允许速度统一使用仪表km/h。距离与相对运动按实际单位计算后通过速度表比率换算。比率无效时禁止目标恢复及该SET，保留前车、导航、取消及发送限制。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用
++
++在现有巡航中使用。必须在松开后0.1秒内开始发送，最多等待0.5秒确认，不重试同一输入。下一次需距最后发送3秒且重新踩下。制动、CANCEL、按钮、速度指令或条件不符会撤销剩余输入。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++保留当前前车、模型、弯道、导航限制及原厂PCM优先模式。保存的上限限制自动道路提速并在GAP变更后保留；明确速度输入、巡航中断或关闭本设置会清除。独立于待机自动SET开关，不保证实际车辆接受或速度维持时点。
++<!-- CARROT:SECTION:END REFERENCE -->
++

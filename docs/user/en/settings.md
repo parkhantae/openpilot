@@ -553,6 +553,8 @@ The current Porter automatic-SET profile also requires both front-left and rear-
 
 In Settings > Vehicle & Hardware > Porter Only, enable **Porter: dedicated GAP** (`PorterGapUse`) to share `PorterGap1`–`PorterGap4` between the Porter II EV conventional-cruise planner and button deceleration/optional low-target cancellation. Default OFF uses common `TFollowGap1`–`TFollowGap4`. Existing GAP selection buttons remain; switching modes never copies or resets either set of saved values.
 
+Button targets and OEM settings are compared in dashboard km/h. Distance and relative motion use physical units before applying the speedometer ratio, so a matched-speed lead is not treated as slower solely because of speedometer bias. Active-cruise pedal-release SET uses the same conversion in its lead allowance check. An invalid ratio blocks target recovery and that SET; existing lead-approach, navigation, cancellation and transmission limits remain.
+
 Porter GAP1–4 range from 40 to 300 in steps of 5; 50=0.50s. Initial defaults are 100/130/160/200; previously saved dedicated values are preserved. Button decisions use the planner’s applied time after existing speed, driving-mode and deceleration adjustments. Without valid planner time, use the selected mode’s base time. Allow about five seconds for planner refresh after changes.
 
 **Porter: deceleration lookahead** (`PorterLeadReactionTime`) applies to both button deceleration and lead-based low-target cancellation while dedicated GAP is ON. Range 40–80 in steps of 5; 80=8s, 60=6s; initial default 80. Higher values can request deceleration farther away; lower values can wait until closer. Dedicated GAP OFF retains the existing 8s projection. Adjust the dedicated gap and lookahead separately.

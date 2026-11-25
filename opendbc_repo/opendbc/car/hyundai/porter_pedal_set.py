@@ -8,22 +8,22 @@ def pedal_set_profile_ready(cp):
   return any(c.safetyParam in (1025, 15489) for c in cp.safetyConfigs)
 
 
-def pedal_capture_safe(speed, target, ego, distance, relative, *, visible, held, gap_time, reaction, spacing):
-  if not all(math.isfinite(v) for v in (speed, target, ego, gap_time, reaction, spacing)):
+def pedal_capture_safe(speed, target, ego, distance, relative, *, visible, held, gap_time, reaction, spacing, cluster_ratio=1.):
+  if not all(math.isfinite(v) for v in (speed, target, ego, gap_time, reaction, spacing, cluster_ratio)):
     return False
   if not (30 <= speed <= 160 and speed <= target + 1e-5 and ego >= 0 and
-          .3 <= gap_time <= 30 and 4 <= reaction <= 8 and spacing >= .3):
+          .3 <= gap_time <= 30 and 4 <= reaction <= 8 and spacing >= .3 and .5 <= cluster_ratio <= 1.5):
     return False
   if not visible:
     return not held
   if not all(math.isfinite(v) for v in (distance, relative)) or distance <= 0:
     return False
-  lead_speed = max(0., ego + relative) * 3.6
+  lead_speed = max(0., ego + relative) * 3.6 / cluster_ratio
   steps = math.ceil(max(0., speed - max(30., lead_speed)) - 1e-9)
   approach = reaction + steps * spacing
   margin = distance - max(7., 5. + ego * gap_time)
   return (margin + min(0., relative) * approach >= 0 and
-          speed <= max(30., lead_speed + margin / approach * 3.6) + 1e-5)
+          speed <= max(30., lead_speed + margin / approach * 3.6 / cluster_ratio) + 1e-5)
 
 
 class PorterPedalCapture:

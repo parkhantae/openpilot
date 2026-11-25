@@ -154,7 +154,7 @@ class Controls:
             pedal_capture_safe(state.speed, target, CS.vEgo, lead.dRel, lead.vRel, visible=lead.status,
                                held=self.porter_lead_tracker.holding_lead(self.sm.frame * DT_CTRL),
                                gap_time=gap, reaction=porter_lead_reaction_s(self.params),
-                               spacing=max(.3, self.params.get_int('CruiseButtonTest2') * .01)))
+                               spacing=max(.3, self.params.get_int('CruiseButtonTest2') * .01), cluster_ratio=CS.vCluRatio))
     # card's cruise helper also checks remote buttons/explicit speed commands.
     # Require its release selection to agree, and withdraw on any later change.
     selected = math.isfinite(CS.vCruiseCluster) and abs(CS.vCruiseCluster - state.speed) <= .5
@@ -511,7 +511,8 @@ class Controls:
           planner_accel_ready=porter_plan_allows_recovery(lp, valid=self.sm.all_checks(['longitudinalPlan'])),
           reaction_s=porter_lead_reaction_s(self.params),
           gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
-                                      getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None))
+                                      getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None),
+          cluster_ratio=getattr(CS, 'vCluRatio', 1.))
         hudControl.setSpeed = float(lead_target_kph * CV.KPH_TO_MS)
         hudControl.porterAccelReady = self.porter_lead_tracker.recovery_ready
     else:

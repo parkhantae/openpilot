@@ -4,6 +4,19 @@ These patches preserve reviewed Wiki edits in the code branch when the author
 cannot push to the separate Wiki repository. Committing a patch here does not
 publish its content to the live Wiki.
 
+## Porter dashboard speed units
+
+`porter-speed-units.patch` supplies complete Korean, English and Chinese MANUAL
+regions for `PorterGapUse` and `AutoGasSyncSpeed`, preserving the preceding GAP
+and release-speed explanations. Generate fresh pages from the current fork
+catalog and apply this patch with `git apply --unidiff-zero`, then regenerate
+with that staging directory as `--wiki-dir` and validate. For these two settings,
+it replaces the older dedicated-GAP/touch/adaptive/restart/speed-response and
+gas-release patch chain; do not apply both sets to the same page. Other settings
+may still use their existing patches. It documents physical-to-dashboard speed
+conversion and invalid-ratio inhibition, without changing transmission limits.
+This fork-specific patch is staged, not published to the upstream Wiki.
+
 ## Porter one-shot deceleration recovery trial
 
 `porter-decel-retry.patch` supplies Korean, English and Chinese MANUAL regions

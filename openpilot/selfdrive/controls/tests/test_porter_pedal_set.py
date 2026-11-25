@@ -82,6 +82,20 @@ def test_active_capture_is_independent_of_standby_auto_set_option(s):
   assert s.release()
 
 
+def test_release_at_matched_lead_speed_uses_dashboard_conversion(s):
+  s.cs.vEgo, s.cs.vEgoCluster, s.cs.vCruiseCluster = 20., 77 / 3.6, 77.
+  s.cs.cruiseState.speed = 70 / 3.6
+  s.lp.speeds = [78 * .94 / 3.6, 80 * .94 / 3.6]
+  s.sm['radarState'].leadOne.dRel, s.sm['radarState'].leadOne.vRel = 28., 0.
+  s.tick(0, nav=85)
+  for n in range(1, 16):
+    s.tick(n, True, nav=85)
+  assert s.tick(16, nav=85)
+  assert s.cc.hudControl.porterPedalSetSpeed == 77
+  s.sm['radarState'].leadOne.vRel = -2.
+  assert not s.tick(17, nav=85)  # Conversion cannot override a closing-lead veto.
+
+
 def test_cruise_helper_must_have_selected_release_speed_and_new_command_withdraws_it(s):
   s.cs.vCruiseCluster = 60
   assert not s.release()  # Explicit/remote input kept a different selection.
