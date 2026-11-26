@@ -1543,3 +1543,15 @@ msgstr "Porter II EV：CAMERA SCC 0、雷达轨迹 0、HDA2 0、转向比 20.2�
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
 msgid "Vehicle selection could not finish. Restart before driving."
 msgstr "车辆选择未完成。请在驾驶前重启。"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Starting updater…"
+msgstr "正在准备更新检查…"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Updater did not start. Try CHECK again."
+msgstr "无法启动更新，请再次点击检查。"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Updates are disabled."
+msgstr "更新已被禁用。"

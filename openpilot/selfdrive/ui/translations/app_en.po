@@ -1542,3 +1542,15 @@ msgstr "Porter II EV: CAMERA SCC 0, radar tracks 0, HDA2 0, steering ratio 20.2.
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
 msgid "Vehicle selection could not finish. Restart before driving."
 msgstr "Vehicle selection could not finish. Restart before driving."
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Starting updater…"
+msgstr "Starting updater…"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Updater did not start. Try CHECK again."
+msgstr "Updater did not start. Try CHECK again."
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Updates are disabled."
+msgstr "Updates are disabled."

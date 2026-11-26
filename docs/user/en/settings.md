@@ -19,6 +19,12 @@ An accelerometer-detected suspected horizontal impact of at least 1.5g displays 
 >
 > A `carrotMan` name may still appear inside code or messages. It does not mean that the former user app is supported.
 
+## Changing branches on the comma device
+
+With ignition OFF, open **Settings > Software** to check for updates. Select a **Target Branch**, then press **Download** after the check and **Install** after download completes. Selection and download do not request a reboot; Install reboots to apply the update. Native updates use branches from the `origin` repository.
+
+With `SoftwareMenu` off, an explicit device check or download still runs and the updater exits afterward. The background preference stays unchanged. Disabled-update policy and onroad download/install blocking remain in force. Startup and check failures are displayed; an old last-check date does not establish a successful check.
+
 ## Connecting to Carrot Web
 
 1. Connect the comma device and your phone or computer to the same network.

@@ -12,6 +12,7 @@ from .git_config import prepare_git_pull
 from .git_state import read_auto_update_state, write_auto_update_event, write_git_pull_time
 from .git_status import REPO_DIR, clear_git_status_cache, get_git_status
 from .web_settings import read_web_settings
+from openpilot.system.updated.manual_request import native_update_active
 
 # Device-side auto update. Runs inside carrot_server (always_run), so it works
 # whenever the device is on — no browser/web tab needed. Mirrors the manual
@@ -226,6 +227,8 @@ async def _attempt_update(monitor) -> tuple[bool, bool, str]:
     return False, False, ""
   try:
     with repo_lock():
+      if native_update_active():
+        return False, False, ""
       if not monitor.ready():
         return False, False, ""
       await prepare_repo(REPO_DIR)
@@ -286,6 +289,10 @@ async def _wait_for_auto_reboot(initial_mode: str, updated_head: str) -> None:
       mode = selected_mode
       condition = AutoRebootCondition(mode)
       print(f"[auto_update] reboot mode changed mode={mode}", flush=True)
+    if native_update_active():
+      condition.ready_since = None
+      await asyncio.sleep(AUTO_REBOOT_POLL_INTERVAL)
+      continue
 
     sm.update(0)
     selfdrive_valid = _message_valid(sm, "selfdriveState")

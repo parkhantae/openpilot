@@ -265,3 +265,12 @@ retain their existing protection.
 Lead/navigation constraints, actual brake/CANCEL interruptions and existing
 button/Panda limits remain. This fork-specific documentation is staged and
 does not publish to the upstream live Wiki.
+
+## Native software update requests
+
+`native-software-update.patch` documents the fork-only `SoftwareMenu` manual
+check/download behavior in Korean, English and Chinese. Apply to pages freshly
+generated from this branch with `git apply --check --unidiff-zero` and
+`git apply --unidiff-zero`, regenerate and validate. The background preference
+is preserved; installation and reboot require the explicit Install action.
+This patch is staged only; it is not published to the upstream Wiki.

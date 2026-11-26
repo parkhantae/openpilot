@@ -1,0 +1,69 @@
+--- a/EN-Enable-Software-menu.md
++++ b/EN-Enable-Software-menu.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="15b83756f140fb22b90d75aa91c2d5bde4b8ac5ce1edade977ece6d33496aaf4" reviewed-at="2026-11-26T16:46:16+09:00" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### Behavior
++
++Off stops the background updater. Opening Software or requesting a check, branch change or download on the device runs that task once and exits. On retains the existing offroad updater.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### Usage
++
++With ignition OFF, open Settings > Software and select the target branch. After checking, press Download, then Install after download completes to reboot and apply it. Check the displayed error before retrying a failed start or check.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### Reference
++
++Native updates use origin. Selection and download alone do not request installation or reboot. Disabled-update policy and onroad blocking remain in force.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/KO-소프트웨어메뉴활성화.md
++++ b/KO-소프트웨어메뉴활성화.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="15b83756f140fb22b90d75aa91c2d5bde4b8ac5ce1edade977ece6d33496aaf4" reviewed-at="2026-11-26T16:46:16+09:00" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 동작
++
++꺼짐은 상시 업데이트 프로그램을 중지합니다. 콤마 본체에서 소프트웨어 화면을 열거나 확인·브랜치 선택·다운로드를 요청하면 해당 작업만 실행하고 종료합니다. 켜짐은 기존 시동 OFF 업데이트 실행을 유지합니다.
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 사용
++
++시동 OFF에서 설정 > 소프트웨어를 열고 대상 브랜치를 선택합니다. 확인이 끝나 다운로드가 표시되면 누르고, 완료 후 설치를 눌러 재부팅해 적용합니다. 시작·확인 실패는 화면의 오류를 확인하고 다시 시도합니다.
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 참고
++
++본체는 origin 저장소를 사용합니다. 선택·다운로드만으로 설치나 재부팅을 요청하지 않으며, 업데이트 비활성화 정책과 주행 중 차단을 유지합니다.
++<!-- CARROT:SECTION:END REFERENCE -->
++
+--- a/ZH-开启软件菜单.md
++++ b/ZH-开启软件菜单.md
+@@ -29 +29,19 @@
+-<!-- CARROT:REVIEW reviewed-for="" -->
++<!-- CARROT:REVIEW reviewed-for="15b83756f140fb22b90d75aa91c2d5bde4b8ac5ce1edade977ece6d33496aaf4" reviewed-at="2026-11-26T16:46:16+09:00" -->
++<!-- CARROT:SECTION:BEGIN BEHAVIOR -->
++### 工作方式
++
++关闭时停止后台更新程序。在设备上打开软件页面或请求检查、切换分支、下载时执行该次任务后退出。开启时保留原有的熄火后更新程序。
++<!-- CARROT:SECTION:END BEHAVIOR -->
++
++<!-- CARROT:SECTION:BEGIN USAGE -->
++### 使用方法
++
++熄火后打开设置 > 软件，选择目标分支。检查完成后点击下载，下载结束后点击安装，重启后应用。启动或检查失败时先查看屏幕错误，再重试。
++<!-- CARROT:SECTION:END USAGE -->
++
++<!-- CARROT:SECTION:BEGIN REFERENCE -->
++### 参考
++
++设备更新使用 origin 仓库。仅选择或下载不会请求安装或重启；保留禁用更新策略和行驶时的限制。
++<!-- CARROT:SECTION:END REFERENCE -->
++
