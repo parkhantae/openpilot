@@ -30,6 +30,12 @@ EXPORT void alt2_test_init(int param) {
   relay_malfunction = false;
 }
 
+// Queue-only tests explicitly start an authorized session. Authorization
+// denial/revocation is exercised separately with real RX packets.
+EXPORT void alt2_test_controls(bool enabled) {
+  controls_allowed = enabled;
+}
+
 EXPORT int alt2_test_tx(int address, int bus, int length, const uint8_t *data, uint32_t now) {
   timer.CNT = now;
   CANPacket_t pkt = packet(address, bus, length, data);

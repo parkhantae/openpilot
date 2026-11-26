@@ -150,6 +150,8 @@ These 137 settings can affect driving behavior. Change one item at a time.
 - `TeslaAutoSpeedLimit`: default OFF; full restart required. ON permits automatic speed-wheel adjustment toward the vehicle DAS limit with extension CAN and alpha longitudinal; OFF removes automatic wheel output, not manual scrolling. Previously implicit activation now requires opting in. Active navigation/Carrot speed control still pauses it; see [automatic cruise set speed](tesla.md#automatic-cruise-speed).
 - `DisableMinSteerSpeed` is vehicle-specific and relates to low-speed steering restrictions on SMDPS-equipped cars.
 
+Hyundai/Kia CAN-FD torque profiles reject nonzero steering and acceleration commands when controls are disengaged. Independent lateral operation requires explicit permission and valid current inputs and retains torque, rate and driver-input limits; it does not grant longitudinal permission. AutoEngage or an outgoing message alone cannot start longitudinal control, and old queued longitudinal commands are not delivered after CANCEL, braking or longitudinal permission revocation. Independently authorized lateral control retains its own validity conditions. Update host and Panda together and restart. These checks do not establish separate angle-steering support or physical vehicle performance.
+
 ### Buttons and presets — 15 settings
 
 Select a section title for the code-based state machine, units, and application conditions.

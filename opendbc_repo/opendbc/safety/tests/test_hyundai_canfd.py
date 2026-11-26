@@ -10,15 +10,43 @@ from opendbc.safety.tests.common import CANPackerPanda
 from opendbc.safety.tests.hyundai_common import HyundaiButtonBase, HyundaiLongitudinalBase
 
 
+# Explicit existing fork TX topology, including non-actuating display messages.
+# These expectations are independent of the runtime C allowlist.
+FORK_HDA1_TX = [
+  (0xCB, 0, 24), (0xEA, 2, 24), (0x10B, 2, 16), (0x12A, 0, 16),
+  (0x160, 0, 16), (0x161, 0, 32), (0x162, 0, 32), (0x175, 2, 24),
+  (0x1A0, 0, 32), (0x1AA, 2, 16), (0x1CF, 0, 8), (0x1CF, 2, 8),
+  (0x1E0, 0, 16), (0x200, 0, 8), (0x2AF, 2, 8), (0x4A3, 2, 8),
+  (0x4B4, 2, 8), (0x7D0, 0, 8),
+]
+
+FORK_HDA2_TX = [
+  (0x50, 0, 16), (0x50, 1, 16), (0x51, 0, 32), (0x51, 1, 32),
+  (0xCB, 0, 24), (0xEA, 2, 24), (0x10B, 2, 16), (0x110, 0, 32),
+  (0x110, 1, 32), (0x12A, 0, 16), (0x12A, 1, 16), (0x160, 0, 16),
+  (0x160, 1, 16), (0x161, 0, 32), (0x162, 0, 32), (0x175, 2, 24),
+  (0x1A0, 0, 32), (0x1A0, 1, 32), (0x1AA, 0, 16), (0x1AA, 1, 16),
+  (0x1AA, 2, 16), (0x1CF, 0, 8), (0x1CF, 1, 8), (0x1CF, 2, 8),
+  (0x1DA, 0, 32), (0x1DA, 1, 32), (0x1E0, 0, 16), (0x1E0, 1, 16),
+  (0x1EA, 0, 32), (0x1EA, 1, 32), (0x1FA, 2, 32), (0x200, 0, 8),
+  (0x200, 1, 8), (0x2A4, 0, 24), (0x2A4, 1, 24), (0x2AF, 2, 8),
+  (0x345, 0, 8), (0x345, 1, 8), (0x362, 0, 32), (0x362, 1, 32),
+  (0x4A3, 2, 8), (0x4B4, 2, 8), (0x4B9, 2, 8), (0x4BE, 2, 8),
+  (0x730, 1, 8),
+]
+
+
 class TestHyundaiCanfdBase(HyundaiButtonBase, common.PandaCarSafetyTest, common.DriverTorqueSteeringSafetyTest, common.SteerRequestCutSafetyTest):
 
   TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x2A4, 0]]
   STANDSTILL_THRESHOLD = 12  # 0.375 kph
   FWD_BLACKLISTED_ADDRS = {2: [0x50, 0x2a4]}
 
-  MAX_RATE_UP = 2
-  MAX_RATE_DOWN = 3
-  MAX_TORQUE = 270
+  # Match the existing fork's device limits; checks still exercise the first
+  # value beyond every limit and permission-OFF cases.
+  MAX_RATE_UP = 10
+  MAX_RATE_DOWN = 10
+  MAX_TORQUE = 512
 
   MAX_RT_DELTA = 112
   RT_INTERVAL = 250000
@@ -46,6 +74,14 @@ class TestHyundaiCanfdBase(HyundaiButtonBase, common.PandaCarSafetyTest, common.
       cls.safety = None
       raise unittest.SkipTest
 
+  def _configure_fork_expectations(self):
+    matrix = FORK_HDA2_TX if self.safety.get_current_safety_param() & HyundaiSafetyFlags.CANFD_LKA_STEERING else FORK_HDA1_TX
+    self.TX_LAYOUT = matrix
+    self.TX_MSGS = [[address, bus] for address, bus, _ in matrix]
+    # The fork forwards original camera traffic until an accepted replacement
+    # owns that ID. The native timer/cluster/FIFO suites check active ownership.
+    self.FWD_BLACKLISTED_ADDRS = {0: [0x4B9]}
+
   def _torque_driver_msg(self, torque):
     values = {"STEERING_COL_TORQUE": torque}
     return self.packer.make_can_msg_panda("MDPS", self.PT_BUS, values)
@@ -55,7 +91,7 @@ class TestHyundaiCanfdBase(HyundaiButtonBase, common.PandaCarSafetyTest, common.
     return self.packer.make_can_msg_panda(self.STEER_MSG, self.STEER_BUS, values)
 
   def _speed_msg(self, speed):
-    values = {f"WHL_Spd{pos}Val": speed * 0.03125 for pos in ["FL", "FR", "RL", "RR"]}
+    values = {f"WHEEL_SPEED_{pos}": speed * 0.03125 for pos in range(1, 5)}
     return self.packer.make_can_msg_panda("WHEEL_SPEEDS", self.PT_BUS, values)
 
   def _user_brake_msg(self, brake):
@@ -78,6 +114,23 @@ class TestHyundaiCanfdBase(HyundaiButtonBase, common.PandaCarSafetyTest, common.
       "ADAPTIVE_CRUISE_MAIN_BTN": main_button,
     }
     return self.packer.make_can_msg_panda("CRUISE_BUTTONS", bus, values)
+
+  def test_button_sends(self):
+    # The fork adjusts stock cruise with SET as well as RES. Neither active
+    # request may enable controls, and neutral/CANCEL remain available.
+    for enabled in (False, True):
+      self.safety.set_controls_allowed(enabled)
+      for button in range(8):
+        expected = button in (0, 4) or (enabled and button in (1, 2, 3))
+        self.assertEqual(expected, self._tx(self._button_msg(button, bus=self.BUTTONS_TX_BUS)))
+        self.assertEqual(enabled, self.safety.get_controls_allowed())
+
+  def test_wrong_frame_lengths_cannot_use_the_fork_allowlist(self):
+    layouts = set(self.TX_LAYOUT)
+    for address, bus in {tuple(m) for m in self.TX_MSGS}:
+      for length in (0, 1, 8, 12, 16, 24, 32, 64):
+        if (address, bus, length) not in layouts:
+          self.assertFalse(self._tx(common.make_msg(bus, address, length)), (address, bus, length))
 
 
 class TestHyundaiCanfdLFASteeringBase(TestHyundaiCanfdBase):
@@ -103,6 +156,7 @@ class TestHyundaiCanfdLFASteeringBase(TestHyundaiCanfdBase):
     self.safety = libsafety_py.libsafety
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, self.SAFETY_PARAM)
     self.safety.init_tests()
+    self._configure_fork_expectations()
 
 
 @parameterized_class([
@@ -142,6 +196,7 @@ class TestHyundaiCanfdLFASteeringAltButtons(TestHyundaiCanfdLFASteeringBase):
     self.safety = libsafety_py.libsafety
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_ALT_BUTTONS | self.SAFETY_PARAM)
     self.safety.init_tests()
+    self._configure_fork_expectations()
 
   def _button_msg(self, buttons, main_button=0, bus=1):
     values = {
@@ -188,6 +243,7 @@ class TestHyundaiCanfdLKASteeringEV(TestHyundaiCanfdBase):
     self.safety = libsafety_py.libsafety
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_LKA_STEERING | HyundaiSafetyFlags.EV_GAS)
     self.safety.init_tests()
+    self._configure_fork_expectations()
 
 
 # TODO: Handle ICE and HEV configurations once we see cars that use the new messages
@@ -208,9 +264,14 @@ class TestHyundaiCanfdLKASteeringAltEV(TestHyundaiCanfdBase):
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_LKA_STEERING | HyundaiSafetyFlags.EV_GAS |
                                  HyundaiSafetyFlags.CANFD_LKA_STEERING_ALT)
     self.safety.init_tests()
+    self._configure_fork_expectations()
 
 
 class TestHyundaiCanfdLKASteeringLongEV(HyundaiLongitudinalBase, TestHyundaiCanfdLKASteeringEV):
+
+  # Existing fork HYUNDAI_LONG_LIMITS, not a change to device authority.
+  MIN_ACCEL = -4.0
+  MAX_ACCEL = 2.5
 
   TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x2A4, 0], [0x51, 0], [0x730, 1], [0x12a, 1], [0x160, 1],
              [0x1e0, 1], [0x1a0, 1], [0x1ea, 1], [0x200, 1], [0x345, 1], [0x1da, 1]]
@@ -230,6 +291,7 @@ class TestHyundaiCanfdLKASteeringLongEV(HyundaiLongitudinalBase, TestHyundaiCanf
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_LKA_STEERING |
                                  HyundaiSafetyFlags.LONG | HyundaiSafetyFlags.EV_GAS)
     self.safety.init_tests()
+    self._configure_fork_expectations()
 
   def _accel_msg(self, accel, aeb_req=False, aeb_decel=0):
     values = {
@@ -252,6 +314,10 @@ class TestHyundaiCanfdLKASteeringLongEV(HyundaiLongitudinalBase, TestHyundaiCanf
 ])
 class TestHyundaiCanfdLFASteeringLong(HyundaiLongitudinalBase, TestHyundaiCanfdLFASteeringBase):
 
+  # Existing fork HYUNDAI_LONG_LIMITS, not a change to device authority.
+  MIN_ACCEL = -4.0
+  MAX_ACCEL = 2.5
+
   FWD_BLACKLISTED_ADDRS = {2: [0x12a, 0x1e0, 0x1a0, 0x160]}
 
   RELAY_MALFUNCTION_ADDRS = {0: (0x12A, 0x1a0)}  # LFA, SCC_CONTROL
@@ -270,6 +336,7 @@ class TestHyundaiCanfdLFASteeringLong(HyundaiLongitudinalBase, TestHyundaiCanfdL
     self.safety = libsafety_py.libsafety
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.LONG | self.SAFETY_PARAM)
     self.safety.init_tests()
+    self._configure_fork_expectations()
 
   def _accel_msg(self, accel, aeb_req=False, aeb_decel=0):
     values = {

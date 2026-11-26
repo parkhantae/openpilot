@@ -4,6 +4,18 @@ These patches preserve reviewed Wiki edits in the code branch when the author
 cannot push to the separate Wiki repository. Committing a patch here does not
 publish its content to the live Wiki.
 
+## Common CAN-FD torque authorization
+
+`canfd-control-authorization.patch` supplies complete KO/EN/ZH MANUAL regions
+for `AlwaysLateral` and `AutoEngage` on `c3-pht`. It retains the Ioniq profile
+and Tesla gesture explanations and adds common torque authorization, bounded
+independent lateral operation, queue revocation and host/Panda restart notes.
+Apply it to fresh pages generated from this fork catalog using
+`git apply --unidiff-zero`, then regenerate with that directory as `--wiki-dir`
+and validate. For these two settings it replaces the older gesture/Ioniq patch
+chain; reconcile existing manual content instead of applying both. This patch
+is staged for the fork and is not published to the upstream Wiki.
+
 ## P/R-only cluster screens
 
 `cluster-gear-screens.patch` contains only the KO/EN `ClusterHudScreenMode`

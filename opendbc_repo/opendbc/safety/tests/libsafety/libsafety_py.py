@@ -21,6 +21,9 @@ typedef struct {
   unsigned int addr : 29;
   unsigned char checksum;
   unsigned char data[64];
+  // CANPacket_t is packed but aligned(4) in firmware: include its trailing
+  // bytes so C copies and CFFI allocations/array strides all use 72 bytes.
+  unsigned char alignment_padding[2];
 } CANPacket_t;
 """, packed=True)
 
@@ -35,6 +38,12 @@ int set_safety_hooks(uint16_t mode, uint16_t param);
 
 ffi.cdef("""
 void can_set_checksum(CANPacket_t *packet);
+int safety_test_packet_size(void);
+int safety_test_packet_data_offset(void);
+int safety_test_packet_addr(CANPacket_t *pkt);
+int safety_test_packet_bus(CANPacket_t *pkt);
+int safety_test_packet_len(CANPacket_t *pkt);
+int safety_test_second_packet_addr(CANPacket_t *pkt);
 """)
 
 setup_safety_helpers(ffi)

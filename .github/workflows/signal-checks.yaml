@@ -1,7 +1,7 @@
 name: Signal integration checks
 on:
   push:
-    branches: [carrot-wip]
+    branches: [carrot-wip, c3-pht]
     paths:
       - 'opendbc_repo/**'
       - 'openpilot/cereal/log.capnp'
@@ -38,6 +38,8 @@ jobs:
       - name: Tesla intent, card, feedback, native safety and existing Ioniq indicators
         run: |
           python tools/signal_validation/run.py \
+            opendbc_repo/opendbc/safety/tests/test_can_packet_layout.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_canfd.py \
             openpilot/selfdrive/car/tests/test_camera_scc_steering_intent.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_carstate_buttons.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_hda2_scc_topology.py \
@@ -46,6 +48,7 @@ jobs:
             opendbc_repo/opendbc/car/hyundai/tests/test_alt2_adas_buttons.py \
             opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_alt_buttons.py \
             opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_authorization.py \
+            opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_torque_channels.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_ioniq_safety_profile.py \
             openpilot/selfdrive/car/tests/test_alternative_experience.py \
             opendbc_repo/opendbc/safety/tests/test_hyundai_canfd_fwd_timer.py \

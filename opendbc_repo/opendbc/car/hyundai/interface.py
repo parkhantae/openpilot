@@ -210,6 +210,8 @@ class CarInterface(CarInterfaceBase):
     ret.steerLimitTimer = 0.4
     if ret.flags & HyundaiFlags.ANGLE_CONTROL:
       ret.steerControlType = SteerControlType.angle
+      if ret.flags & HyundaiFlags.CANFD:
+        ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.CANFD_ANGLE_CONTROL.value
     else:
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 

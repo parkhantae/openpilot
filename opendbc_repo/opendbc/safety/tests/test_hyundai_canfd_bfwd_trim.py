@@ -36,6 +36,7 @@ def req(out):
 class Stream:
   def __init__(self, native):
     self.h = Hooks(native, PARAM)
+    self.h.lib.alt2_test_controls(True)
     self.now = 1000
     self.n = 0
 
@@ -141,6 +142,7 @@ def test_trim_does_not_amplify_the_host_torque_step(native, first, second):
 
 def test_trim_preserves_the_valid_request_run_between_fault_avoidance_cuts(native):
   s = Stream(native)
+
   def push():
     s.push(0, s.n % 91 < 89)  # valid host sequence: 89 ON, 2 OFF
   for _ in range(3):
@@ -170,7 +172,9 @@ def test_rejected_host_frame_cannot_enter_the_control_queue(native, fault):
 @pytest.mark.parametrize("address,bus,length", [(0x1A0, 0, 32), (0x0CB, 0, 24), (0x0EA, 2, 24),
                                               (0x1AA, 2, 16), (0x175, 2, 24)])
 def test_other_control_fifos_keep_every_command(native, address, bus, length):
-  h = Hooks(native, PARAM)
+  h = Hooks(native, PARAM | (16384 if address == 0xCB else 0))
+  h.lib.alt2_test_controls(True)
+
   def push(n):
     data = bytearray(length)
     # SCC raw/val acceleration = 0; request ON in byte 6 must not enable LFA trimming on another ID.
@@ -201,6 +205,7 @@ def test_low_depth_and_mode_reset_restart_deep_confirmation(native):
   _arm_with(s, [(0, True)] * 3)
   # Disabling the safety mode resets the FIFO and its pending trim confirmation.
   s.h.lib.alt2_test_init(PARAM)
+  s.h.lib.alt2_test_controls(True)
   s.n = 0
   out = backlog(s, 99, depth=3)
   assert marker(out[-1]) == 99

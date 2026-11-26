@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stddef.h>
 
 bool safety_tx_buffered_for_fwd = false;
 
@@ -22,3 +23,11 @@ int safety_fwd_hook(int bus_num, int addr) {
 
 // libsafety stuff
 #include "safety_helpers.h"
+
+// Verify the host declaration against the compiler's firmware packet layout.
+int safety_test_packet_size(void) { return sizeof(CANPacket_t); }
+int safety_test_packet_data_offset(void) { return offsetof(CANPacket_t, data); }
+int safety_test_packet_addr(CANPacket_t *pkt) { return GET_ADDR(pkt); }
+int safety_test_packet_bus(CANPacket_t *pkt) { return GET_BUS(pkt); }
+int safety_test_packet_len(CANPacket_t *pkt) { return GET_LEN(pkt); }
+int safety_test_second_packet_addr(CANPacket_t *pkt) { return GET_ADDR(&pkt[1]); }

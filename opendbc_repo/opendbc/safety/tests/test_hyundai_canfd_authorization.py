@@ -30,13 +30,14 @@ def native(tmp_path_factory):
 
 
 class Hooks:
-  def __init__(self, lib, param=29, *, always_lateral=False):
+  def __init__(self, lib, param=29, *, always_lateral=False, strict=True):
     self.lib = lib
-    param |= 8192
+    if strict:
+      param |= 8192
     self.param = param
     self.pt_bus = 0 if param & 8 or not param & 16 else 1
-    self.steer_bus = 0
-    self.steer_msg = 'LFA' if param & 4 or not param & 16 else ('LKAS_ALT' if param & 128 else 'LKAS')
+    self.steer_bus = 1 if param & 16 and param & 4 and not param & 8 else 0
+    self.steer_msg = 'LFA' if param & 8 or param & 4 or not param & 16 else ('LKAS_ALT' if param & 128 else 'LKAS')
     self.packer = CANPacker('hyundai_canfd_generated')
     self.counter = 0
     self.now = 1_000_000
@@ -74,11 +75,15 @@ class Hooks:
     if not self.param & 4:
       assert self.lib.safety_rx_hook(self.packed('SCC_CONTROL', {'COUNTER': self.counter, 'ACCMode': 0},
                                                2 if self.param & 8 else self.pt_bus))
+    self.lib.safety_tick_current_safety_config()
     assert self.lib.canfd_test_inputs_valid()
 
   def engage(self):
     self.seed(button=2)
     self.seed()
+    if not self.param & 4:
+      assert self.lib.safety_rx_hook(self.packed('SCC_CONTROL', {'COUNTER': self.counter + 1, 'ACCMode': 1},
+                                               2 if self.param & 8 else self.pt_bus))
     assert self.lib.get_controls_allowed()
 
   def steer(self, torque=2, request=1, *, bus=None):
@@ -97,8 +102,15 @@ class Hooks:
     return bus, DLC_TO_LEN[pkt.data_len_code], bytes(pkt.data[0:DLC_TO_LEN[pkt.data_len_code]])
 
 
+@pytest.fixture(params=[False, True], ids=['common', 'strict'])
+def hooks(native, request):
+  h = Hooks(native, strict=request.param)
+  h.seed()
+  return h
+
+
 @pytest.fixture
-def hooks(native):
+def strict_hooks(native):
   h = Hooks(native)
   h.seed()
   return h
@@ -221,7 +233,12 @@ def test_queued_accel_revocation_and_reengagement_do_not_replay_old_command(hook
   for _ in range(2):
     assert hooks.tx(hooks.accel(1))
   if cause == 'stale':
-    hooks.lib.set_timer(hooks.now + 1_000_001)
+    hooks.now += 1_000_001
+    hooks.lib.set_timer(hooks.now)
+    if not hooks.param & 8192:
+      # Common profiles use the firmware's periodic safety_tick timeout;
+      # the explicit strict profile additionally checks age between ticks.
+      hooks.lib.safety_tick_current_safety_config()
   else:
     hooks.seed(button=4 if cause == 'cancel' else 0, brake=cause == 'brake', gas=cause == 'gas')
   original = hooks.accel(0)
@@ -289,11 +306,19 @@ def test_received_wrong_bus_or_length_cannot_enable_controls(hooks):
 
 
 @pytest.mark.parametrize('message,size', [('LKAS', 16), ('LKAS_ALT', 32), ('LFA_ALT', 24)])
-def test_other_steering_encodings_cannot_bypass_strict_torque_checks(hooks, message, size):
+def test_other_steering_encodings_cannot_bypass_strict_torque_checks(strict_hooks, message, size):
+  hooks = strict_hooks
   hooks.engage()
   pkt = hooks.packed(message, {}, 0)
   assert DLC_TO_LEN[pkt.data_len_code] == size
   assert not hooks.tx(pkt)
+
+
+@pytest.mark.parametrize('message', ['LKAS', 'LKAS_ALT'])
+def test_common_profile_cannot_actuate_an_unchecked_companion_channel(native, message):
+  hooks = Hooks(native, strict=False)
+  hooks.engage()
+  assert not hooks.tx(hooks.packed(message, {'TORQUE_REQUEST': 2, 'STEER_REQ': 1}, 0))
 
 
 @pytest.mark.parametrize('button', [0, 1, 2, 3, 4, 5, 6, 7])

@@ -35,6 +35,9 @@ def test_real_interface_selects_strict_profile_only_for_torque_ioniq5(monkeypatc
   if strict:
     assert cp.steerControlType == CarParams.SteerControlType.torque
     assert cp.safetyConfigs[-1].safetyParam == 8221
+  if cp.safetyConfigs[-1].safetyModel == CarParams.SafetyModel.hyundaiCanfd:
+    assert bool(cp.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.CANFD_ANGLE_CONTROL) == (
+      cp.steerControlType == CarParams.SteerControlType.angle)
 
 
 @pytest.mark.parametrize('camera,hda2', [(0, 0), (0, 1), (1, 1), (2, 0)])
@@ -45,3 +48,14 @@ def test_unverified_ioniq_wiring_keeps_its_existing_profile(monkeypatch, camera,
     monkeypatch.setattr(module, 'Params', lambda: config)
   cp = interface.CarInterface.get_params(CAR.HYUNDAI_IONIQ_5, defaultdict(dict), [], True, False, False)
   assert not cp.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.CANFD_STRICT_CONTROL
+
+
+def test_ioniq_camera_scc_stock_longitudinal_keeps_lfa_topology(monkeypatch):
+  config = Config()
+  config.get_int = lambda key: {'HyundaiCameraSCC': 3, 'CanfdHDA2': 1, 'EnableRadarTracks': 3}.get(key, 0)
+  for module in (interface, hyundaicanfd, interfaces):
+    monkeypatch.setattr(module, 'Params', lambda: config)
+  cp = interface.CarInterface.get_params(CAR.HYUNDAI_IONIQ_5, defaultdict(dict), [], True, False, False)
+  assert not cp.openpilotLongitudinalControl
+  assert cp.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.CAMERA_SCC
+  assert cp.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.CANFD_LKA_STEERING

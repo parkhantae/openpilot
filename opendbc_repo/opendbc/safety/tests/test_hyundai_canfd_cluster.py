@@ -42,6 +42,8 @@ def native(tmp_path_factory):
 def load_native(output):
   lib = ctypes.CDLL(str(output))
   lib.alt2_test_init.argtypes = [ctypes.c_int]
+  lib.alt2_test_controls.argtypes = [ctypes.c_bool]
+  lib.alt2_test_controls.restype = None
   lib.cluster_test_packet.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8),
                                     ctypes.c_uint32, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool]
   lib.cluster_test_packet.restype = ctypes.c_int
@@ -287,6 +289,8 @@ def test_direct_tx_flag_has_no_effect_without_camera_scc(native, param):
                                             (0xEA, 2, 24), (0x1AA, 2, 16), (0x175, 2, 24)])
 def test_direct_cluster_setting_preserves_control_fifo_and_reuse(native, address, bus, size):
   def run(param):
+    if address == 0xCB:
+      param |= 16384  # Explicit angle profile, as selected by the real interface.
     hooks = Hooks(native, param)
     results = []
     # Push a burst, drain it, then exercise empty-FIFO reuse and exhaustion.
