@@ -2,6 +2,7 @@
 import os
 import signal
 import subprocess
+from openpilot.common.repo_update import child_lock_kwargs
 
 
 def command_env() -> dict[str, str]:
@@ -21,7 +22,7 @@ def run(cmd: list[str], cwd: str | None = None) -> str:
   # check_output kills only its direct child on KeyboardInterrupt. A gc child
   # can already have spawned repack/pack-objects, which would survive as orphans.
   proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                          encoding="utf8", env=command_env(), start_new_session=(os.name != "nt"))
+                          encoding="utf8", env=command_env(), start_new_session=(os.name != "nt"), **child_lock_kwargs())
   try:
     output, _ = proc.communicate()
     if proc.returncode:

@@ -134,3 +134,12 @@ fork catalog, apply with `git apply --check --unidiff-zero` and
 `git apply --unidiff-zero`, regenerate with staging as `--wiki-dir` and validate.
 Only Korean, English and Chinese MANUAL regions change. This fork-specific
 patch is staged; no live upstream Wiki publication.
+
+## Native software update requests
+
+`native-software-update.patch` documents the fork-only `SoftwareMenu` manual
+check/download behavior in Korean, English and Chinese. Apply to pages freshly
+generated from this branch with `git apply --check --unidiff-zero` and
+`git apply --unidiff-zero`, regenerate and validate. The background preference
+is preserved; installation and reboot require the explicit Install action.
+This patch is staged only; it is not published to the upstream Wiki.

@@ -7,6 +7,7 @@ from openpilot.common.params import Params
 from openpilot.common.api import comma_connect_enabled
 from openpilot.system.hardware import HARDWARE, PC, TICI
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
+from openpilot.system.updated.manual_request import updater_enabled
 
 try:
   BODYTELEOP_AVAILABLE = importlib.util.find_spec("openpilot.tools.bodyteleop.web") is not None
@@ -72,7 +73,7 @@ def only_offroad(started: bool, params: Params, CP: car.CarParams) -> bool:
   return not started
 
 def enable_updated(started: bool, params: Params, CP: car.CarParams) -> bool:
-  return not started and params.get_bool("SoftwareMenu")
+  return updater_enabled(started, params)
 
 def or_(*fns):
   return lambda *args: any(fn(*args) for fn in fns)

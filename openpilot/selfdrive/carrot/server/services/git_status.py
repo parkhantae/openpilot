@@ -6,6 +6,7 @@ from typing import Any
 
 from openpilot.common.async_process import run_process
 from openpilot.common.repo_update import RepoBusyError, repo_lock
+from openpilot.system.updated.manual_request import native_update_active
 
 
 REPO_DIR = "/data/openpilot"
@@ -164,6 +165,8 @@ async def get_git_status(force: bool = False) -> dict[str, Any]:
       return dict(_cache)
     try:
       with repo_lock():
+        if native_update_active():
+          return {**_error_state("Native update is being prepared or is ready to install"), "state": "native_update"}
         _cache = await _read_status()
     except RepoBusyError:
       return {**_error_state("Build or another Git operation is running"), "state": "busy"}

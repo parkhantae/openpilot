@@ -15,6 +15,12 @@ from openpilot.selfdrive.carrot.server.services.auto_update import (
 )
 
 
+@pytest.fixture(autouse=True)
+def no_native_staging(monkeypatch):
+  # Existing cases model an idle native updater; dedicated cases override this.
+  monkeypatch.setattr(auto_update, "native_update_active", lambda: False)
+
+
 def test_manager_must_be_live_after_any_length_build_and_restart():
   ready = auto_update.ManagerReady(delay=10)
   for now in range(600):

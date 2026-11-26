@@ -1,0 +1,30 @@
+name: Native branch switch
+on:
+  push:
+    branches: [c3-pht-porter, c3-pht-ioniq]
+    paths:
+      - 'openpilot/system/updated/**'
+      - 'openpilot/system/manager/process_config.py'
+      - 'openpilot/selfdrive/ui/layouts/settings/software.py'
+      - 'openpilot/common/params_keys.h'
+      - '.github/workflows/native-branch-switch.yaml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  manual-update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest aiohttp
+      - name: Cold UI, real Git transfer, staging and explicit install
+        run: >-
+          python -m pytest -c /dev/null --rootdir=. --noconftest -q
+          openpilot/system/updated/tests/test_manual_branch_switch.py
+          openpilot/system/updated/tests/test_process.py
+          openpilot/selfdrive/carrot/server/tests/test_auto_update.py
+          openpilot/selfdrive/carrot/server/tests/test_native_update_coordination.py

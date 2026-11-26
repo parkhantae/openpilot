@@ -1,4 +1,3 @@
-import os
 import time
 import datetime
 from openpilot.common.time_helpers import system_time_valid
@@ -10,9 +9,10 @@ from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
 from openpilot.system.ui.widgets.list_view import button_item, text_item, ListItem
 from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.system.ui.widgets.scroller_tici import Scroller
+from openpilot.system.updated.manual_request import REQUEST_KEY, UserRequest, pending_request, finish_request
 
 # TODO: remove this. updater fails to respond on startup if time is not correct
-UPDATED_TIMEOUT = 10  # seconds to wait for updated to respond
+UPDATED_TIMEOUT = 30  # seconds to wait for updated to acknowledge a manual request
 
 # Mapping updater internal states to translated display strings
 STATE_TO_DISPLAY_TEXT = {
@@ -63,6 +63,7 @@ class SoftwareLayout(Widget):
     # Track waiting-for-updater transition to avoid brief re-enable while still idle
     self._waiting_for_updater = False
     self._waiting_start_ts: float = 0.0
+    self._updater_start_failed = False
 
     # Branch switcher
     self._branch_btn = button_item(lambda: tr("Target Branch"), lambda: tr("SELECT"), callback=self._on_select_branch)
@@ -82,6 +83,7 @@ class SoftwareLayout(Widget):
   def show_event(self):
     super().show_event()
     self._scroller.show_event()
+    self._request_update(UserRequest.CHECK)
 
   def _render(self, rect):
     self._scroller.render(rect)
@@ -103,6 +105,7 @@ class SoftwareLayout(Widget):
     failed_count = ui_state.params.get("UpdateFailedCount") or 0
     fetch_available = ui_state.params.get_bool("UpdaterFetchAvailable")
     update_available = ui_state.params.get_bool("UpdateAvailable")
+    request = pending_request(ui_state.params)
 
     if updater_state != "idle":
       # Updater responded
@@ -112,7 +115,21 @@ class SoftwareLayout(Widget):
       display_text = STATE_TO_DISPLAY_TEXT.get(updater_state, updater_state)
       self._download_btn.action_item.set_value(display_text)
     else:
-      if failed_count > 0:
+      if request != UserRequest.NONE:
+        if self._waiting_for_updater and time.monotonic() - self._waiting_start_ts > UPDATED_TIMEOUT:
+          finish_request(ui_state.params, request)
+          self._waiting_for_updater = False
+          self._updater_start_failed = True
+          request = UserRequest.NONE
+        self._download_btn.action_item.set_value(tr("Updater did not start. Try CHECK again.") if self._updater_start_failed else tr("Starting updater…"))
+        self._download_btn.action_item.set_text(tr("CHECK"))
+      elif self._updater_start_failed:
+        self._download_btn.action_item.set_value(tr("Updater did not start. Try CHECK again."))
+        self._download_btn.action_item.set_text(tr("CHECK"))
+      elif ui_state.params.get_bool("DisableUpdates"):
+        self._download_btn.action_item.set_value(tr("Updates are disabled."))
+        self._download_btn.action_item.set_text(tr("CHECK"))
+      elif failed_count > 0:
         self._download_btn.action_item.set_value(tr("failed to check for update"))
         self._download_btn.action_item.set_text(tr("CHECK"))
       elif fetch_available:
@@ -127,20 +144,23 @@ class SoftwareLayout(Widget):
           self._download_btn.action_item.set_value(tr("up to date, last checked never"))
         self._download_btn.action_item.set_text(tr("CHECK"))
 
-      # If we've been waiting too long without a state change, reset state
-      if self._waiting_for_updater and (time.monotonic() - self._waiting_start_ts > UPDATED_TIMEOUT):
+      if request == UserRequest.NONE:
         self._waiting_for_updater = False
 
       # Only enable if we're not waiting for updater to flip out of idle
-      self._download_btn.action_item.set_enabled(not self._waiting_for_updater)
+      self._download_btn.action_item.set_enabled(request == UserRequest.NONE and not ui_state.params.get_bool("DisableUpdates"))
+
+    self._download_btn.set_description((ui_state.params.get("LastUpdateException") or "") if failed_count > 0 else "")
+    idle = updater_state == "idle" and request == UserRequest.NONE
+    self._branch_btn.action_item.set_enabled(ui_state.is_offroad() and idle and not ui_state.params.get_bool("DisableUpdates"))
 
     # Update target branch button value
     current_branch = ui_state.params.get("UpdaterTargetBranch") or ""
     self._branch_btn.action_item.set_value(current_branch)
 
     # Update install button
-    self._install_btn.set_visible(ui_state.is_offroad() and update_available)
-    if update_available:
+    self._install_btn.set_visible(ui_state.is_offroad() and update_available and idle and not ui_state.params.get_bool("DisableUpdates"))
+    if update_available and idle:
       new_desc = ui_state.params.get("UpdaterNewDescription") or ""
       new_release_notes = (ui_state.params.get("UpdaterNewReleaseNotes") or b"").decode("utf-8", "replace")
       self._install_btn.action_item.set_text(tr("INSTALL"))
@@ -152,18 +172,25 @@ class SoftwareLayout(Widget):
       self._install_btn.set_visible(False)
 
   def _on_download_update(self):
-    # Check if we should start checking or start downloading
+    request = UserRequest.FETCH if ui_state.params.get_bool("UpdaterFetchAvailable") else UserRequest.CHECK
+    self._request_update(request)
+
+  def _request_update(self, request, target=None):
+    if not ui_state.is_offroad() or ui_state.params.get_bool("DisableUpdates"):
+      return False
+    if pending_request(ui_state.params) != UserRequest.NONE or (ui_state.params.get("UpdaterState") or "idle") != "idle":
+      return False
+    if target is not None:
+      ui_state.params.put("UpdaterTargetBranch", target)
+    self._updater_start_failed = False
+    self._waiting_for_updater = True
+    self._waiting_start_ts = time.monotonic()
     self._download_btn.action_item.set_enabled(False)
-    if self._download_btn.action_item.text == tr("CHECK"):
-      # Start checking for updates
-      self._waiting_for_updater = True
-      self._waiting_start_ts = time.monotonic()
-      os.system("pkill -SIGUSR1 -f system.updated.updated")
-    else:
-      # Start downloading
-      self._waiting_for_updater = True
-      self._waiting_start_ts = time.monotonic()
-      os.system("pkill -SIGHUP -f system.updated.updated")
+    # Keep background Git fenced even when rechecking a downloaded update.
+    ui_state.params.put_int(REQUEST_KEY, request)
+    ui_state.params.put_bool("UpdaterFetchAvailable", False)
+    ui_state.params.put_bool("UpdateAvailable", False)
+    return True
 
   def _on_uninstall(self):
     def handle_uninstall_confirmation(result: DialogResult):
@@ -174,11 +201,19 @@ class SoftwareLayout(Widget):
     gui_app.push_widget(dialog)
 
   def _on_install_update(self):
+    if not ui_state.is_offroad() or ui_state.params.get_bool("DisableUpdates") or not ui_state.params.get_bool("UpdateAvailable"):
+      return
+    if pending_request(ui_state.params) != UserRequest.NONE or (ui_state.params.get("UpdaterState") or "idle") != "idle":
+      return
     # Trigger reboot to install update
     self._install_btn.action_item.set_enabled(False)
     ui_state.params.put_bool("DoReboot", True)
 
   def _on_select_branch(self):
+    if not ui_state.is_offroad() or ui_state.params.get_bool("DisableUpdates"):
+      return
+    if pending_request(ui_state.params) != UserRequest.NONE or (ui_state.params.get("UpdaterState") or "idle") != "idle":
+      return
     # Get available branches and order
     current_git_branch = ui_state.params.get("GitBranch") or ""
     branches_str = ui_state.params.get("UpdaterAvailableBranches") or ""
@@ -195,9 +230,8 @@ class SoftwareLayout(Widget):
       # Confirmed selection
       if result == DialogResult.CONFIRM and self._branch_dialog is not None and self._branch_dialog.selection:
         selection = self._branch_dialog.selection
-        ui_state.params.put("UpdaterTargetBranch", selection)
-        self._branch_btn.action_item.set_value(selection)
-        os.system("pkill -SIGUSR1 -f system.updated.updated")
+        if self._request_update(UserRequest.CHECK, selection):
+          self._branch_btn.action_item.set_value(selection)
       self._branch_dialog = None
 
     self._branch_dialog = MultiOptionDialog(tr("Select a branch"), branches, current_target, callback=handle_selection)

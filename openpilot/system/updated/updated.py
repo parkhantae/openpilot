@@ -21,6 +21,7 @@ from openpilot.selfdrive.selfdrived.alertmanager import set_offroad_alert
 from openpilot.system.hardware import AGNOS, HARDWARE
 from openpilot.system.version import get_build_metadata
 from openpilot.system.updated.process import run
+from openpilot.system.updated.manual_request import UserRequest, pending_request, finish_request, update_lock
 
 LOCK_FILE = os.getenv("UPDATER_LOCK_FILE", "/tmp/safe_staging_overlay.lock")
 STAGING_ROOT = os.getenv("UPDATER_STAGING_ROOT", "/data/safe_staging")
@@ -40,13 +41,10 @@ HOURS_NO_CONNECTIVITY_PROMPT = 2300
 ROUTES_NO_CONNECTIVITY_PROMPT = 8000
 
 
-class UserRequest:
-  NONE = 0
-  CHECK = 1
-  FETCH = 2
-
 class WaitTimeHelper:
-  def __init__(self):
+  def __init__(self, params=None):
+    self.params = params
+    self.manual_request = UserRequest.NONE
     self.ready_event = threading.Event()
     self.user_request = UserRequest.NONE
     signal.signal(signal.SIGHUP, self.update_now)
@@ -63,7 +61,28 @@ class WaitTimeHelper:
     self.ready_event.set()
 
   def sleep(self, t: float) -> None:
-    self.ready_event.wait(timeout=t)
+    # A queued UI request can start this process. Poll it even when no signal
+    # handler existed when the button was pressed, or while an old daemon sleeps.
+    end = time.monotonic() + t
+    while not self.ready_event.is_set():
+      if self.poll_manual_request() != UserRequest.NONE:
+        return
+      remaining = end - time.monotonic()
+      if remaining <= 0:
+        return
+      self.ready_event.wait(timeout=min(1.0, remaining))
+
+  def poll_manual_request(self) -> int:
+    request = pending_request(self.params) if self.params is not None else UserRequest.NONE
+    if request != UserRequest.NONE:
+      self.manual_request = request
+      self.user_request = request
+    return request
+
+  def finish_manual_request(self) -> None:
+    if self.params is not None:
+      finish_request(self.params, self.manual_request)
+    self.manual_request = UserRequest.NONE
 
 def write_time_to_param(params, param) -> None:
   t = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
@@ -252,6 +271,14 @@ class Updater:
     b: str | None = self.params.get("UpdaterTargetBranch")
     if b is None:
       b = self.get_branch(BASEDIR)
+      # Web checkout can preserve a same-named local branch as web/origin/… .
+      # Native updates need its real remote branch name, not that local alias.
+      try:
+        merge = run(["git", "config", "--get", f"branch.{b}.merge"], BASEDIR).strip()
+      except subprocess.CalledProcessError:
+        merge = ""
+      if merge.startswith("refs/heads/"):
+        b = merge[len("refs/heads/"):]
     b = {
       ("tizi", "release3"): "release-tizi",
     }.get((HARDWARE.get_device_type(), b), b)
@@ -259,12 +286,16 @@ class Updater:
 
   @property
   def update_ready(self) -> bool:
+    target = self.branches.get(self.target_branch)
+    if not target:
+      return False
     consistent_file = Path(os.path.join(FINALIZED, ".overlay_consistent"))
     if consistent_file.is_file():
       hash_mismatch = self.get_commit_hash(BASEDIR) != self.branches[self.target_branch]
       branch_mismatch = self.get_branch(BASEDIR) != self.target_branch
       on_target_branch = self.get_branch(FINALIZED) == self.target_branch
-      return ((hash_mismatch or branch_mismatch) and on_target_branch)
+      on_target_commit = self.get_commit_hash(FINALIZED) == target
+      return ((hash_mismatch or branch_mismatch) and on_target_branch and on_target_commit)
     return False
 
   @property
@@ -370,7 +401,7 @@ class Updater:
       self._has_internet = False
 
     setup_git_options(OVERLAY_MERGED)
-    output = run(["git", "ls-remote", "--heads"], OVERLAY_MERGED)
+    output = run(["git", "ls-remote", "--heads", "origin"], OVERLAY_MERGED)
 
     self.branches = defaultdict(lambda: None)
     for line in output.split('\n'):
@@ -382,6 +413,8 @@ class Updater:
     cur_branch = self.get_branch(OVERLAY_MERGED)
     cur_commit = self.get_commit_hash(OVERLAY_MERGED)
     new_branch = self.target_branch
+    if new_branch not in self.branches:
+      raise RuntimeError(f"Selected branch '{new_branch}' is not available from origin. Check the repository or select another branch.")
     new_commit = self.branches[new_branch]
     if (cur_branch, cur_commit) != (new_branch, new_commit):
       cloudlog.info(f"update available, {cur_branch} ({str(cur_commit)[:7]}) -> {new_branch} ({str(new_commit)[:7]})")
@@ -402,7 +435,7 @@ class Updater:
     run(["git", "config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"], OVERLAY_MERGED)
 
     branch = self.target_branch
-    git_fetch_output = run(["git", "fetch", "origin", branch], OVERLAY_MERGED)
+    git_fetch_output = run(["git", "fetch", "--depth=1", "--no-tags", "--no-recurse-submodules", "origin", branch], OVERLAY_MERGED)
     cloudlog.info("git fetch success: %s", git_fetch_output)
 
     cloudlog.info("git reset in progress")
@@ -456,10 +489,13 @@ def main() -> None:
 
     updater = Updater()
     update_failed_count = 0 # TODO: Load from param?
-    wait_helper = WaitTimeHelper()
+    wait_helper = WaitTimeHelper(params)
 
-    # invalidate old finalized update
-    set_consistent_flag(False)
+    # A one-shot manual check must not discard a previously downloaded update.
+    # init_overlay invalidates changed base trees; update_ready additionally
+    # requires the freshly advertised branch AND exact commit to match.
+    if pending_request(params) == UserRequest.NONE:
+      set_consistent_flag(False)
 
     # set initial state
     params.put("UpdaterState", "idle")
@@ -468,40 +504,50 @@ def main() -> None:
     first_run = True
     while True:
       wait_helper.ready_event.clear()
+      manual = wait_helper.poll_manual_request() != UserRequest.NONE
+      if manual:
+        params.put("UpdaterState", "checking...")
 
       # Attempt an update
       exception = None
       try:
-        # TODO: reuse overlay from previous updated instance if it looks clean
-        init_overlay()
-
-        # ensure we have some params written soon after startup
-        updater.set_params(False, update_failed_count, exception)
-
-        if not system_time_valid() or first_run:
-          first_run = False
+        if not system_time_valid():
+          if manual:
+            raise RuntimeError("System time is not valid; connect to the internet and check again.")
           wait_helper.sleep(60)
           continue
 
-        update_failed_count += 1
+        if first_run and wait_helper.user_request == UserRequest.NONE:
+          first_run = False
+          wait_helper.sleep(60)
+          continue
+        first_run = False
 
-        # check for update
-        params.put("UpdaterState", "checking...")
-        updater.check_for_update()
+        with update_lock():
+          # TODO: reuse overlay from previous updated instance if it looks clean
+          init_overlay()
 
-        # download update
-        last_fetch = params.get("UpdaterLastFetchTime")
-        timed_out = last_fetch is None or (datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - last_fetch > datetime.timedelta(days=3))
-        user_requested_fetch = wait_helper.user_request == UserRequest.FETCH
-        if params.get_bool("NetworkMetered") and not timed_out and not user_requested_fetch:
-          cloudlog.info("skipping fetch, connection metered")
-        elif wait_helper.user_request == UserRequest.CHECK:
-          cloudlog.info("skipping fetch, only checking")
-        else:
-          updater.fetch_update()
-          write_time_to_param(params, "UpdaterLastFetchTime")
-        update_failed_count = 0
+          # ensure we have some params written soon after startup
+          updater.set_params(False, update_failed_count, exception)
+
+          # check for update
+          params.put("UpdaterState", "checking...")
+          updater.check_for_update()
+
+          # download update
+          last_fetch = params.get("UpdaterLastFetchTime")
+          timed_out = last_fetch is None or (datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - last_fetch > datetime.timedelta(days=3))
+          user_requested_fetch = wait_helper.user_request == UserRequest.FETCH
+          if params.get_bool("NetworkMetered") and not timed_out and not user_requested_fetch:
+            cloudlog.info("skipping fetch, connection metered")
+          elif wait_helper.user_request == UserRequest.CHECK:
+            cloudlog.info("skipping fetch, only checking")
+          else:
+            updater.fetch_update()
+            write_time_to_param(params, "UpdaterLastFetchTime")
+          update_failed_count = 0
       except subprocess.CalledProcessError as e:
+        update_failed_count += 1
         cloudlog.event(
           "update process failed",
           cmd=e.cmd,
@@ -511,16 +557,22 @@ def main() -> None:
         exception = f"command failed: {e.cmd}\n{e.output}"
         OVERLAY_INIT.unlink(missing_ok=True)
       except Exception as e:
+        update_failed_count += 1
         cloudlog.exception("uncaught updated exception, shouldn't happen")
         exception = str(e)
         OVERLAY_INIT.unlink(missing_ok=True)
 
       try:
-        params.put("UpdaterState", "idle")
         update_successful = (update_failed_count == 0)
         updater.set_params(update_successful, update_failed_count, exception)
       except Exception:
         cloudlog.exception("uncaught updated exception while setting params, shouldn't happen")
+      finally:
+        params.put("UpdaterState", "idle")
+
+      wait_helper.finish_manual_request()
+      if manual and not params.get_bool("SoftwareMenu") and pending_request(params) == UserRequest.NONE:
+        return
 
       # infrequent attempts if we successfully updated recently
       wait_helper.user_request = UserRequest.NONE
