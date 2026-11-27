@@ -509,6 +509,8 @@ class Controls:
           adaptive=self.params.get_bool("PorterGapUse"),
           button_interval_s=max(.3, self.params.get_int("CruiseButtonTest2") * .01),
           planner_accel_ready=porter_plan_allows_recovery(lp, valid=self.sm.all_checks(['longitudinalPlan'])),
+          lead_radar=getattr(lead, 'radar', True),
+          lead_sample_id=getattr(self.sm, 'logMonoTime', {}).get('radarState'),
           reaction_s=porter_lead_reaction_s(self.params),
           gap_time_s=porter_gap_time_s(self.params, self.sm['selfdriveState'].personality.raw + 1,
                                       getattr(lp, 'tFollow', None) if self.sm.all_checks(['longitudinalPlan']) else None),

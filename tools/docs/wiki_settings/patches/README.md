@@ -274,3 +274,16 @@ generated from this branch with `git apply --check --unidiff-zero` and
 `git apply --unidiff-zero`, regenerate and validate. The background preference
 is preserved; installation and reboot require the explicit Install action.
 This patch is staged only; it is not published to the upstream Wiki.
+
+## Porter distant camera-lead confirmation
+
+`porter-vision-cap.patch` updates only the Korean, English and Chinese
+`PorterGapUse` MANUAL regions and review hashes. Generate from this branch's
+catalog, apply the existing dedicated-GAP/touch/adaptive/restart/speed-response
+chain above, then this patch with `git apply --check --unidiff-zero` and
+`git apply --unidiff-zero`. Regenerate and validate before publication.
+It documents the narrow 0.15s / three-new-observation confirmation for a distant
+camera lead with a fresh rising plan and projected clearance including button
+delivery. Pending confirmation cannot authorize RES+; close/rapid approaches,
+lower planner/navigation limits and low-target cancellation remain immediate.
+This is a staged fork-specific patch, not a live upstream Wiki update.

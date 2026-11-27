@@ -177,6 +177,7 @@ class PorterLeadTracker:
     self.decel_cap = self.decel_cap_time = None
     if self.adaptive_tracker is not None:
       self.adaptive_tracker.last_target = speed_kph
+      self.adaptive_tracker._reset_vision_confirmation()
 
   def holding_lead(self, now):
     tracker = self.adaptive_tracker if self.adaptive_tracker is not None else self
@@ -194,13 +195,15 @@ class PorterLeadTracker:
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
              reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, adaptive=False,
-             button_interval_s=.3, planner_accel_ready=False, cluster_ratio=1.):
+             button_interval_s=.3, planner_accel_ready=False, cluster_ratio=1.,
+             lead_radar=True, lead_sample_id=None):
     if not math.isfinite(cluster_ratio) or not .5 <= cluster_ratio <= 1.5:
       self.recovery_ready = False
       previous = self.decel_cap
       if self.adaptive_tracker is not None:
         self.adaptive_tracker.recovery_ready = False
         self.adaptive_tracker.clear_since = self.adaptive_tracker.open_road_since = None
+        self.adaptive_tracker._reset_vision_confirmation()
         previous = self.adaptive_tracker.last_target
       limits = [v for v in (target_kph, stock_target_kph, previous) if v is not None and math.isfinite(v)]
       held = min(limits) if limits else PORTER_CRUISE_MIN_KPH
@@ -214,7 +217,8 @@ class PorterLeadTracker:
       result = self.adaptive_tracker.update(
         now, target_kph, stock_target_kph, ego_speed, lead_distance, lead_relative_speed, gap_level,
         lead_visible=lead_visible, gap_time_s=gap_time_s, reaction_s=reaction_s, recovery_allowed=recovery_allowed,
-        button_interval_s=button_interval_s, planner_accel_ready=planner_accel_ready, cluster_ratio=cluster_ratio)
+        button_interval_s=button_interval_s, planner_accel_ready=planner_accel_ready, cluster_ratio=cluster_ratio,
+        lead_radar=lead_radar, lead_sample_id=lead_sample_id)
       self.recovery_ready = self.adaptive_tracker.recovery_ready
       return result
     if self.adaptive_tracker is not None:
@@ -295,6 +299,8 @@ class PorterAdaptiveLeadTracker:
   RECOVERY_KPH_PER_S = 1.8
   CLEAR_ROAD_RECOVERY_KPH_PER_S = 3.0
   CLEAR_ROAD_CONFIRM_S = 1.0
+  VISION_DECEL_CONFIRM_S = .15
+  VISION_SAMPLE_MAX_AGE_S = .1
 
   def __init__(self, hold_seconds=PORTER_LEAD_HOLD_S):
     self.hold_seconds = hold_seconds
@@ -305,11 +311,51 @@ class PorterAdaptiveLeadTracker:
     self.clear_since = None
     self.open_road_since = None
     self.recovery_ready = False
+    self._reset_vision_confirmation()
+
+  def _reset_vision_confirmation(self):
+    self.vision_decel_since = None
+    self.vision_decel_ceiling = None
+    self.vision_decel_samples = 0
+    self.vision_sample_id = None
+    self.vision_sample_seen = None
+
+  def _confirm_vision_cap(self, now, cap, target, stock, *, eligible, sample_id):
+    # Only a distant, projected-clear vision lead with an independently rising
+    # plan may defer a new reduction. Never raise the preceding target while
+    # waiting, or accumulate confirmation from repeated copies of one sample.
+    # Sub-step target motion cannot send SET-; do not interrupt normal recovery
+    # for it. Clear pending as soon as a complete decrement is no longer needed.
+    if (not eligible or self.last_target is None or cap > stock - 1. + 1e-5 or
+        not isinstance(sample_id, int) or sample_id <= 0 or
+        (self.vision_sample_id is not None and sample_id < self.vision_sample_id)):
+      self._reset_vision_confirmation()
+      return cap, False
+    new_sample = sample_id != self.vision_sample_id
+    if new_sample:
+      self.vision_sample_id, self.vision_sample_seen = sample_id, now
+    if now - self.vision_sample_seen > self.VISION_SAMPLE_MAX_AGE_S + 1e-9:
+      self._reset_vision_confirmation()
+      return cap, False
+    ceiling = self.last_target if self.vision_decel_ceiling is None else self.vision_decel_ceiling
+    if cap >= ceiling - 1e-5:
+      self._reset_vision_confirmation()
+      return cap, False
+    if self.vision_decel_since is None:
+      self.vision_decel_since, self.vision_decel_ceiling = now, ceiling
+      self.vision_decel_samples = 1
+    elif new_sample:
+      self.vision_decel_samples += 1
+    confirmed = (now - self.vision_decel_since >= self.VISION_DECEL_CONFIRM_S - 1e-9 and
+                 self.vision_decel_samples >= 3)
+    if confirmed:
+      return cap, False
+    return min(target, self.last_target, stock), True
 
   def update(self, now, target_kph, stock_target_kph, ego_speed, lead_distance,
              lead_relative_speed, gap_level, *, lead_visible=True, gap_time_s=None,
              reaction_s=PORTER_LEAD_REACTION_S, recovery_allowed=True, button_interval_s=.3, planner_accel_ready=False,
-             cluster_ratio=1.):
+             cluster_ratio=1., lead_radar=True, lead_sample_id=None):
     self.recovery_ready = False
     valid = (all(math.isfinite(v) for v in (now, target_kph, stock_target_kph, ego_speed, cluster_ratio)) and
              ego_speed >= 0 and .5 <= cluster_ratio <= 1.5)
@@ -337,6 +383,7 @@ class PorterAdaptiveLeadTracker:
       self.distance = max(.1, self.distance + min(0., self.relative) * dt)
     cap = target_kph
     clear = not lead_visible and not held
+    confirm_vision = False
     if fresh or held:
       response_s = reaction_s if math.isfinite(reaction_s) and 4 <= reaction_s <= 8 else PORTER_LEAD_REACTION_S
       # Unlike the legacy threshold's immediate jump to lead speed, permit a
@@ -359,12 +406,20 @@ class PorterAdaptiveLeadTracker:
       # plan may release an old stock-speed ceiling outside the projected gap,
       # instead of repeatedly resetting recovery on vision relative-speed noise.
       clear = fresh and (self.relative >= -.2 or planner_accel_ready) and margin + min(0., self.relative) * approach_s >= 0
+      # Keep the complete button-delivery reserve plus 5m clearance. Close or
+      # rapidly closing leads bypass confirmation on the very next control tick.
+      confirm_vision = (not lead_radar and fresh and recovery_allowed and planner_accel_ready and
+                        self.distance >= max(40., 2. * (self.distance - margin)) and
+                        margin + min(0., self.relative) * approach_s >= 5.)
+    cap, vision_pending = self._confirm_vision_cap(
+      now, cap, target_kph, stock_target_kph, eligible=confirm_vision, sample_id=lead_sample_id)
     if not recovery_allowed or not clear:
       self.clear_since = None
     elif self.clear_since is None:
       self.clear_since = now
     self.recovery_ready = (self.clear_since is not None and
-                           now - self.clear_since >= PORTER_LEAD_OPENING_CONFIRM_S - 1e-9)
+                           now - self.clear_since >= PORTER_LEAD_OPENING_CONFIRM_S - 1e-9 and
+                           not vision_pending)
     open_road = recovery_allowed and clear and (not lead_visible or (fresh and self.relative > .2))
     if not open_road:
       self.open_road_since = None

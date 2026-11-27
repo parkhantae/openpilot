@@ -151,6 +151,7 @@ jobs:
           python -m pytest --noconftest -o addopts='' -q
           openpilot/selfdrive/car/tests/test_gas_release_speed.py
           opendbc_repo/opendbc/car/hyundai/tests/test_porter_adaptive_gap.py
+          opendbc_repo/opendbc/car/hyundai/tests/test_porter_vision_cap.py
           opendbc_repo/opendbc/car/hyundai/tests/test_porter_gap.py
           opendbc_repo/opendbc/car/hyundai/tests/test_porter_gap_restart.py
       - name: Check UI geometry and rendering regressions

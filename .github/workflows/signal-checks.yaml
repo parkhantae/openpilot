@@ -58,6 +58,7 @@ jobs:
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_cancel_buttons.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_gap_restart.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_adaptive_gap.py \
+            opendbc_repo/opendbc/car/hyundai/tests/test_porter_vision_cap.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_speed_units.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_press_spacing.py \
             opendbc_repo/opendbc/car/hyundai/tests/test_porter_pulse.py \
